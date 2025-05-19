@@ -1,0 +1,63 @@
+/* Global Glassmorphism Styles - Simplified */
+
+.glass {
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(2em);
+  -webkit-backdrop-filter: blur(2em);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  box-shadow: 0 4px 12px 0 rgba(0, 0, 0, 0.1);
+  color: #111827;
+}
+
+.glass-medium {
+  background: rgba(245, 245, 245, 0.75);
+  backdrop-filter: blur(2em);
+  -webkit-backdrop-filter: blur(2em);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  box-shadow: 0 4px 12px 0 rgba(0, 0, 0, 0.1);
+  color: #111827;
+}
+
+.glass-dark {
+  background: rgba(30, 30, 30, 0.85);
+  backdrop-filter: blur(2em);
+  -webkit-backdrop-filter: blur(2em);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 4px 12px 0 rgba(0, 0, 0, 0.2);
+  color: #ffffff;
+}
+
+.glass-inactive {
+  background: rgba(240, 240, 240, 0.75);
+  backdrop-filter: blur(2em);
+  -webkit-backdrop-filter: blur(2em);
+  border: 1px solid rgba(240, 240, 240, 0.12);
+  box-shadow: 0 2px 8px 0 rgba(0, 0, 0, 0.05);
+  opacity: 0.8;
+  color: #6b7280;
+}
+
+.glass-highlighted {
+  background: rgba(240, 245, 255, 0.95);
+  backdrop-filter: blur(2em);
+  -webkit-backdrop-filter: blur(2em);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  box-shadow: 0 6px 16px 0 rgba(0, 0, 0, 0.15);
+  color: #111827;
+}
+
+/* Additional utility classes for glassmorphism effects */
+.glass-no-border {
+  border: none !important;
+}
+
+.glass-no-shadow {
+  box-shadow: none !important;
+}
+
+/* For components that need to be in front of other glass elements */
+.glass-higher {
+  z-index: 1;
+  backdrop-filter: blur(2.5em);
+  -webkit-backdrop-filter: blur(2.5em);
+}

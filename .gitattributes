@@ -1,0 +1,96 @@
+# Auto detect text files and perform LF normalization
+* text=auto
+
+# Force Windows line endings for these files
+*.cmd text eol=crlf
+*.bat text eol=crlf
+*.ps1 text eol=crlf
+
+# Force Unix line endings for shell scripts
+*.sh text eol=lf
+
+# Binary files that should not be modified
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.mov binary
+*.mp4 binary
+*.webm binary
+*.woff binary
+*.woff2 binary
+*.ttf binary
+*.eot binary
+*.otf binary
+*.svg binary
+*.pdf binary
+*.zip binary
+*.gz binary
+*.tar binary
+*.dmg binary
+*.pkg binary
+*.exe binary
+*.dll binary
+*.so binary
+*.dylib binary
+*.a binary
+*.lib binary
+*.obj binary
+*.o binary
+*.pyc binary
+*.pyo binary
+*.pyd binary
+*.class binary
+*.jar binary
+*.war binary
+*.ear binary
+*.xpi binary
+*.db binary
+*.sqlite binary
+*.sqlite3 binary
+*.sql binary
+*.dump binary
+*.dat binary
+*.data binary
+*.cache binary
+*.log binary
+*.lock binary
+*.pid binary
+*.sock binary
+*.swp binary
+*.swo binary
+*.swn binary
+*.swl binary
+*.swm binary
+*.swn binary
+*.swp binary
+*.swo binary
+*.DS_Store binary
+Thumbs.db binary
+desktop.ini binary
+*~ binary
+*.swp binary
+*.swo binary
+*.swn binary
+*.swl binary
+*.swm binary
+*.swn binary
+*.swp binary
+*.swo binary
+*.DS_Store binary
+Thumbs.db binary
+desktop.ini binary
+*~ binary
+*.swp binary
+*.swo binary
+*.swn binary
+*.swl binary
+*.swm binary
+*.swn binary
+*.swp binary
+*.swo binary
+*.DS_Store binary
+Thumbs.db binary
+desktop.ini binary
+*~ binary

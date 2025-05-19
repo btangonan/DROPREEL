@@ -1,0 +1,63 @@
+/* Comprehensive styles for react-beautiful-dnd to ensure proper z-index stacking */
+
+/* Create a new stacking context for the entire app */
+#__next {
+  isolation: isolate;
+}
+
+/* Override default behavior to ensure dragged items appear on top */
+[data-rbd-drag-handle-draggable-id] {
+  z-index: 999999 !important;
+  position: relative;
+}
+
+/* Make sure the dragging element is visible above all other content */
+[data-rbd-draggable-id][data-rbd-dragging="true"] {
+  z-index: 999999 !important;
+  position: relative;
+}
+
+/* The drag handle */
+div[data-rbd-drag-handle-context-id] {
+  z-index: 999999 !important;
+  position: relative;
+}
+
+/* The draggable context */
+div[data-rbd-draggable-context-id] {
+  z-index: 999999 !important;
+  position: relative;
+}
+
+/* Apply to the drag overlay/portal - this is crucial */
+div[data-rbd-portal] {
+  position: fixed !important;
+  z-index: 999999 !important;
+  pointer-events: none !important;
+  top: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  bottom: 0 !important;
+}
+
+/* Ensure the portal's children (the dragged element) are also properly positioned */
+div[data-rbd-portal] > * {
+  pointer-events: all !important;
+  position: absolute !important;
+  z-index: 999999 !important;
+}
+
+/* Ensure GlassCard doesn't create a stacking context that interferes */
+.glass-container, 
+.glass-card {
+  position: relative;
+  isolation: isolate;
+  transform: translateZ(0);
+}
+
+/* Add transform to force a new stacking context for DragDropContext */
+.drag-drop-context {
+  transform: translateZ(0);
+  position: relative;
+  z-index: 1;
+}
