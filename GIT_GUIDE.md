@@ -3,6 +3,7 @@
 This document outlines the Git workflow and best practices for the DROPREEL project. Following these guidelines ensures a clean, maintainable codebase and smooth collaboration.
 
 ## Table of Contents
+- [Getting Started](#getting-started)
 - [Branching Strategy](#branching-strategy)
 - [Commit Guidelines](#commit-guidelines)
 - [Versioning](#versioning)
@@ -12,6 +13,131 @@ This document outlines the Git workflow and best practices for the DROPREEL proj
 - [Best Practices](#best-practices)
 - [Common Tasks](#common-tasks)
 - [Troubleshooting](#troubleshooting)
+
+## Getting Started
+
+This section explains the core workflow we use for day-to-day development. The workflow follows the "Git Flow" model with some simplifications for our needs.
+
+### The Main Branches
+
+1. **`main` branch**
+   - Represents the current production-ready state
+   - Always stable and deployable
+   - Protected - no direct commits allowed
+
+2. **`develop` branch**
+   - Main development branch
+   - Contains the latest delivered development changes
+   Used as the base for feature branches
+
+### The Development Workflow
+
+#### 1. Starting a New Feature
+
+```bash
+# Make sure you're on develop and up to date
+git checkout develop
+git pull origin develop
+
+# Create a new feature branch
+git checkout -b feature/your-feature-name
+```
+
+#### 2. Making Changes
+
+```bash
+# Make your changes
+# Stage them
+git add .
+
+# Commit with a descriptive message
+git commit -m "feat(scope): add your feature"
+
+# Push to remote
+git push -u origin feature/your-feature-name
+```
+
+#### 3. Creating a Pull Request (PR)
+
+1. Go to the GitHub repository
+2. Click "New pull request"
+3. Set base: `develop` ← compare: `feature/your-feature-name`
+4. Fill in the PR template
+5. Request a review
+6. Wait for CI to pass and get approval
+
+#### 4. After PR Approval
+
+```bash
+# Merge the PR using "Squash and merge" on GitHub
+# Then clean up your local branches
+
+git checkout develop
+git pull origin develop
+git branch -d feature/your-feature-name
+```
+
+#### 5. Updating Your Local Repository
+
+After PRs are merged by others:
+
+```bash
+git checkout develop
+git pull origin develop
+```
+
+### Visual Workflow
+
+```
+[Local]                   [GitHub]
+   |                         |
+   |--- feature branch ----> |  (Push changes)
+   |                         |
+   |<--- Create PR --------- |  (Open Pull Request)
+   |                         |
+   |<--- Review & CI ------- |  (Code Review & Tests)
+   |                         |
+   |--- Update branch -----> |  (If changes requested)
+   |                         |
+   |<--- Approve & Merge --- |  (PR Merged)
+   |                         |
+   |--- Pull latest -------> |  (Sync local develop)
+   |                         |
+```
+
+### Common Scenarios
+
+#### Working on Multiple Features
+
+```bash
+# While on feature A, need to work on feature B
+git stash  # Save current changes
+git checkout develop
+git pull origin develop
+git checkout -b feature/feature-b
+
+# When done with feature B and PR is merged
+git checkout develop
+git pull origin develop
+git checkout feature/feature-a
+git stash pop  # Restore your changes
+```
+
+#### Keeping Your Branch Updated
+
+```bash
+git checkout feature/your-feature
+git fetch origin
+git merge origin/develop
+# Resolve any conflicts if they occur
+```
+
+This workflow ensures that:
+- `main` is always stable
+- `develop` contains the latest integrated features
+- Features are developed in isolation
+- Code is reviewed before merging
+- History remains clean and understandable
 
 ## Branching Strategy
 
