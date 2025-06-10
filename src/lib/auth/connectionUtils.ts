@@ -3,7 +3,6 @@ import fetch from 'node-fetch';
 import fs from 'fs';
 import path from 'path';
 import { getValidAccessToken } from './dropboxAuth';
-import AbortController from 'abort-controller';
 
 const TOKEN_PATH = path.join(process.cwd(), '.credentials', 'dropbox_token.json');
 

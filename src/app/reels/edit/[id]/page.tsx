@@ -307,7 +307,17 @@ export default function EditReelPage() {
         {/* Top Row */}
         <div className="col-span-1 md:col-span-1 lg:col-span-1 row-span-1 flex items-center justify-center min-h-[64px] md:h-24">
           <DropboxAuth
-            onAuthChange={setIsDropboxAuthenticated}
+            isAuthenticated={isDropboxAuthenticated}
+            isLoading={false}
+            onConnectClick={async () => {
+              try {
+                const response = await fetch('/api/auth/dropbox');
+                const { url } = await response.json();
+                window.location.href = url;
+              } catch (error) {
+                console.error('Error initiating Dropbox auth:', error);
+              }
+            }}
             highlight={getStepStatus('connect') === 'next'}
             state={getStepStatus('connect')}
           />

@@ -129,10 +129,10 @@ const PopoutVideoOverlay: React.FC<PopoutVideoOverlayProps> = ({ video, rect, on
   // Clamp the final position so the player never extends beyond the viewport
   const viewportWidth = typeof window !== 'undefined' ? window.innerWidth : 1920;
   const viewportHeight = typeof window !== 'undefined' ? window.innerHeight : 1080;
-  let unclampedLeft = startRect
+  const unclampedLeft = startRect
     ? startRect.left + startRect.width / 2 - endWidth / 2
     : viewportWidth / 2 - endWidth / 2;
-  let unclampedTop = startRect
+  const unclampedTop = startRect
     ? startRect.top + startRect.height / 2 - endHeight / 2
     : viewportHeight * (FINAL_TOP_VH / 100);
   // Clamp so the player stays fully in view

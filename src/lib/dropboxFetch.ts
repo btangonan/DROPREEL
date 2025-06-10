@@ -2,7 +2,7 @@
 import { Dropbox } from 'dropbox';
 
 // Create a singleton Dropbox client factory
-let dropboxClient: Dropbox | null = null;
+const dropboxClient: Dropbox | null = null;
 
 export const getDropboxClient = (accessToken: string): Dropbox => {
   // Always create a new client instead of using a singleton to avoid token issues
