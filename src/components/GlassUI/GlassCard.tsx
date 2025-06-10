@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { glassEffects, transitions } from '@/styles/design-tokens';
+import { transitions } from '@/styles/design-tokens';
 import GlassContainer from './GlassContainer';
 
 export interface GlassCardProps {

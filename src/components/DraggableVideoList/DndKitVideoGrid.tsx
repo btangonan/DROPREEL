@@ -173,7 +173,7 @@ function SortableVideoGridItem({ video, onClick, isInlinePreview, onCloseInlineP
 }
 
 export default function DndKitVideoGrid({ videos, gridId, onVideoClick, emptyMessage, inlinePreviewVideoId, onCloseInlinePreview }: DndKitVideoGridProps) {
-  const { isOver, setNodeRef } = useDroppable({ id: gridId });
+  const { setNodeRef } = useDroppable({ id: gridId });
   // Debug output for gridId, video count, and IDs
   const itemIds = videos.map(v => v.id);
   console.log(`[DndKitVideoGrid] gridId: ${gridId}, video count: ${videos.length}, IDs:`, itemIds);
