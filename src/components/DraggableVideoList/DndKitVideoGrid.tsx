@@ -2,8 +2,27 @@ import React, { useRef, useEffect, type CSSProperties } from 'react';
 import { useDroppable } from '@dnd-kit/core';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
+import Image from 'next/image';
 import { VideoFile } from '@/types';
 import './popout-animation.css';
+
+interface VideoGridItemProps {
+  video: VideoFile;
+  listeners: any; // TODO: Replace with proper type from dnd-kit
+  attributes: any; // TODO: Replace with proper type from dnd-kit
+  isDragging: boolean;
+  onClick?: (video: VideoFile, action?: { play?: boolean; rect?: DOMRect }) => void;
+  style?: CSSProperties;
+  isInlinePreview?: boolean;
+  onCloseInlinePreview?: () => void;
+}
+
+interface SortableVideoGridItemProps {
+  video: VideoFile;
+  onClick?: (video: VideoFile, action?: { play?: boolean; rect?: DOMRect }) => void;
+  isInlinePreview?: boolean;
+  onCloseInlinePreview?: () => void;
+}
 
 interface DndKitVideoGridProps {
   videos: VideoFile[];
@@ -15,7 +34,16 @@ interface DndKitVideoGridProps {
   onCloseInlinePreview?: () => void;
 }
 
-function VideoGridItem({ video, listeners, attributes, isDragging, onClick, style, isInlinePreview, onCloseInlinePreview }: any) {
+function VideoGridItem({ 
+  video, 
+  listeners, 
+  attributes, 
+  isDragging, 
+  onClick, 
+  style, 
+  isInlinePreview, 
+  onCloseInlinePreview 
+}: VideoGridItemProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const thumbnailRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
@@ -105,16 +133,21 @@ function VideoGridItem({ video, listeners, attributes, isDragging, onClick, styl
             </button>
           </div>
         ) : video.thumbnailUrl ? (
-          <img
-            src={video.thumbnailUrl}
-            alt={video.name}
-            className="w-full h-full object-cover rounded"
-            style={{ transition: 'none' }}
-            onError={e => {
-              (e.target as HTMLImageElement).style.display = 'none';
-            }}
-            loading="lazy"
-          />
+          <div className="relative w-full h-full">
+            <Image
+              src={video.thumbnailUrl}
+              alt={video.name}
+              fill
+              className="object-cover rounded"
+              style={{ transition: 'none' }}
+              onError={(e) => {
+                const target = e.target as HTMLImageElement;
+                target.style.display = 'none';
+              }}
+              loading="lazy"
+              unoptimized={true} // Consider setting up proper image optimization if needed
+            />
+          </div>
         ) : (
           <div className="flex items-center justify-center h-full w-full">
             <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
@@ -140,7 +173,12 @@ function EmptyDropZone({ children }: { children: React.ReactNode }) {
   );
 }
 
-function SortableVideoGridItem({ video, onClick, isInlinePreview, onCloseInlinePreview }: any) {
+function SortableVideoGridItem({ 
+  video, 
+  onClick, 
+  isInlinePreview, 
+  onCloseInlinePreview 
+}: SortableVideoGridItemProps) {
   const {
     attributes,
     listeners,

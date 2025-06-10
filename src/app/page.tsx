@@ -1,11 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { VideoFile, VideoReel } from '@/types';
-import VideoPlayer from '@/components/VideoPlayer/VideoPlayer';
-import VideoList from '@/components/VideoList/VideoList';
-import { useRouter } from 'next/navigation';
-import Link from 'next/link';
+import { VideoFile } from '@/types';
 import { extractDropboxPath } from '@/lib/utils/dropboxUtils';
 import FolderBrowser from '@/components/FolderBrowser/FolderBrowser';
 import DropboxAuth from '@/components/DropboxAuth/DropboxAuth';
@@ -33,10 +29,10 @@ interface VideoClickAction {
 export default function Home() {
   const [isDropboxAuthenticated, setIsDropboxAuthenticated] = useState(false);
   const [isDropboxAuthLoading, setIsDropboxAuthLoading] = useState(true);
-  const [dropboxAuthStatus, setDropboxAuthStatus] = useState<string>('');
-  const [dropboxAuthErrorCode, setDropboxAuthErrorCode] = useState<string | undefined>(undefined);
-  const [dropboxAuthRetryable, setDropboxAuthRetryable] = useState<boolean | undefined>(undefined);
-  const [dropboxAuthSuggestedAction, setDropboxAuthSuggestedAction] = useState<string | undefined>(undefined);
+  const [, setDropboxAuthStatus] = useState<string | null>(null);
+  const [, setDropboxAuthErrorCode] = useState<string | null>(null);
+  const [, setDropboxAuthRetryable] = useState<boolean>(false);
+  const [, setDropboxAuthSuggestedAction] = useState<string | null>(null);
   const [showFolderBrowser, setShowFolderBrowser] = useState(false);
   const [folderPath, setFolderPath] = useState('');
   const [isFetchingVideos, setIsFetchingVideos] = useState(false);
@@ -123,8 +119,9 @@ export default function Home() {
         setLoadedVideos([]);
         setError('No video files found in the specified folder');
       }
-    } catch (err: any) {
-      setError(`Error loading videos: ${err.message}`);
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred';
+      setError(`Error loading videos: ${errorMessage}`);
       setLoadedVideos([]);
     } finally {
       setIsFetchingVideos(false);
@@ -136,25 +133,11 @@ export default function Home() {
     setVideoState({ yourVideos: loadedVideos, selects: [] });
   }, [loadedVideos]);
 
-  // Helper to find a video by id and which list it's in
+  // Keep the function but mark as unused to avoid breaking code
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const findVideoById = (id: string) => {
-    const inYourVideos = videoState.yourVideos.findIndex(v => v.id === id);
-    if (inYourVideos !== -1) return { list: 'yourVideos', index: inYourVideos };
-    const inSelects = videoState.selects.findIndex(v => v.id === id);
-    if (inSelects !== -1) return { list: 'selects', index: inSelects };
-    return null;
+    return videoState.yourVideos.findIndex(v => v.id === id);
   };
-
-  // Helper to check for duplicate IDs
-  function logArrayIds(label: string, arr: VideoFile[]) {
-    const ids = arr.map((v: VideoFile) => v.id);
-    const uniqueIds = new Set(ids);
-    if (ids.length !== uniqueIds.size) {
-      console.warn(`[${label}] Duplicate IDs detected:`, ids);
-    }
-    console.log(`[${label}] IDs:`, ids);
-    console.log(`[${label}] Length:`, arr.length);
-  }
 
   // Handler for drag end (cross-panel and reorder)
   const handleDragEnd = useCallback((e: any) => {
@@ -435,11 +418,15 @@ export default function Home() {
           </div>
           <DragOverlay>
             {activeVideo ? (
-              <VideoGridItem
-                video={activeVideo}
-                isDragging={true}
-                style={{ width: '100%' }}
-              />
+              <div style={{ width: '100%' }}>
+                <VideoGridItem
+                  video={activeVideo}
+                  isDragging={true}
+                  listeners={{}}
+                  attributes={{}}
+                  style={{ width: '100%' }}
+                />
+              </div>
             ) : null}
           </DragOverlay>
         </DndContext>
