@@ -140,7 +140,7 @@ export default function Home() {
   };
 
   // Handler for drag end (cross-panel and reorder)
-  const handleDragEnd = useCallback((e: any) => {
+  const handleDragEnd = useCallback((e: { active: { id: string | number; data: { current: { droppableId: string } } }; over: { id: string | number; data: { current: { droppableId: string } } } | null }) => {
     setActiveId(null);
     const { active, over } = e;
     if (!active || !over) {
@@ -408,7 +408,7 @@ export default function Home() {
                   if (!response.ok) throw new Error('Failed to create reel');
                   const createdReel = await response.json();
                   window.location.href = `/r/${createdReel.id}`;
-                } catch (err) {
+                } catch {
                   alert('Failed to create reel. Please try again.');
                 }
               }}
