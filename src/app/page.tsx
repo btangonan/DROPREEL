@@ -340,7 +340,6 @@ export default function Home() {
                 isLoading={isDropboxAuthLoading}
                 onConnectClick={handleDropboxConnect}
                 highlight={!isDropboxAuthenticated}
-                state={!isDropboxAuthenticated ? 'next' : 'default'}
               />
             </div>
             <button

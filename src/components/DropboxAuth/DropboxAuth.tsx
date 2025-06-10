@@ -7,10 +7,9 @@ interface DropboxAuthProps {
   isLoading: boolean;
   onConnectClick: () => void;
   highlight?: boolean;
-  state?: 'next' | 'complete' | 'default';
 }
 
-const DropboxAuth: React.FC<DropboxAuthProps> = ({ isAuthenticated, isLoading, onConnectClick, highlight, state }) => {
+const DropboxAuth: React.FC<DropboxAuthProps> = ({ isAuthenticated, isLoading, onConnectClick, highlight }) => {
   console.log('[DropboxAuth] Props:', { isAuthenticated, isLoading });
 
   // if (isLoading) {

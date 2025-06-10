@@ -319,7 +319,6 @@ export default function EditReelPage() {
               }
             }}
             highlight={getStepStatus('connect') === 'next'}
-            state={getStepStatus('connect')}
           />
         </div>
         <button

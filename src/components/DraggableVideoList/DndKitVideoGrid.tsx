@@ -129,7 +129,7 @@ function VideoGridItem({ video, listeners, attributes, isDragging, onClick, styl
   );
 }
 
-function EmptyDropZone({ gridId, isOver, children }: { gridId: string; isOver: boolean; children: React.ReactNode }) {
+function EmptyDropZone({ children }: { children: React.ReactNode }) {
   return (
     <div
       className={`flex items-center justify-center h-32 w-full col-span-full rounded-lg transition-colors`}
@@ -182,7 +182,7 @@ export default function DndKitVideoGrid({ videos, gridId, onVideoClick, emptyMes
     <div ref={setNodeRef} className="w-full">
       <div className="grid grid-cols-2 md:grid-cols-4 gap-2 min-h-[100px]">
         {videos.length === 0 ? (
-          <EmptyDropZone gridId={gridId} isOver={isOver}>
+          <EmptyDropZone>
             {emptyMessage}
           </EmptyDropZone>
         ) : (
