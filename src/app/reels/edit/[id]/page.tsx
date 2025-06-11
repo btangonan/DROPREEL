@@ -8,7 +8,7 @@ import { VideoFile, VideoReel } from '@/types';
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 import { extractDropboxPath } from '@/lib/utils/dropboxUtils';
 import FolderBrowser from '@/components/FolderBrowser/FolderBrowser';
-import DropboxAuth from '@/components/DropboxAuth/DropboxAuth';
+// import DropboxAuth from '@/components/DropboxAuth/DropboxAuth'; // Removed - component deleted
 
 export default function EditReelPage() {
   const router = useRouter();
@@ -224,20 +224,10 @@ export default function EditReelPage() {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 grid-rows-[auto_1fr_auto] gap-2 md:gap-4 w-full max-w-screen-2xl mx-auto">
         {/* Top Row */}
         <div className="col-span-1 md:col-span-1 lg:col-span-1 row-span-1 flex items-center justify-center min-h-[64px] md:h-24">
-          <DropboxAuth
-            isAuthenticated={isDropboxAuthenticated}
-            isLoading={false}
-            onConnectClick={async () => {
-              try {
-                const response = await fetch('/api/auth/dropbox');
-                const { url } = await response.json();
-                window.location.href = url;
-              } catch (error) {
-                console.error('Error initiating Dropbox auth:', error);
-              }
-            }}
-            highlight={getStepStatus('connect') === 'next'}
-          />
+          {/* DropboxAuth component removed - glassmorphism cleanup */}
+          <div className="bg-gray-300 rounded-lg p-4 w-full h-full flex items-center justify-center font-black text-xl">
+            CONNECT (DISABLED)
+          </div>
         </div>
         <button
           className={`col-span-1 md:col-span-1 lg:col-span-1 row-span-1 flex items-center justify-center min-h-[64px] md:h-24 font-black text-xl md:text-2xl transition-all focus:outline-none rounded-lg w-full h-full
