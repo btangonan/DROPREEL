@@ -2,11 +2,11 @@
 
 import { useState, useEffect } from 'react';
 import { VideoReel } from '@/types';
-import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import Image from 'next/image';
 
 export default function ReelsPage() {
-  const router = useRouter();
+
   const [reels, setReels] = useState<VideoReel[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
@@ -21,8 +21,9 @@ export default function ReelsPage() {
         }
         const data = await response.json();
         setReels(data);
-      } catch (err: any) {
-        setError(`Error loading reels: ${err.message}`);
+      } catch (err) {
+        const errorMessage = err instanceof Error ? err.message : 'An unknown error occurred';
+        setError(`Error loading reels: ${errorMessage}`);
         console.error('Error fetching reels:', err);
       } finally {
         setIsLoading(false);
@@ -66,7 +67,7 @@ export default function ReelsPage() {
             <div className="text-red-500 text-center my-12">{error}</div>
           ) : reels.length === 0 ? (
             <div className="text-center bg-white p-8 rounded-lg shadow my-8">
-              <p className="text-gray-500 mb-4">You haven't created any reels yet.</p>
+              <p className="text-gray-500 mb-4">You haven&apos;t created any reels yet.</p>
               <Link href="/" className="bg-blue-500 hover:bg-blue-600 text-white py-2 px-4 rounded">
                 Create Your First Reel
               </Link>
@@ -78,11 +79,15 @@ export default function ReelsPage() {
                   {/* Thumbnail - first video in reel if available */}
                   <div className="h-40 bg-gray-200 relative">
                     {reel.videos.length > 0 && reel.videos[0].thumbnailUrl ? (
-                      <img 
-                        src={reel.videos[0].thumbnailUrl} 
-                        alt={reel.title || 'Reel thumbnail'}
-                        className="w-full h-full object-cover"
-                      />
+                      <div className="relative w-full h-full">
+                        <Image 
+                          src={reel.videos[0].thumbnailUrl} 
+                          alt={reel.title || 'Reel thumbnail'}
+                          fill
+                          className="object-cover"
+                          sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                        />
+                      </div>
                     ) : (
                       <div className="flex items-center justify-center h-full w-full">
                         <svg className="w-16 h-16 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">

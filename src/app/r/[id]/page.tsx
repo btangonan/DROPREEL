@@ -3,12 +3,12 @@
 import { useEffect, useState } from 'react';
 import { VideoFile, VideoReel } from '@/types';
 import VideoPlayer from '@/components/VideoPlayer/VideoPlayer';
-import { useParams, useRouter } from 'next/navigation';
+import { useParams } from 'next/navigation';
 import Link from 'next/link';
+import Image from 'next/image';
 
 export default function ReelPage() {
   const params = useParams();
-  const router = useRouter();
   const reelId = params.id as string;
   
   const [reel, setReel] = useState<VideoReel | null>(null);
@@ -117,11 +117,13 @@ export default function ReelPage() {
               <div className="bg-gray-900 text-white py-8 mx-auto">
                 <div className="grid grid-cols-2 gap-8 items-start">
                   {reel.directorInfo.image && (
-                    <div className="col-span-1">
-                      <img 
-                        src={reel.directorInfo.image} 
-                        alt="Director" 
-                        className="w-full h-auto rounded-sm"
+                    <div className="col-span-1 relative w-full h-64">
+                      <Image 
+                        src={reel.directorInfo.image}
+                        alt="Director"
+                        fill
+                        className="object-cover rounded-sm"
+                        sizes="(max-width: 768px) 100vw, 50vw"
                       />
                     </div>
                   )}
@@ -211,11 +213,15 @@ export default function ReelPage() {
                   onClick={() => setShowDirectorBio(true)}
                 >
                   {reel.directorInfo.image ? (
-                    <img 
-                      src={reel.directorInfo.image} 
-                      alt="Director"
-                      className="w-full h-full object-cover"
-                    />
+                    <div className="relative w-full h-full">
+                      <Image 
+                        src={reel.directorInfo.image}
+                        alt="Director"
+                        fill
+                        className="object-cover"
+                        sizes="112px"
+                      />
+                    </div>
                   ) : (
                     <div className="bg-gray-200 w-full aspect-video flex items-center justify-center text-center p-2">
                       <p className="text-xs">Director Bio</p>
@@ -232,11 +238,15 @@ export default function ReelPage() {
                   onClick={() => selectVideo(idx)}
                 >
                   {video.thumbnailUrl ? (
-                    <img 
-                      src={video.thumbnailUrl}
-                      alt={video.name}
-                      className="w-full aspect-video object-cover"
-                    />
+                    <div className="relative w-full aspect-video">
+                      <Image 
+                        src={video.thumbnailUrl}
+                        alt={video.name}
+                        fill
+                        className="object-cover"
+                        sizes="112px"
+                      />
+                    </div>
                   ) : (
                     <div className="bg-gray-200 w-full aspect-video flex items-center justify-center">
                       <p className="text-xs text-center p-2 truncate">{video.name}</p>
