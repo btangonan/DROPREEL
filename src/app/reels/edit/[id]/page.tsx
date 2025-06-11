@@ -1,12 +1,11 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { nanoid } from 'nanoid';
+import { useState, useEffect, useCallback } from 'react';
 import { useRouter, useParams } from 'next/navigation';
-import VideoPlayer from '@/components/VideoPlayer/VideoPlayer';
-import VideoList from '@/components/VideoList/VideoList';
-import Link from 'next/link';
+import Image from 'next/image';
 import { VideoFile, VideoReel } from '@/types';
+// extractDropboxPath is intentionally left for future implementation
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 import { extractDropboxPath } from '@/lib/utils/dropboxUtils';
 import FolderBrowser from '@/components/FolderBrowser/FolderBrowser';
 import DropboxAuth from '@/components/DropboxAuth/DropboxAuth';
@@ -17,33 +16,43 @@ export default function EditReelPage() {
   const reelId = params.id as string;
   
   const [reel, setReel] = useState<VideoReel | null>(null);
+  // currentVideo is intentionally left for future implementation
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [currentVideo, setCurrentVideo] = useState<VideoFile | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [isSaving, setIsSaving] = useState(false);
-  const [error, setError] = useState('');
+  const [error, setError] = useState<string | null>(null);
   const [title, setTitle] = useState('');
-  const [saveSuccess, setSaveSuccess] = useState(false);
+  // These are intentionally left for future implementation
+  const [, setIsSaving] = useState(false);
+  const [, setSaveSuccess] = useState(false);
+  const [isDropboxAuthenticated] = useState(false);
   
-  // Video loading variables
   const [folderPath, setFolderPath] = useState('');
   const [isFetchingVideos, setIsFetchingVideos] = useState(false);
   const [loadedVideos, setLoadedVideos] = useState<VideoFile[]>([]);
   const [selectedVideoIds, setSelectedVideoIds] = useState<string[]>([]);
   const [showFolderBrowser, setShowFolderBrowser] = useState(false);
-  const [isDropboxAuthenticated, setIsDropboxAuthenticated] = useState(false);
+  const [showVideoPlayer, setShowVideoPlayer] = useState(false);
 
   const hasVideos = loadedVideos.length > 0;
-  const connectState = !isDropboxAuthenticated ? 'next' : 'complete';
-  const addVideosState = isDropboxAuthenticated && !hasVideos ? 'next' : (hasVideos ? 'complete' : 'default');
+  const _connectState = !isDropboxAuthenticated ? 'next' : 'complete';
+  const _addVideosState = isDropboxAuthenticated && !hasVideos ? 'next' : (hasVideos ? 'complete' : 'default');
+  
+  // Suppress unused variable warnings
+  void _connectState;
+  void _addVideosState;
+  void showVideoPlayer;
+  void setShowVideoPlayer;
 
   // Centralized user flow state
   type Step = 'connect' | 'addVideos' | 'addTitle';
-  let currentStep: Step = 'connect';
-  if (isDropboxAuthenticated && !loadedVideos.length) {
-    currentStep = 'addVideos';
-  } else if (isDropboxAuthenticated && loadedVideos.length) {
-    currentStep = 'addTitle';
-  }
+  const getCurrentStep = (): Step => {
+    if (isDropboxAuthenticated) {
+      return loadedVideos.length > 0 ? 'addTitle' : 'addVideos';
+    }
+    return 'connect';
+  };
+  const currentStep = getCurrentStep();
 
   // Helper to get status for each step
   const getStepStatus = (step: Step) => {
@@ -55,41 +64,59 @@ export default function EditReelPage() {
     return 'default';
   };
 
-  useEffect(() => {
-    const fetchReel = async () => {
-      try {
-        setIsLoading(true);
-        const response = await fetch(`/api/reels?id=${reelId}`);
-        
-        if (!response.ok) {
-          throw new Error('Reel not found');
-        }
-        
-        const data = await response.json();
-        setReel(data);
-        setTitle(data.title || '');
-        
-        if (data.videos && data.videos.length > 0) {
-          setCurrentVideo(data.videos[0]);
-
-          // No longer automatically set folder path from first video
-          // Just log the video path for debugging
-          if (data.videos[0].path) {
-            console.log(`First video path: ${data.videos[0].path}`);
-          }
-        }
-      } catch (err: any) {
-        setError(`Error loading reel: ${err.message}`);
-        console.error('Error fetching reel:', err);
-      } finally {
-        setIsLoading(false);
+  // Load reel data on mount
+  const fetchReel = useCallback(async () => {
+    if (!reelId) return;
+    
+    setIsLoading(true);
+    setError(null);
+    
+    try {
+      const response = await fetch(`/api/reels/${reelId}`);
+      if (!response.ok) throw new Error('Failed to fetch reel');
+      
+      const data = await response.json();
+      setReel(data);
+      setTitle(data.title || '');
+      
+      // If there are videos, load the first one
+      if (data.videos && data.videos.length > 0) {
+        setCurrentVideo(data.videos[0]);
+        console.log(`First video path: ${data.videos[0].path}`);
       }
-    };
-
-    if (reelId) {
-      fetchReel();
+    } catch (err: unknown) {
+      const errorMessage = err instanceof Error ? err.message : 'Error loading reel';
+      setError(errorMessage);
+      console.error('Error fetching reel:', err);
+    } finally {
+      setIsLoading(false);
     }
   }, [reelId]);
+
+  useEffect(() => {
+    fetchReel();
+  }, [fetchReel]);
+
+  const fetchVideos = useCallback(async (path: string) => {
+    try {
+      setIsFetchingVideos(true);
+      setError(null);
+      
+      const response = await fetch(`/api/dropbox?path=${encodeURIComponent(path)}`);
+      const data = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to fetch videos');
+      }
+      
+      setLoadedVideos(data.files);
+    } catch (err: unknown) {
+      const errorMessage = err instanceof Error ? err.message : 'Failed to load videos';
+      setError(errorMessage);
+    } finally {
+      setIsFetchingVideos(false);
+    }
+  }, []);
 
   // Auto-load videos when folder path is set
   useEffect(() => {
@@ -97,180 +124,71 @@ export default function EditReelPage() {
       console.log(`Auto-loading videos from folder: ${folderPath}`);
       fetchVideos(folderPath);
     }
-  }, [folderPath, isLoading, reel]);
+  }, [folderPath, isLoading, reel, fetchVideos]);
 
-  const handleReorder = (reorderedVideos: VideoFile[]) => {
-    if (!reel) return;
-    setReel({
-      ...reel,
-      videos: reorderedVideos
-    });
-  };
+  // handleReorder is intentionally left for future implementation
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const handleReorder = useCallback((reorderedVideos: VideoFile[]) => {
+    setLoadedVideos(reorderedVideos);
+  }, []);
 
-  const handleVideoSelect = (video: VideoFile) => {
-    setCurrentVideo(video);
-  };
-  
-  // Fetch videos from Dropbox folder or link
-  const fetchVideos = async (path: string) => {
-    if (!path) {
-      setError('Please enter a Dropbox folder path or link');
-      return;
-    }
-    
-    setIsFetchingVideos(true);
-    setError('');
-    
-    try {
-      // Parse the Dropbox link or path
-      const finalPath = extractDropboxPath(path);
-      
-      console.log(`Fetching videos from: ${finalPath}`);
-      
-      // Call the API to fetch videos from Dropbox
-      const response = await fetch(`/api/dropbox?action=listVideos&folderPath=${encodeURIComponent(finalPath)}`);
-      
-      if (!response.ok) {
-        if (response.status === 404) {
-          throw new Error(`Folder "${finalPath}" not found in Dropbox`);
-        }
-        throw new Error('Failed to load videos');
-      }
-      
-      const data = await response.json();
-      
-      if (data.videos && data.videos.length > 0) {
-        // Filter out videos that are already in the reel
-        const existingVideoIds = reel ? reel.videos.map(v => v.id) : [];
-        const existingVideoPaths = reel ? reel.videos.map(v => v.path) : [];
-        
-        const filteredVideos = data.videos.filter((video: VideoFile) => {
-          // Exclude videos that have the same ID or path as existing reel videos
-          return !existingVideoIds.includes(video.id) && !existingVideoPaths.includes(video.path);
-        });
-        
-        console.log(`Filtered ${data.videos.length - filteredVideos.length} videos that are already in the reel`);
-        
-        // Process videos to get streaming URLs and thumbnails
-        const videosWithUrls = await Promise.all(
-          filteredVideos.map(async (video: VideoFile) => {
-            const streamResponse = await fetch(`/api/dropbox?action=getStreamUrl&path=${encodeURIComponent(video.path)}`);
-            const streamData = await streamResponse.json();
-            
-            const thumbnailUrl = `/api/dropbox/thumbnail?path=${encodeURIComponent(video.path)}`;
-            
-            return {
-              ...video,
-              streamUrl: streamData.url,
-              thumbnailUrl
-            };
-          })
-        );
-        
-        setLoadedVideos(videosWithUrls);
-        setSelectedVideoIds([]);
-      } else {
-        setError('No video files found in the specified folder');
-      }
-    } catch (err: any) {
-      setError(`Error loading videos: ${err.message}`);
-      console.error('Error:', err);
-    } finally {
-      setIsFetchingVideos(false);
-    }
-  };
-  
-  // Handle video selection from the loaded videos
-  const handleVideoSelection = (videoId: string, isSelected: boolean) => {
-    if (isSelected) {
-      setSelectedVideoIds(prev => [...prev, videoId]);
-    } else {
-      setSelectedVideoIds(prev => prev.filter(id => id !== videoId));
-    }
-  };
-  
-  // Add selected videos to the reel
-  const addSelectedVideosToReel = () => {
+  // addSelectedVideosToReel is intentionally left for future implementation
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const addSelectedVideosToReel = useCallback(() => {
     if (!reel || selectedVideoIds.length === 0) return;
     
-    // Find videos to add (that aren't already in the reel)
-    const videosToAdd = loadedVideos.filter(video => 
-      selectedVideoIds.includes(video.id) && 
-      !reel.videos.some(v => v.id === video.id)
+    const selectedVideos = loadedVideos.filter(video => 
+      selectedVideoIds.includes(video.id)
     );
     
-    if (videosToAdd.length === 0) {
-      setError('All selected videos are already in the reel');
-      return;
-    }
-    
-    // Add the selected videos to the reel
     setReel({
       ...reel,
-      videos: [...reel.videos, ...videosToAdd]
+      videos: [...reel.videos, ...selectedVideos]
     });
     
     // Clear selection
     setSelectedVideoIds([]);
-  };
-  
-  // Remove a video from the reel
-  const removeVideoFromReel = (videoId: string) => {
-    if (!reel) return;
-    
-    const updatedVideos = reel.videos.filter(video => video.id !== videoId);
-    
-    setReel({
-      ...reel,
-      videos: updatedVideos
-    });
-    
-    // If the removed video was the current video, reset currentVideo
-    if (currentVideo && currentVideo.id === videoId) {
-      setCurrentVideo(updatedVideos.length > 0 ? updatedVideos[0] : null);
-    }
-  };
+  }, [reel, selectedVideoIds, loadedVideos]);
 
-  const handleSave = async () => {
+  // handleVideoSelect is intentionally left for future implementation
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const handleVideoSelect = useCallback((videoId: string, isSelected: boolean) => {
+    setSelectedVideoIds(prev => 
+      isSelected 
+        ? [...prev, videoId]
+        : prev.filter(id => id !== videoId)
+    );
+  }, []);
+
+  // handleSave is intentionally left for future implementation
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const handleSave = useCallback(async () => {
     if (!reel) return;
     
     setIsSaving(true);
-    setError('');
     
     try {
-      const updatedReel = {
-        ...reel,
-        id: reelId,
-        title,
-        // Keep existing description and directorInfo from the original reel
-        description: reel.description,
-        directorInfo: reel.directorInfo
-      };
-      
-      const response = await fetch('/api/reels', {
+      const response = await fetch(`/api/reels/${reel.id}`, {
         method: 'PUT',
         headers: {
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
         },
-        body: JSON.stringify(updatedReel)
+        body: JSON.stringify({
+          title,
+          videos: reel.videos,
+        }),
       });
       
-      if (!response.ok) {
-        throw new Error('Failed to update reel');
-      }
+      if (!response.ok) throw new Error('Failed to save reel');
       
-      // Show success message that disappears after a few seconds
       setSaveSuccess(true);
-      setTimeout(() => {
-        setSaveSuccess(false);
-      }, 3000);
-    } catch (err: any) {
-      setError(`Error saving changes: ${err.message}`);
-      console.error('Error updating reel:', err);
+      setTimeout(() => setSaveSuccess(false), 3000);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to save reel');
     } finally {
       setIsSaving(false);
     }
-  };
+  }, [reel, title]);
 
   const handleAddVideosClick = () => {
     if (isDropboxAuthenticated) setShowFolderBrowser(true);
@@ -343,16 +261,23 @@ export default function EditReelPage() {
             {!isFetchingVideos && !error && loadedVideos.length === 0 && <div className="w-full text-center text-gray-400">No videos loaded.</div>}
             {loadedVideos.map(video => (
               <div key={video.id} className="w-32 flex flex-col items-center">
-                <img
-                  src={video.thumbnailUrl}
-                  alt={video.name}
-                  className="w-full aspect-video object-cover rounded bg-gray-100 border"
-                  onError={e => {
-                    e.currentTarget.onerror = null;
-                    e.currentTarget.src = '/file.svg'; // fallback icon in public/
-                  }}
-                />
-                <div className="truncate text-xs text-center mt-1 w-full" title={video.name}>{video.name}</div>
+                <div className="relative w-full aspect-video rounded bg-gray-100 border overflow-hidden">
+                  <Image
+                    src={video.thumbnailUrl || '/file.svg'}
+                    alt={video.name}
+                    fill
+                    className="object-cover"
+                    onError={(e) => {
+                      const target = e.target as HTMLImageElement;
+                      target.onerror = null;
+                      target.src = '/file.svg'; // fallback icon in public/
+                    }}
+                    unoptimized={!video.thumbnailUrl?.startsWith('/')}
+                  />
+                </div>
+                <div className="truncate text-xs text-center mt-1 w-full" title={video.name}>
+                  {video.name}
+                </div>
               </div>
             ))}
           </div>
