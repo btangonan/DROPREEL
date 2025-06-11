@@ -511,53 +511,68 @@ export function BrutalistReelMaker() {
                     <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-black"></div>
                     <span className="ml-3 font-bold text-black">LOADING VIDEOS...</span>
                   </div>
-                ) : videos.length === 0 ? (
-                  <div className="col-span-full text-center py-8">
-                    <div className="text-black font-bold text-lg mb-2">NO VIDEOS FOUND</div>
-                    <div className="text-gray-600 font-medium">Click "ADD VIDEOS" to select a folder</div>
-                  </div>
                 ) : (
-                  videos.map((video, index) => (
-                  <motion.div
-                    key={video.id}
-                    className={`video-thumbnail ${isDraggingVideo === video.id ? 'dragging' : ''}`}
-                    draggable
-                    onDragStart={(e) => handleDragStart(video, e)}
-                    onDragEnd={handleDragEnd}
-                    onClick={() => openVideoPreview(video)}
-                    initial={{ opacity: 0, scale: 0.8 }}
-                    animate={{ 
-                      opacity: isDraggingVideo === video.id ? 0 : 1, 
-                      scale: isDraggingVideo === video.id ? 0.8 : 1 
-                    }}
-                    transition={{ 
-                      duration: 0.15, 
-                      delay: index * 0.02,
-                      layout: {
-                        type: "tween",
-                        ease: [0.25, 0.46, 0.45, 0.94],
-                        duration: 0.4
-                      }
-                    }}
-                    whileHover={{ scale: isDraggingVideo === video.id ? 0.8 : 1.02 }}
-                    whileTap={{ scale: 0.95 }}
-                    layout
-                    layoutDependency={videos.length}
-                  >
-                    <ImageWithFallback
-                      src={video.thumbnail}
-                      alt={video.title}
-                      className="w-full h-full object-cover"
-                    />
-                    <div className="play-overlay">
-                      <div className="play-button">
-                        <Play className="w-6 h-6 ml-1" />
+                  <>
+                    {/* Add Videos Button */}
+                    <motion.div
+                      className="add-videos-button"
+                      onClick={handleAddVideos}
+                      initial={{ opacity: 0, scale: 0.8 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      transition={{ duration: 0.4, delay: 0.2 }}
+                      whileHover={{ scale: 1.02 }}
+                      whileTap={{ scale: 0.95 }}
+                    >
+                      <div className="add-videos-icon">
+                        <Plus className="w-8 h-8" />
                       </div>
-                    </div>
-                    <div className="video-title">{video.title}</div>
-                    <div className="duration">{video.duration}</div>
-                  </motion.div>
-                  ))
+                      <div className="add-videos-text">
+                        {videos.length === 0 ? 'ADD VIDEOS' : 'ADD MORE'}
+                      </div>
+                    </motion.div>
+                    
+                    {videos.map((video, index) => (
+                      <motion.div
+                        key={video.id}
+                        className={`video-thumbnail ${isDraggingVideo === video.id ? 'dragging' : ''}`}
+                        draggable
+                        onDragStart={(e) => handleDragStart(video, e)}
+                        onDragEnd={handleDragEnd}
+                        onClick={() => openVideoPreview(video)}
+                        initial={{ opacity: 0, scale: 0.8 }}
+                        animate={{ 
+                          opacity: isDraggingVideo === video.id ? 0 : 1, 
+                          scale: isDraggingVideo === video.id ? 0.8 : 1 
+                        }}
+                        transition={{ 
+                          duration: 0.15, 
+                          delay: index * 0.02,
+                          layout: {
+                            type: "tween",
+                            ease: [0.25, 0.46, 0.45, 0.94],
+                            duration: 0.4
+                          }
+                        }}
+                        whileHover={{ scale: isDraggingVideo === video.id ? 0.8 : 1.02 }}
+                        whileTap={{ scale: 0.95 }}
+                        layout
+                        layoutDependency={videos.length}
+                      >
+                        <ImageWithFallback
+                          src={video.thumbnail}
+                          alt={video.title}
+                          className="w-full h-full object-cover"
+                        />
+                        <div className="play-overlay">
+                          <div className="play-button">
+                            <Play className="w-6 h-6 ml-1" />
+                          </div>
+                        </div>
+                        <div className="video-title">{video.title}</div>
+                        <div className="duration">{video.duration}</div>
+                      </motion.div>
+                    ))}
+                  </>
                 )}
               </div>
             </motion.div>
@@ -575,9 +590,6 @@ export function BrutalistReelMaker() {
               <h2 className="section-title">SELECTS</h2>
               {selectedVideos.length === 0 ? (
                 <div className="empty-state">
-                  <div className="empty-state-icon">
-                    <Plus className="w-8 h-8" />
-                  </div>
                   <div className="empty-state-text">NO VIDEOS SELECTED</div>
                   <div className="empty-state-text" style={{ fontSize: '1rem', fontWeight: 400, marginTop: '0.5rem' }}>
                     DRAG VIDEOS HERE

@@ -275,20 +275,241 @@ Located in `src/app/globals.css`:
 - Add fallback images for failed loads
 - Optimize thumbnail sizes for faster rendering
 
-## Future Development
+## Implementation Plan: Add Videos from Additional Folders
 
-### Planned Features
-- Reel creation and export functionality
-- Video editing capabilities (trim, transitions)
-- Multiple reel management
-- Sharing and collaboration features
-- Cloud storage beyond Dropbox
+### Feature Overview
+Allow users to add videos from multiple Dropbox folders to the "YOUR VIDEOS" panel, rather than replacing the current videos each time a new folder is selected. This enables building a collection of videos from different locations.
 
-### Technical Debt
-- Implement proper error boundaries
-- Add comprehensive loading states
-- Improve accessibility (ARIA labels, keyboard navigation)
-- Add unit tests for core functionality
-- Optimize bundle size and performance
+### UI/UX Changes Required
 
-This guide should provide enough context to understand, modify, and extend the DropReel application after losing session context.
+**1. Button Modification**
+- Change "ADD VIDEOS" button behavior from "replace" to "add more"
+- Add visual indicator when videos are being added vs. initial load
+- Consider adding a "CLEAR ALL" button for starting fresh
+
+**2. Visual Feedback**
+- Show folder path indicators for videos from different sources
+- Add loading states that don't disrupt existing videos
+- Highlight newly added videos briefly after loading
+
+**3. Folder Management**
+- Display breadcrumb or indicator showing source folder for each video
+- Option to group/filter videos by source folder
+- Prevent duplicate videos from same path
+
+### Technical Implementation
+
+**State Management Changes (BrutalistReelMaker.tsx):**
+
+```typescript
+// Add new state for tracking video sources and loading
+const [videoSources, setVideoSources] = useState<Map<string, string>>(new Map()); // videoId -> folderPath
+const [isAddingVideos, setIsAddingVideos] = useState(false); // distinguish from initial load
+const [loadedFolders, setLoadedFolders] = useState<Set<string>>(new Set()); // track loaded folders
+
+// Modify existing state
+const [currentFolderPath, setCurrentFolderPath] = useState<string>(''); // becomes lastSelectedPath
+```
+
+**Modified Functions:**
+
+```typescript
+// Update handleAddVideos to indicate "add more" mode
+const handleAddVideos = () => {
+  if (!isConnected) {
+    alert('Please connect to Dropbox first');
+    return;
+  }
+  console.log('Opening folder browser to add more videos');
+  setIsAddingVideos(true); // Set flag for "add mode"
+  setShowFolderBrowser(true);
+};
+
+// Modify loadVideosFromDropbox to append instead of replace
+const loadVideosFromDropbox = async (folderPath: string, appendMode = false) => {
+  setIsLoadingVideos(true);
+  try {
+    // ... existing API call logic ...
+    
+    const dropboxVideos: Video[] = data.videos.map((video: any) => ({
+      id: video.id,
+      title: video.name.replace(/\.[^/.]+$/, '').toUpperCase(),
+      thumbnail: video.thumbnailUrl || '/placeholder-video.jpg',
+      duration: '0:00',
+      videoUrl: '',
+      path: video.path,
+      size: video.size,
+      sourceFolder: folderPath // Add source folder tracking
+    }));
+
+    if (appendMode) {
+      // Filter out duplicates based on video ID
+      const existingIds = new Set(videos.map(v => v.id));
+      const newVideos = dropboxVideos.filter(v => !existingIds.has(v.id));
+      
+      // Append new videos to existing collection
+      setVideos(prevVideos => [...prevVideos, ...newVideos]);
+      
+      // Update source tracking
+      const newSources = new Map(videoSources);
+      newVideos.forEach(video => {
+        newSources.set(video.id, folderPath);
+      });
+      setVideoSources(newSources);
+      
+      // Track loaded folders
+      setLoadedFolders(prev => new Set([...prev, folderPath]));
+    } else {
+      // Replace mode (initial load)
+      setVideos(dropboxVideos);
+      setVideoSources(new Map(dropboxVideos.map(v => [v.id, folderPath])));
+      setLoadedFolders(new Set([folderPath]));
+    }
+    
+    setCurrentFolderPath(folderPath);
+  } catch (error) {
+    console.error('Error loading videos:', error);
+    alert('Failed to load videos from Dropbox');
+  } finally {
+    setIsLoadingVideos(false);
+    setIsAddingVideos(false);
+  }
+};
+
+// Update handleFolderSelect to use append mode when appropriate
+const handleFolderSelect = (folderPath: string) => {
+  console.log('Selected folder:', folderPath);
+  setShowFolderBrowser(false);
+  
+  // Check if this is additional folder selection
+  const appendMode = videos.length > 0 && isAddingVideos;
+  loadVideosFromDropbox(folderPath, appendMode);
+};
+```
+
+**UI Updates:**
+
+```typescript
+// Update button text and styling
+<button 
+  className="control-button add-videos"
+  onClick={handleAddVideos}
+  disabled={isLoadingVideos}
+>
+  <Upload className="inline mr-2 w-4 h-4" />
+  {videos.length === 0 ? 'ADD VIDEOS' : 'ADD MORE VIDEOS'}
+</button>
+
+// Add clear button when videos exist
+{videos.length > 0 && (
+  <button 
+    className="control-button clear-videos"
+    onClick={handleClearVideos}
+  >
+    <X className="inline mr-2 w-4 h-4" />
+    CLEAR ALL
+  </button>
+)}
+
+// Add folder indicator to video thumbnails
+<div className="video-folder-indicator">
+  {videoSources.get(video.id)?.split('/').pop() || 'Unknown'}
+</div>
+```
+
+**CSS Additions (globals.css):**
+
+```css
+/* Folder indicator styling */
+.video-folder-indicator {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  background: var(--hot-pink);
+  color: var(--pure-white);
+  padding: 2px 6px;
+  font-size: 0.5rem;
+  font-weight: 900;
+  text-transform: uppercase;
+  border: 1px solid var(--pure-black);
+  max-width: 80px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Clear button styling */
+.control-button.clear-videos {
+  background: var(--hot-pink);
+  color: var(--pure-white);
+  border-color: var(--pure-black);
+}
+
+.control-button.clear-videos:hover {
+  background: var(--pure-white);
+  color: var(--hot-pink);
+  box-shadow: 4px 4px 0 var(--pure-black);
+}
+
+/* Loading state for adding videos */
+.control-button.add-videos.adding {
+  background: var(--fluorescent-green);
+  color: var(--pure-black);
+}
+```
+
+### Data Structure Updates
+
+**Enhanced Video Interface:**
+
+```typescript
+interface Video {
+  id: string;
+  title: string;
+  thumbnail: string;
+  duration: string;
+  videoUrl?: string;
+  path?: string;
+  size?: number;
+  selectionId?: string;
+  sourceFolder?: string; // NEW: Track source folder
+  addedAt?: Date; // NEW: Track when video was added
+}
+```
+
+### Error Handling & Edge Cases
+
+**Duplicate Prevention:**
+- Check video IDs before adding to prevent duplicates
+- Option to allow same video from different folders (different IDs)
+- Handle videos that may have been moved/deleted between sessions
+
+**Memory Management:**
+- Consider pagination for large video collections
+- Implement virtual scrolling if performance becomes an issue
+- Add limits on total number of videos
+
+**State Persistence:**
+- Consider saving video collection to localStorage
+- Restore video sources and folder indicators on page reload
+- Handle authentication expiry with existing video collections
+
+### Testing Scenarios
+
+1. **Add videos from multiple folders** - Verify they appear together
+2. **Add duplicate videos** - Ensure they're filtered out appropriately  
+3. **Clear all videos** - Reset to empty state correctly
+4. **Authentication expires** - Handle gracefully with existing videos
+5. **Network errors during add** - Don't lose existing videos
+6. **Large folder additions** - Performance and memory usage
+7. **Mixed video formats** - Ensure all types display correctly
+
+### Future Enhancements
+
+- **Folder organization**: Group videos by source folder in UI
+- **Search and filter**: Find videos across all loaded folders
+- **Bulk operations**: Select multiple folders at once
+- **Recent folders**: Quick access to previously loaded folders
+- **Video metadata**: Enhanced information about source and date added
+
+This implementation maintains the current user experience while adding the flexibility to build video collections from multiple Dropbox locations.

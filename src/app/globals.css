@@ -463,6 +463,8 @@ body {
 }
 
 .control-button:hover {
+  background: var(--pure-black);
+  color: var(--pure-white);
   transform: translate(-4px, -4px);
   box-shadow: 4px 4px 0 var(--pure-black);
 }
@@ -474,7 +476,8 @@ body {
 }
 
 .control-button.connected:hover {
-  background: var(--neon-yellow);
+  background: var(--pure-black);
+  color: var(--pure-white);
   box-shadow: 4px 4px 0 var(--pure-black);
 }
 
@@ -485,8 +488,8 @@ body {
 }
 
 .control-button.add-videos:hover {
-  background: var(--fluorescent-green);
-  color: var(--pure-black);
+  background: var(--pure-black);
+  color: var(--pure-white);
   box-shadow: 4px 4px 0 var(--pure-black);
 }
 
@@ -503,8 +506,8 @@ body {
 }
 
 .control-button.add-title:hover {
-  background: var(--neon-yellow);
-  color: var(--pure-black);
+  background: var(--pure-black);
+  color: var(--pure-white);
   border-color: var(--pure-black);
   box-shadow: 4px 4px 0 var(--pure-black);
 }
@@ -519,8 +522,8 @@ body {
 }
 
 .control-button.theme:hover {
-  background: var(--neon-yellow);
-  color: var(--pure-black);
+  background: var(--pure-black);
+  color: var(--pure-white);
   box-shadow: 4px 4px 0 var(--pure-black);
 }
 
@@ -534,8 +537,8 @@ body {
 }
 
 .control-button.make-reel:hover {
-  background: var(--fluorescent-green);
-  color: var(--pure-black);
+  background: var(--pure-black);
+  color: var(--pure-white);
   box-shadow: 4px 4px 0 var(--pure-black);
 }
 
@@ -946,4 +949,104 @@ html {
 
 ::-webkit-scrollbar-thumb:hover {
   background: var(--electric-blue);
+}
+
+/* Brutalist Folder Browser Styles */
+.brutalist-folder-browser {
+  box-shadow: 8px 8px 0 rgba(0, 0, 0, 0.3);
+}
+
+.bg-neon-yellow {
+  background-color: var(--neon-yellow);
+}
+
+.bg-electric-blue {
+  background-color: var(--electric-blue);
+}
+
+.bg-fluorescent-green {
+  background-color: var(--fluorescent-green);
+}
+
+.bg-hot-pink {
+  background-color: var(--hot-pink);
+}
+
+.bg-brutal-gray {
+  background-color: var(--brutal-gray);
+}
+
+.text-electric-blue {
+  color: var(--electric-blue);
+}
+
+.border-b-3 {
+  border-bottom-width: 3px;
+}
+
+/* Folder browser hover effects */
+.folder-item {
+  position: relative;
+}
+
+.folder-item:hover {
+  background-color: var(--pure-black);
+  color: var(--pure-white);
+  border-left: 8px solid var(--pure-black);
+  padding-left: calc(1rem - 4px); /* Compensate for border to prevent layout shift */
+}
+
+.folder-item.bg-neon-yellow:hover {
+  background-color: var(--pure-black);
+  color: var(--pure-white);
+  border-left: 8px solid var(--pure-black);
+}
+
+/* Add Videos Button */
+.add-videos-button {
+  position: relative;
+  aspect-ratio: 16/9;
+  background: transparent;
+  border: 4px dashed var(--pure-black);
+  cursor: pointer;
+  transition: all 0.15s ease;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 120px;
+}
+
+.add-videos-button:hover {
+  background: transparent;
+  border-style: dashed;
+  transform: translate(-2px, -2px);
+  box-shadow: 2px 2px 0 var(--pure-black);
+}
+
+.add-videos-icon {
+  width: 60px;
+  height: 60px;
+  background: transparent;
+  color: var(--pure-black);
+  border: 3px solid var(--pure-black);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 1rem;
+  transition: all 0.15s ease;
+}
+
+.add-videos-button:hover .add-videos-icon {
+  background: var(--pure-black);
+  color: var(--pure-white);
+}
+
+.add-videos-text {
+  font-size: 1rem;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--pure-black);
+  text-align: center;
 }

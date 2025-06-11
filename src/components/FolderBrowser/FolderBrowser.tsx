@@ -199,8 +199,8 @@ export default function FolderBrowser({ onFolderSelect, onClose, initialPath = '
     return (
       <div 
         key={item.path} 
-        className={`p-2 border-b hover:bg-gray-100 cursor-pointer flex items-center ${
-          isSelectedFolder ? 'bg-blue-100' : ''
+        className={`p-4 border-b-3 border-black cursor-pointer flex items-center transition-all folder-item ${
+          isSelectedFolder ? 'bg-neon-yellow' : ''
         }`}
         onClick={() => {
           if (isFolder) {
@@ -212,56 +212,64 @@ export default function FolderBrowser({ onFolderSelect, onClose, initialPath = '
         }}
       >
         {/* Folder or file icon */}
-        <div className="mr-2">
+        <div className="mr-4 p-2 bg-black border-2 border-black">
           {isFolder ? (
-            <svg className="w-5 h-5 text-yellow-600" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
-              <path d="M2 6a2 2 0 012-2h5l2 2h5a2 2 0 012 2v6a2 2 0 01-2 2H4a2 2 0 01-2-2V6z"></path>
-            </svg>
+            <div className="w-6 h-6 bg-neon-yellow border-2 border-black flex items-center justify-center">
+              <span className="text-black font-black text-sm">📁</span>
+            </div>
           ) : item.isVideo ? (
-            <svg className="w-5 h-5 text-blue-600" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
-              <path d="M2 6a2 2 0 012-2h6a2 2 0 012 2v8a2 2 0 01-2 2H4a2 2 0 01-2-2V6zm12.793 1.793l-2.586 2.586a1 1 0 000 1.414l2.586 2.586a1 1 0 001.414-1.414l-.293-.293h1.172a1 1 0 001-1v-2a1 1 0 00-1-1h-1.172l.293-.293a1 1 0 00-1.414-1.414z"></path>
-            </svg>
+            <div className="w-6 h-6 bg-electric-blue border-2 border-black flex items-center justify-center">
+              <span className="text-white font-black text-sm">🎬</span>
+            </div>
           ) : (
-            <svg className="w-5 h-5 text-gray-700" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
-              <path fillRule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4z" clipRule="evenodd"></path>
-            </svg>
+            <div className="w-6 h-6 bg-brutal-gray border-2 border-black flex items-center justify-center">
+              <span className="text-white font-black text-sm">📄</span>
+            </div>
           )}
         </div>
         
         {/* File/folder name */}
-        <div className="flex-1 truncate text-black font-medium">
+        <div className="flex-1 truncate text-black font-black uppercase tracking-wide text-lg">
           {item.name}
         </div>
+        
+        {/* Arrow indicator for folders */}
+        {isFolder && (
+          <div className="ml-4 text-black font-black text-2xl">
+            →
+          </div>
+        )}
       </div>
     );
   };
   
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg max-w-3xl w-full max-h-[90vh] flex flex-col">
+    <div className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50">
+      <div className="bg-white border-4 border-black max-w-4xl w-full max-h-[85vh] flex flex-col mx-4 brutalist-folder-browser">
         {/* Header */}
-        <div className="p-4 border-b flex justify-between items-center">
-          <h2 className="text-xl font-semibold text-black">Browse Dropbox</h2>
-          <button onClick={onClose} className="text-black hover:text-gray-700">
-            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path>
-            </svg>
+        <div className="p-6 border-b-4 border-black flex justify-between items-center bg-neon-yellow">
+          <h2 className="text-2xl font-black uppercase text-black tracking-wider">BROWSE DROPBOX</h2>
+          <button 
+            onClick={onClose} 
+            className="bg-black text-white p-3 border-2 border-black hover:bg-white hover:text-black transition-all font-black text-lg"
+          >
+            ✕
           </button>
         </div>
         
         {/* Breadcrumbs */}
-        <div className="p-2 border-b bg-gray-50">
-          <div className="flex items-center space-x-2 text-black font-medium">
+        <div className="p-4 border-b-4 border-black bg-electric-blue">
+          <div className="flex items-center space-x-1 text-white font-black uppercase tracking-wide">
             {breadcrumbs.map((crumb, index) => (
               <div key={crumb.path} className="flex items-center">
                 <button 
                   onClick={() => handleBreadcrumbClick(crumb.path)}
-                  className="hover:underline text-blue-600 px-1 font-medium"
+                  className="hover:bg-white hover:text-black px-2 py-1 border-2 border-transparent hover:border-black transition-all font-black"
                 >
-                  {crumb.name}
+                  {crumb.name.toUpperCase()}
                 </button>
                 {index < breadcrumbs.length - 1 && (
-                  <span className="mx-1 text-black">/</span>
+                  <span className="mx-2 text-white font-black text-xl">→</span>
                 )}
               </div>
             ))}
@@ -269,41 +277,48 @@ export default function FolderBrowser({ onFolderSelect, onClose, initialPath = '
         </div>
         
         {/* Content */}
-        <div className="flex-1 overflow-y-auto p-2">
+        <div className="flex-1 overflow-y-auto bg-white">
           {isLoading ? (
             <div className="flex justify-center items-center h-full">
-              <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-blue-500"></div>
+              <div className="text-center">
+                <div className="animate-spin rounded-full h-12 w-12 border-t-4 border-b-4 border-black mx-auto mb-4"></div>
+                <div className="text-black font-black text-xl uppercase tracking-wide">LOADING FOLDERS...</div>
+              </div>
             </div>
           ) : error ? (
-            <div className="text-red-500 p-4">{error}</div>
+            <div className="text-center p-8">
+              <div className="bg-hot-pink text-white p-6 border-4 border-black inline-block">
+                <div className="font-black text-xl uppercase mb-2">ERROR!</div>
+                <div className="font-bold">{error}</div>
+              </div>
+            </div>
           ) : contents.length === 0 ? (
-            <div className="text-black p-4 text-center">This folder is empty</div>
+            <div className="text-center p-8">
+              <div className="bg-brutal-gray text-white p-6 border-4 border-black inline-block">
+                <div className="font-black text-xl uppercase">FOLDER IS EMPTY</div>
+              </div>
+            </div>
           ) : (
-            <div>
+            <div className="p-2">
               {contents.map(item => renderItem(item))}
             </div>
           )}
         </div>
         
         {/* Footer with actions */}
-        <div className="p-4 border-t flex justify-between items-center bg-gray-50">
-          <div>
-            <span className="text-sm text-black font-medium">
-              Current path: <span className="font-mono font-medium">{currentPath || '/ (root)'}</span>
-            </span>
-          </div>
-          <div className="space-x-2">
+        <div className="p-6 border-t-4 border-black flex justify-end items-center bg-fluorescent-green">
+          <div className="flex gap-4">
             <button
               onClick={onClose}
-              className="px-4 py-2 border rounded text-black hover:bg-gray-100"
+              className="px-6 py-3 bg-brutal-gray text-white border-4 border-black font-black text-lg uppercase tracking-wide hover:bg-white hover:text-black transition-all"
             >
-              Cancel
+              CANCEL
             </button>
             <button
               onClick={handleSelectFolder}
-              className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+              className="px-6 py-3 bg-electric-blue text-white border-4 border-black font-black text-lg uppercase tracking-wide hover:bg-white hover:text-electric-blue transition-all"
             >
-              Select This Folder
+              SELECT THIS FOLDER
             </button>
           </div>
         </div>
