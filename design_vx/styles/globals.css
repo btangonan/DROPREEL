@@ -1,17 +1,3 @@
-@import "tailwindcss";
-@import "video.js/dist/video-js.css";
-
-/* Override Video.js default styles to remove black bars */
-.video-js,
-.vjs-poster, 
-.vjs-text-track-display,
-.vjs-tech,
-.vjs-big-play-button,
-.vjs-has-started.vjs-paused .vjs-poster,
-.vjs-big-play-centered .vjs-big-play-button {
-  background-color: transparent !important;
-}
-
 @custom-variant dark (&:is(.dark *));
 
 :root {
@@ -208,13 +194,6 @@
 html {
   font-size: var(--font-size);
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
-  margin: 0;
-  padding: 0;
-}
-
-body {
-  margin: 0;
-  padding: 0;
 }
 
 /* Brutalist Color Palette */
@@ -240,14 +219,26 @@ body {
 }
 
 /* Header Styles */
+Grayscale Theme Variables */
+.grayscale-mode {
+  --neon-yellow: #d4d4d4;
+  --electric-blue: #888888;
+  --fluorescent-green: #b8b8b8;
+  --hot-pink: #999999;
+  --pure-black: #000000;
+  --pure-white: #ffffff;
+  --brutal-gray: #666666;
+}
+
+/* Header Styles */
 .brutalist-header {
   position: sticky;
-  top: 0;
+  top: 1rem;
   z-index: 999;
   background: var(--pure-black);
   border: 4px solid var(--pure-black);
   padding: 0.75rem 1.5rem;
-  margin: 0 1rem;
+  margin: 1rem;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -786,7 +777,7 @@ body {
   opacity: 1;
 }
 
-/* Video Modal Styles - Full Screen */
+/* Compact Video Modal */
 .video-modal-overlay-fullscreen {
   position: fixed;
   top: 0;
@@ -818,12 +809,346 @@ body {
   box-shadow: 6px 6px 0 rgba(212, 212, 212, 0.3);
 }
 
+.video-modal-close-fullscreen {
+  position: absolute;
+  top: -18px;
+  right: -18px;
+  width: 40px;
+  height: 40px;
+  background: var(--hot-pink);
+  color: var(--pure-white);
+  border: 4px solid var(--pure-black);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  z-index: 10;
+  font-size: 1.25rem;
+  font-weight: 900;
+  transition: all 0.15s ease;
+}
+
+.video-modal-close-fullscreen:hover {
+  background: var(--neon-yellow);
+  color: var(--pure-black);
+  transform: rotate(90deg);
+}
+
+.video-container-fullscreen {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--pure-black);
+  position: relative;
+  min-height: 0;
+}
+
+.video-player-fullscreen {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  cursor: pointer;
+}
+
+.video-placeholder-fullscreen {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.video-placeholder-fullscreen img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.video-placeholder-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.preview-mode-content {
+  text-align: center;
+  color: var(--pure-white);
+}
+
+.preview-play-button {
+  width: 60px;
+  height: 60px;
+  background: var(--neon-yellow);
+  color: var(--pure-black);
+  border: 4px solid var(--pure-black);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 0.75rem;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.preview-play-button:hover {
+  background: var(--fluorescent-green);
+  transform: scale(1.1);
+}
+
+.preview-mode-title {
+  font-size: 1.5rem;
+  font-weight: 900;
+  text-transform: uppercase;
+  margin-bottom: 0.375rem;
+  letter-spacing: 0.1em;
+}
+
+.preview-mode-subtitle {
+  font-size: 1rem;
+  opacity: 0.75;
+  font-weight: 400;
+}
+
+/* Compact Bottom Info Bar */
+.video-info-bar-bottom {
+  background: var(--pure-black);
+  color: var(--pure-white);
+  padding: 1rem;
+  border-top: 4px solid var(--neon-yellow);
+  min-height: 100px;
+  flex-shrink: 0;
+}
+
+.video-title-bottom {
+  font-size: 1.125rem;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 0.75rem;
+  color: var(--neon-yellow);
+}
+
+.progress-bar-container {
+  width: 100%;
+  height: 6px;
+  background: var(--brutal-gray);
+  cursor: pointer;
+  margin-bottom: 0.75rem;
+  border: 2px solid var(--neon-yellow);
+  position: relative;
+}
+
+.progress-bar-fill {
+  height: 100%;
+  background: var(--neon-yellow);
+  transition: width 0.1s ease;
+}
+
+.video-controls-bottom {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.control-buttons-left {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.control-buttons-right {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.control-button-bottom {
+  background: var(--fluorescent-green);
+  color: var(--pure-black);
+  border: 3px solid var(--pure-black);
+  padding: 0.5rem 0.875rem;
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  letter-spacing: 0.05em;
+}
+
+.control-button-bottom:hover {
+  background: var(--neon-yellow);
+  transform: translate(-2px, -2px);
+  box-shadow: 2px 2px 0 var(--pure-black);
+}
+
+.control-button-text {
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.volume-control {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.volume-slider {
+  width: 60px;
+  height: 4px;
+  background: var(--brutal-gray);
+  border: 2px solid var(--fluorescent-green);
+  outline: none;
+  cursor: pointer;
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+.volume-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 12px;
+  height: 12px;
+  background: var(--fluorescent-green);
+  border: 2px solid var(--pure-black);
+  cursor: pointer;
+}
+
+.volume-slider::-moz-range-thumb {
+  width: 12px;
+  height: 12px;
+  background: var(--fluorescent-green);
+  border: 2px solid var(--pure-black);
+  cursor: pointer;
+  border-radius: 0;
+}
+
+.time-display {
+  font-size: 0.75rem;
+  font-weight: 700;
+  font-family: 'Courier New', monospace;
+  color: var(--pure-white);
+  min-width: 100px;
+  text-align: right;
+}
+
+/* Legacy Video Modal (kept for compatibility) */
+.video-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.9);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 2rem;
+}
+
+.video-modal-content {
+  position: relative;
+  max-width: 90vw;
+  max-height: 90vh;
+  background: var(--pure-black);
+  border: 4px solid var(--neon-yellow);
+}
+
+.video-modal-close {
+  position: absolute;
+  top: -20px;
+  right: -20px;
+  width: 48px;
+  height: 48px;
+  background: var(--hot-pink);
+  color: var(--pure-white);
+  border: 4px solid var(--pure-black);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  z-index: 10;
+  font-size: 1.5rem;
+  font-weight: 900;
+  transition: all 0.15s ease;
+}
+
+.video-modal-close:hover {
+  background: var(--neon-yellow);
+  color: var(--pure-black);
+  transform: rotate(90deg);
+}
+
+.video-modal-player {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+
+.video-modal-info {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: var(--pure-black);
+  color: var(--pure-white);
+  padding: 1.5rem;
+  border-top: 4px solid var(--neon-yellow);
+}
+
+.video-modal-title {
+  font-size: 1.5rem;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 0.5rem;
+}
+
+.video-modal-controls {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
+.modal-control-button {
+  background: var(--fluorescent-green);
+  color: var(--pure-black);
+  border: 3px solid var(--pure-black);
+  padding: 0.5rem 1rem;
+  font-size: 0.875rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.modal-control-button:hover {
+  background: var(--neon-yellow);
+  transform: translate(-2px, -2px);
+  box-shadow: 2px 2px 0 var(--pure-black);
+}
+
 /* Responsive Design */
 @media (max-width: 1024px) {
   .brutalist-header {
     padding: 0.75rem 1.25rem;
-    margin: 0 0.75rem;
-    top: 0;
+    margin: 0.75rem;
+    top: 0.75rem;
   }
   
   .brutalist-logo {
@@ -832,6 +1157,17 @@ body {
   
   .header-tagline {
     font-size: 0.45rem;
+  }
+  
+  .logo-tooltip-content {
+    font-size: 0.6875rem;
+    padding: 0.5rem 1rem;
+  }
+  
+  .theme-toggle-button,
+  .login-button {
+    padding: 0.375rem 0.75rem;
+    font-size: 0.6875rem;
   }
   
   .reel-maker-container {
@@ -856,13 +1192,37 @@ body {
     font-size: 0.5rem;
     padding: 3px 6px;
   }
+
+  .video-modal-container-fullscreen {
+    width: 75vw;
+    height: 65vh;
+  }
+
+  .video-info-bar-bottom {
+    padding: 0.875rem;
+    min-height: 90px;
+  }
+
+  .video-title-bottom {
+    font-size: 1rem;
+    margin-bottom: 0.625rem;
+  }
+
+  .control-button-bottom {
+    padding: 0.375rem 0.75rem;
+    font-size: 0.6875rem;
+  }
+
+  .control-button-text {
+    font-size: 0.6875rem;
+  }
 }
 
 @media (max-width: 768px) {
   .brutalist-header {
     padding: 0.5rem 1rem;
-    margin: 0 0.5rem;
-    top: 0;
+    margin: 0.5rem;
+    top: 0.5rem;
   }
   
   .brutalist-logo {
@@ -871,6 +1231,11 @@ body {
   
   .header-tagline {
     font-size: 0.4rem;
+  }
+  
+  .logo-tooltip-content {
+    font-size: 0.625rem;
+    padding: 0.5rem 0.75rem;
   }
   
   .header-buttons {
@@ -889,8 +1254,7 @@ body {
   }
   
   .video-grid {
-    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
-    gap: 0.75rem;
+    grid-template-columns: repeat(2, 1fr);
   }
   
   .control-button {
@@ -901,12 +1265,518 @@ body {
   .title-input {
     font-size: 1.5rem;
   }
+  
+  .video-modal-overlay {
+    padding: 1rem;
+  }
 
   .video-thumbnail .video-title {
     font-size: 0.45rem;
     padding: 2px 4px;
     max-width: calc(100% - 50px);
   }
+
+  .video-modal-overlay-fullscreen {
+    padding: 1rem;
+  }
+
+  .video-modal-container-fullscreen {
+    width: 90vw;
+    height: 70vh;
+    max-width: none;
+    max-height: none;
+  }
+
+  .video-modal-close-fullscreen {
+    top: 8px;
+    right: 8px;
+    width: 32px;
+    height: 32px;
+  }
+
+  .video-info-bar-bottom {
+    padding: 0.75rem;
+    min-height: 80px;
+  }
+
+  .video-title-bottom {
+    font-size: 0.875rem;
+    margin-bottom: 0.5rem;
+  }
+
+  .video-controls-bottom {
+    flex-direction: column;
+    gap: 0.5rem;
+    align-items: stretch;
+  }
+
+  .control-buttons-left,
+  .control-buttons-right {
+    justify-content: space-between;
+  }
+
+  .control-button-bottom {
+    padding: 0.375rem 0.625rem;
+    font-size: 0.625rem;
+    flex: 1;
+  }
+
+  .control-button-text {
+    font-size: 0.625rem;
+  }
+
+  .volume-control {
+    gap: 0.375rem;
+  }
+
+  .volume-slider {
+    width: 50px;
+  }
+
+  .time-display {
+    font-size: 0.625rem;
+    min-width: 80px;
+  }
+}
+
+/* Brutalist Layout System */
+.brutalist-container {
+  min-height: 100vh;
+  display: flex;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+}
+
+.brutalist-main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.brutalist-nav {
+  width: 300px;
+  background: var(--pure-black);
+  color: var(--pure-white);
+  display: flex;
+  flex-direction: column;
+  position: fixed;
+  right: 0;
+  top: 0;
+  height: 100vh;
+  z-index: 1000;
+}
+
+/* Split Screen Sections */
+.split-section {
+  min-height: 100vh;
+  display: flex;
+  align-items: stretch;
+}
+
+.split-left {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4rem;
+}
+
+.split-right {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4rem;
+}
+
+/* Color Blocks */
+.bg-neon-yellow {
+  background-color: var(--neon-yellow);
+  color: var(--pure-black);
+}
+
+.bg-electric-blue {
+  background-color: var(--electric-blue);
+  color: var(--pure-white);
+}
+
+.bg-fluorescent-green {
+  background-color: var(--fluorescent-green);
+  color: var(--pure-black);
+}
+
+.bg-hot-pink {
+  background-color: var(--hot-pink);
+  color: var(--pure-white);
+}
+
+.bg-pure-black {
+  background-color: var(--pure-black);
+  color: var(--pure-white);
+}
+
+.bg-pure-white {
+  background-color: var(--pure-white);
+  color: var(--pure-black);
+}
+
+/* Brutalist Typography */
+.brutalist-headline {
+  font-size: clamp(3rem, 8vw, 8rem);
+  font-weight: 900;
+  line-height: 0.85;
+  letter-spacing: -0.03em;
+  text-transform: uppercase;
+  margin: 0;
+}
+
+.brutalist-subhead {
+  font-size: clamp(1.5rem, 4vw, 3rem);
+  font-weight: 800;
+  line-height: 0.9;
+  letter-spacing: -0.02em;
+  text-transform: uppercase;
+  margin: 0;
+}
+
+.brutalist-body {
+  font-size: clamp(1rem, 2vw, 1.5rem);
+  font-weight: 400;
+  line-height: 1.3;
+  margin: 0;
+}
+
+.brutalist-label {
+  font-size: 0.875rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  margin: 0;
+}
+
+/* Navigation Styles */
+.nav-brand {
+  padding: 2rem;
+  border-bottom: 2px solid var(--pure-white);
+}
+
+.nav-brand h1 {
+  font-size: 2rem;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: -0.02em;
+  margin: 0;
+}
+
+.nav-links {
+  flex: 1;
+  padding: 2rem 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.nav-link {
+  display: block;
+  padding: 1.5rem 2rem;
+  color: var(--pure-white);
+  text-decoration: none;
+  font-size: 1.25rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  border-bottom: 1px solid #333;
+  transition: all 0.15s ease;
+  position: relative;
+}
+
+.nav-link:hover {
+  background-color: var(--neon-yellow);
+  color: var(--pure-black);
+  transform: translateX(-10px);
+}
+
+.nav-link.active {
+  background-color: var(--electric-blue);
+  color: var(--pure-white);
+}
+
+.nav-link.highlight-green:hover {
+  background-color: var(--fluorescent-green);
+  color: var(--pure-black);
+}
+
+.nav-link.highlight-pink:hover {
+  background-color: var(--hot-pink);
+  color: var(--pure-white);
+}
+
+.nav-contact {
+  padding: 2rem;
+  border-top: 2px solid var(--pure-white);
+}
+
+.contact-info {
+  font-size: 0.875rem;
+  font-weight: 400;
+  line-height: 1.4;
+}
+
+/* Brutalist Buttons */
+.btn-brutalist {
+  background: var(--pure-black);
+  color: var(--pure-white);
+  border: 3px solid var(--pure-black);
+  padding: 1rem 2rem;
+  font-size: 1rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  text-decoration: none;
+  display: inline-block;
+}
+
+.btn-brutalist:hover {
+  background: var(--neon-yellow);
+  color: var(--pure-black);
+  border-color: var(--pure-black);
+  transform: translate(-3px, -3px);
+  box-shadow: 3px 3px 0 var(--pure-black);
+}
+
+.btn-brutalist-outline {
+  background: transparent;
+  color: var(--pure-black);
+  border: 3px solid var(--pure-black);
+  padding: 1rem 2rem;
+  font-size: 1rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  text-decoration: none;
+  display: inline-block;
+}
+
+.btn-brutalist-outline:hover {
+  background: var(--pure-black);
+  color: var(--pure-white);
+  transform: translate(-3px, -3px);
+  box-shadow: 3px 3px 0 var(--pure-black);
+}
+
+/* Video Showcase */
+.video-showcase {
+  position: relative;
+  aspect-ratio: 16/9;
+  background: var(--pure-black);
+  overflow: hidden;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.video-showcase:hover {
+  transform: scale(1.02);
+}
+
+.video-showcase img,
+.video-showcase video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.video-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: all 0.3s ease;
+}
+
+.video-showcase:hover .video-overlay {
+  opacity: 1;
+}
+
+.play-button {
+  width: 80px;
+  height: 80px;
+  background: var(--neon-yellow);
+  color: var(--pure-black);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 2rem;
+  transition: all 0.3s ease;
+}
+
+.play-button:hover {
+  transform: scale(1.1);
+  background: var(--fluorescent-green);
+}
+
+/* Project Grid */
+.project-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+  gap: 0;
+  margin: 0;
+}
+
+.project-card {
+  aspect-ratio: 16/9;
+  position: relative;
+  overflow: hidden;
+  border: 2px solid var(--pure-black);
+}
+
+.project-info {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: var(--pure-black);
+  color: var(--pure-white);
+  padding: 1.5rem;
+  transform: translateY(100%);
+  transition: all 0.3s ease;
+}
+
+.project-card:hover .project-info {
+  transform: translateY(0);
+}
+
+.project-title {
+  font-size: 1.5rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  margin-bottom: 0.5rem;
+}
+
+.project-description {
+  font-size: 1rem;
+  font-weight: 400;
+  line-height: 1.3;
+  opacity: 0.8;
+}
+
+/* Responsive Design */
+@media (max-width: 1024px) {
+  .brutalist-nav {
+    display: none;
+  }
+  
+  .brutalist-main {
+    margin-right: 0;
+  }
+  
+  .split-section {
+    flex-direction: column;
+  }
+  
+  .split-left,
+  .split-right {
+    padding: 2rem;
+  }
+  
+  .brutalist-headline {
+    font-size: clamp(2rem, 6vw, 4rem);
+  }
+  
+  .project-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 768px) {
+  .split-left,
+  .split-right {
+    padding: 1.5rem;
+  }
+  
+  .brutalist-headline {
+    font-size: clamp(1.5rem, 5vw, 3rem);
+  }
+  
+  .brutalist-subhead {
+    font-size: clamp(1rem, 3vw, 2rem);
+  }
+}
+
+/* Mobile Navigation */
+.mobile-nav-toggle {
+  display: none;
+  position: fixed;
+  top: 2rem;
+  right: 2rem;
+  z-index: 1001;
+  background: var(--pure-black);
+  color: var(--pure-white);
+  border: none;
+  padding: 1rem;
+  font-size: 1.5rem;
+  cursor: pointer;
+}
+
+@media (max-width: 1024px) {
+  .mobile-nav-toggle {
+    display: block;
+  }
+  
+  .brutalist-nav.mobile-open {
+    display: flex;
+  }
+}
+
+/* Animations */
+@keyframes slideInRight {
+  from {
+    transform: translateX(100%);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+
+@keyframes slideInLeft {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-slide-right {
+  animation: slideInRight 0.8s ease-out;
+}
+
+.animate-slide-left {
+  animation: slideInLeft 0.8s ease-out;
+}
+
+.animate-fade-up {
+  animation: fadeInUp 0.6s ease-out;
 }
 
 /* Text Selection */

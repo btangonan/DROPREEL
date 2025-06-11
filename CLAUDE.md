@@ -1,0 +1,294 @@
+# DropReel MVP - Claude Context Guide
+
+## What the App Does
+
+DropReel is a video reel creation application that integrates with Dropbox to help users create video presentations. Users can:
+
+1. **Connect to Dropbox** - Authenticate with their Dropbox account
+2. **Browse and Select Videos** - Navigate Dropbox folders and select video files
+3. **Organize Videos** - Drag and drop videos between "YOUR VIDEOS" and "SELECTS" panels
+4. **Preview Videos** - Watch videos in a full-screen modal player with controls
+5. **Create Reels** - Combine selected videos into presentation reels (planned feature)
+
+## Design Philosophy
+
+- **Brutalist Design**: Bold, high-contrast colors (neon yellow, electric blue, pure black/white)
+- **Tactile Interactions**: Videos feel like physical objects you can pick up and move
+- **Responsive**: Works on desktop, tablet, and mobile devices
+- **Visual Feedback**: Rich animations and hover effects throughout
+
+## Architecture Overview
+
+### Tech Stack
+- **Next.js 14** with App Router
+- **TypeScript** for type safety
+- **Framer Motion** for animations
+- **Tailwind CSS** + custom CSS for styling
+- **Dropbox API** for file integration
+- **Lucide React** for icons
+
+### Key Files Structure
+
+```
+src/
+├── app/                          # Next.js App Router
+│   ├── api/                      # API routes
+│   │   ├── auth/dropbox/         # Dropbox authentication
+│   │   └── dropbox/              # Dropbox file operations
+│   ├── globals.css               # Main CSS with brutalist design
+│   ├── layout.tsx                # Root layout
+│   └── page.tsx                  # Main page (redirect to reel maker)
+├── components/
+│   ├── BrutalistReelMaker.tsx    # MAIN COMPONENT - core app logic
+│   ├── VideoPreviewModal.tsx     # Video player modal
+│   ├── FolderBrowser/            # Dropbox folder navigation
+│   └── ui/                       # Reusable UI components
+├── lib/
+│   ├── auth/                     # Authentication utilities
+│   ├── dropbox/                  # Dropbox API client
+│   └── storage/                  # Data management
+└── types/                        # TypeScript type definitions
+```
+
+## Core Components Deep Dive
+
+### BrutalistReelMaker.tsx (Main Component)
+
+**State Management:**
+- `isConnected` - Dropbox authentication status
+- `videos` - Array of videos in "YOUR VIDEOS" panel
+- `selectedVideos` - Array of videos in "SELECTS" panel  
+- `draggedVideo` - Currently dragged video object
+- `isDraggingVideo` - ID of video being dragged (for visual feedback)
+- `dragPosition` - Mouse coordinates during drag
+- `dragDirection` - 'clockwise' or 'counterclockwise' rotation
+
+**Key Functions:**
+- `handleDragStart()` - Initiates drag with custom drag image and mouse tracking
+- `handleDrop()` - Moves videos between panels with unique selection IDs
+- `handleRemoveDrop()` - Moves videos back from SELECTS to YOUR VIDEOS
+- `openVideoPreview()` - Opens modal and fetches streaming URLs if needed
+- `loadVideosFromDropbox()` - Fetches videos from selected Dropbox folder
+
+**Drag & Drop Logic:**
+- Videos get unique `selectionId` when moved to SELECTS panel
+- Original videos are removed from source panel (move, not copy)
+- Floating drag preview follows mouse cursor with rotation animation
+- Direction-aware rotation: clockwise when moving forward, counterclockwise when moving back
+
+### VideoPreviewModal.tsx
+
+**Features:**
+- Dynamic aspect ratio detection from video metadata or thumbnails
+- Responsive modal sizing with device-specific constraints
+- Custom video player controls (play/pause, seek, volume, restart)
+- Loading states with thumbnail previews
+- Keyboard shortcuts (Esc to close)
+
+**Aspect Ratio Logic:**
+```typescript
+// Tries video metadata first, falls back to thumbnail image dimensions
+const aspectRatio = video.videoWidth / video.videoHeight;
+// Modal dimensions calculated to maintain video aspect ratio + controls space
+```
+
+## Styling System
+
+### CSS Architecture
+Located in `src/app/globals.css`:
+
+**Color Variables:**
+```css
+:root {
+  --neon-yellow: #ffff00;
+  --electric-blue: #0066ff;
+  --fluorescent-green: #00ff00;
+  --hot-pink: #ff0066;
+  --pure-black: #000000;
+  --pure-white: #ffffff;
+  --brutal-gray: #666666;
+}
+```
+
+**Key Classes:**
+- `.brutalist-header` - Top navigation bar
+- `.control-button` - Action buttons with hover effects
+- `.video-section` - Panel containers for videos
+- `.video-thumbnail` - Individual video item styling
+- `.video-grid` - Responsive grid layout
+
+**Responsive Breakpoints:**
+- Desktop: Default styles
+- Tablet: `@media (max-width: 1024px)`
+- Mobile: `@media (max-width: 768px)`
+
+### Grid System
+```css
+.video-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1.5rem;
+}
+```
+- `auto-fit` makes thumbnails expand to fill available space
+- `minmax(200px, 1fr)` sets minimum size but allows growth
+- Different breakpoints use different minimum sizes
+
+## Animation System
+
+### Framer Motion Patterns
+
+**Layout Animations:**
+```typescript
+<motion.div
+  layout
+  transition={{
+    layout: {
+      type: "tween",
+      ease: [0.25, 0.46, 0.45, 0.94],
+      duration: 0.4
+    }
+  }}
+>
+```
+- Uses tween animations to avoid spring recoil effects
+- Custom ease curve for smooth row transitions
+
+**Drag Visual Feedback:**
+- Original thumbnail opacity goes to 0 during drag
+- Floating preview follows cursor with `requestAnimationFrame`
+- Rotation indicates direction: +8° clockwise, -8° counterclockwise
+
+**Hover Effects:**
+- Scale transformations on hover: `whileHover={{ scale: 1.02 }}`
+- Color transitions via CSS for performance
+- Staggered animations on initial load
+
+## API Integration
+
+### Dropbox Authentication Flow
+1. User clicks CONNECT button
+2. Redirects to `/api/auth/dropbox`
+3. Dropbox OAuth flow completes
+4. Callback handled at `/api/auth/dropbox/callback`
+5. Access tokens stored and status updated
+
+### File Operations
+- **List Videos**: `GET /api/dropbox?action=listVideos&folderPath={path}`
+- **Get Stream URL**: `GET /api/dropbox?action=getStreamUrl&path={path}`
+- **Get Thumbnails**: `GET /api/dropbox/thumbnail?path={path}`
+
+### Authentication Check
+- `GET /api/auth/dropbox/status` - Returns `{isAuthenticated: boolean}`
+- Called on component mount to restore login state
+
+## Development Workflow
+
+### Adding New Features
+
+1. **State Management**: Add new state variables to BrutalistReelMaker.tsx
+2. **UI Components**: Create new components in `/components` directory
+3. **Styling**: Add CSS classes in `globals.css` following brutalist design patterns
+4. **Animation**: Use Framer Motion with consistent transition patterns
+5. **API**: Add new routes in `/app/api` if backend functionality needed
+
+### Modifying Existing Features
+
+**Drag & Drop:**
+- Modify `handleDragStart`, `handleDrop`, `handleRemoveDrop` functions
+- Update drag visual feedback in floating preview animation
+- Adjust grid layout animations in transition configs
+
+**Video Player:**
+- Edit VideoPreviewModal.tsx for player controls
+- Modify aspect ratio calculation logic for different video formats
+- Update modal sizing constraints for better responsiveness
+
+**Styling Changes:**
+- Update CSS variables in `:root` for color scheme changes
+- Modify `.video-grid` for different layout behaviors
+- Adjust responsive breakpoints for device-specific experiences
+
+### Common Patterns
+
+**Adding a New Button:**
+```typescript
+<button className="control-button [modifier-class]" onClick={handleFunction}>
+  <Icon className="inline mr-2 w-4 h-4" />
+  BUTTON TEXT
+</button>
+```
+
+**Adding a New Animation:**
+```typescript
+<motion.div
+  initial={{ opacity: 0, scale: 0.8 }}
+  animate={{ opacity: 1, scale: 1 }}
+  transition={{ duration: 0.15, delay: index * 0.02 }}
+  layout
+>
+```
+
+**Adding a New Panel:**
+```typescript
+<motion.div className="video-section [color-class]">
+  <h2 className="section-title">PANEL NAME</h2>
+  <div className="video-grid">
+    {/* video thumbnails */}
+  </div>
+</motion.div>
+```
+
+## Debugging Tips
+
+### Common Issues
+
+**Drag & Drop Not Working:**
+- Check if `draggedVideo` state is being set correctly
+- Verify `selectionId` generation for moved videos
+- Ensure `handleDragEnd` cleanup is being called
+
+**Animations Too Aggressive:**
+- Reduce `stiffness` values in spring animations
+- Increase `damping` to reduce oscillation
+- Switch to tween animations for more control
+
+**Modal Sizing Issues:**
+- Check aspect ratio calculation in `getModalSize()`
+- Verify video metadata is loading correctly
+- Adjust constraints for different screen sizes
+
+**Responsive Layout Problems:**
+- Test grid behavior at different breakpoints
+- Check `minmax` values in CSS grid definitions
+- Verify thumbnail sizing on mobile devices
+
+### Performance Optimization
+
+**Animation Performance:**
+- Use `willChange: 'transform'` for frequently animated elements
+- Prefer CSS transitions for simple hover effects
+- Use `requestAnimationFrame` for smooth cursor tracking
+
+**Image Loading:**
+- Implement lazy loading for video thumbnails
+- Add fallback images for failed loads
+- Optimize thumbnail sizes for faster rendering
+
+## Future Development
+
+### Planned Features
+- Reel creation and export functionality
+- Video editing capabilities (trim, transitions)
+- Multiple reel management
+- Sharing and collaboration features
+- Cloud storage beyond Dropbox
+
+### Technical Debt
+- Implement proper error boundaries
+- Add comprehensive loading states
+- Improve accessibility (ARIA labels, keyboard navigation)
+- Add unit tests for core functionality
+- Optimize bundle size and performance
+
+This guide should provide enough context to understand, modify, and extend the DropReel application after losing session context.
