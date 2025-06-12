@@ -199,9 +199,12 @@ export default function FolderBrowser({ onFolderSelect, onClose, initialPath = '
     return (
       <div 
         key={item.path} 
-        className={`p-4 border-b border-terminal cursor-pointer flex items-center transition-all hover:matrix-glow ${
-          isSelectedFolder ? 'bg-foreground text-background' : 'bg-background text-foreground'
-        }`}
+        className="p-3 border-b cursor-pointer flex items-center transition-all hover:opacity-80"
+        style={{ 
+          borderColor: 'var(--panel-border)',
+          background: isSelectedFolder ? 'var(--video-header-bg)' : 'var(--panel-bg)',
+          color: isSelectedFolder ? 'var(--video-header-text)' : 'var(--foreground)'
+        }}
         onClick={() => {
           if (isFolder) {
             handleFolderClick(item);
@@ -212,30 +215,57 @@ export default function FolderBrowser({ onFolderSelect, onClose, initialPath = '
         }}
       >
         {/* Folder or file icon */}
-        <div className="mr-4 p-2 bg-foreground border border-terminal">
+        <div className="mr-4 flex items-center justify-center w-8 h-8">
           {isFolder ? (
-            <div className="w-6 h-6 bg-accent border border-terminal flex items-center justify-center">
-              <span className="text-background text-sm">📁</span>
-            </div>
+            <svg 
+              width="24" 
+              height="20" 
+              viewBox="0 0 24 24" 
+              fill="none" 
+              stroke="currentColor" 
+              strokeWidth="1.5"
+              style={{ color: 'var(--foreground)' }}
+            >
+              <path d="M3 7v10a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-6l-2-2H5a2 2 0 0 0-2 2v0"/>
+            </svg>
           ) : item.isVideo ? (
-            <div className="w-6 h-6 bg-accent border border-terminal flex items-center justify-center">
-              <span className="text-background text-sm">🎬</span>
-            </div>
+            <svg 
+              width="24" 
+              height="20" 
+              viewBox="0 0 24 24" 
+              fill="none" 
+              stroke="currentColor" 
+              strokeWidth="1.5"
+              style={{ color: 'var(--foreground)' }}
+            >
+              <path d="m15 10-4 4-6-6"/>
+              <path d="M17.5 21h-11A4.5 4.5 0 0 1 2 16.5v-9A4.5 4.5 0 0 1 6.5 3h11A4.5 4.5 0 0 1 22 7.5v9a4.5 4.5 0 0 1-4.5 4.5z"/>
+              <path d="M7 10.5l3-3 3 3"/>
+            </svg>
           ) : (
-            <div className="w-6 h-6 bg-muted border border-terminal flex items-center justify-center">
-              <span className="text-foreground text-sm">📄</span>
-            </div>
+            <svg 
+              width="24" 
+              height="20" 
+              viewBox="0 0 24 24" 
+              fill="none" 
+              stroke="currentColor" 
+              strokeWidth="1.5"
+              style={{ color: 'var(--foreground)' }}
+            >
+              <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/>
+              <polyline points="14,2 14,8 20,8"/>
+            </svg>
           )}
         </div>
         
         {/* File/folder name */}
-        <div className="flex-1 truncate text-terminal uppercase tracking-wide">
+        <div className="flex-1 truncate font-mono uppercase tracking-wide">
           {item.name}
         </div>
         
         {/* Arrow indicator for folders */}
         {isFolder && (
-          <div className="ml-4 text-terminal text-2xl">
+          <div className="ml-4 text-lg">
             →
           </div>
         )}
@@ -245,31 +275,31 @@ export default function FolderBrowser({ onFolderSelect, onClose, initialPath = '
   
   return (
     <div className="modal-overlay">
-      <div className="modal-content max-w-4xl w-full max-h-[90vh] flex flex-col" style={{ minWidth: '600px', minHeight: '500px' }}>
+      <div className="modal-content" style={{ width: '600px', height: '500px' }}>
         {/* Header */}
-        <div className="bg-foreground text-background p-6 border-b border-terminal flex justify-between items-center">
-          <h2 className="text-2xl uppercase tracking-wider">BROWSE DROPBOX</h2>
+        <div className="modal-header">
+          <h2 className="text-xl font-mono font-bold uppercase tracking-wider">BROWSE DROPBOX</h2>
           <button 
             onClick={onClose} 
-            className="bg-background text-foreground p-3 border border-terminal hover:bg-foreground hover:text-background transition-all"
+            className="control-button p-2 text-sm"
           >
             ✕
           </button>
         </div>
         
         {/* Breadcrumbs */}
-        <div className="p-4 border-b border-terminal bg-accent">
-          <div className="flex items-center space-x-1 text-background uppercase tracking-wide">
+        <div className="p-3 border-b" style={{ borderColor: 'var(--panel-border)', background: 'var(--muted)' }}>
+          <div className="flex items-center space-x-1 font-mono text-sm uppercase tracking-wide" style={{ color: 'var(--foreground)' }}>
             {breadcrumbs.map((crumb, index) => (
               <div key={crumb.path} className="flex items-center">
                 <button 
                   onClick={() => handleBreadcrumbClick(crumb.path)}
-                  className="hover:bg-background hover:text-foreground px-2 py-1 border border-transparent hover:border-terminal transition-all"
+                  className="px-2 py-1 hover:opacity-80 transition-all"
                 >
                   {crumb.name.toUpperCase()}
                 </button>
                 {index < breadcrumbs.length - 1 && (
-                  <span className="mx-2 text-background text-xl">→</span>
+                  <span className="mx-2">→</span>
                 )}
               </div>
             ))}
@@ -277,50 +307,48 @@ export default function FolderBrowser({ onFolderSelect, onClose, initialPath = '
         </div>
         
         {/* Content */}
-        <div className="flex-1 overflow-y-auto bg-background">
+        <div className="modal-body">
           {isLoading ? (
             <div className="flex justify-center items-center h-full">
               <div className="text-center">
-                <div className="animate-spin rounded-full h-12 w-12 border-t-4 border-b-4 border-terminal mx-auto mb-4"></div>
-                <div className="text-terminal text-xl uppercase tracking-wide">LOADING FOLDERS...</div>
+                <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 mx-auto mb-4" style={{ borderColor: 'var(--foreground)' }}></div>
+                <div className="font-mono text-sm uppercase tracking-wide" style={{ color: 'var(--foreground)' }}>LOADING FOLDERS...</div>
               </div>
             </div>
           ) : error ? (
             <div className="text-center p-8">
-              <div className="bg-destructive text-destructive-foreground p-6 border border-terminal inline-block">
-                <div className="text-xl uppercase mb-2">ERROR!</div>
-                <div className="font-medium">{error}</div>
+              <div className="p-4 border" style={{ background: 'var(--panel-bg)', borderColor: 'var(--panel-border)', color: 'var(--foreground)' }}>
+                <div className="font-mono text-lg uppercase mb-2">ERROR!</div>
+                <div className="font-mono text-sm">{error}</div>
               </div>
             </div>
           ) : contents.length === 0 ? (
             <div className="text-center p-8">
-              <div className="bg-muted text-foreground p-6 border border-terminal inline-block">
-                <div className="text-xl uppercase">FOLDER IS EMPTY</div>
+              <div className="p-4 border" style={{ background: 'var(--panel-bg)', borderColor: 'var(--panel-border)', color: 'var(--foreground)' }}>
+                <div className="font-mono text-lg uppercase">FOLDER IS EMPTY</div>
               </div>
             </div>
           ) : (
-            <div className="p-2">
+            <div className="p-0">
               {contents.map(item => renderItem(item))}
             </div>
           )}
         </div>
         
         {/* Footer with actions */}
-        <div className="p-6 border-t border-terminal flex justify-end items-center bg-accent">
-          <div className="flex gap-4">
-            <button
-              onClick={onClose}
-              className="control-button"
-            >
-              CANCEL
-            </button>
-            <button
-              onClick={handleSelectFolder}
-              className="control-button matrix-glow"
-            >
-              SELECT THIS FOLDER
-            </button>
-          </div>
+        <div className="modal-footer">
+          <button
+            onClick={onClose}
+            className="control-button"
+          >
+            CANCEL
+          </button>
+          <button
+            onClick={handleSelectFolder}
+            className="control-button"
+          >
+            SELECT THIS FOLDER
+          </button>
         </div>
       </div>
     </div>

@@ -47,7 +47,7 @@ export default function Home() {
   const [loadedVideos, setLoadedVideos] = useState<VideoFile[]>([]);
   const [error, setError] = useState('');
   const [titles, setTitles] = useState<TitleElement[]>([]);
-  const [isDarkMode, setIsDarkMode] = useState(true); // Default to dark mode for Matrix theme
+  const [isDarkMode, setIsDarkMode] = useState(false); // Default to light mode for brutalist theme
   const [previewVideo, setPreviewVideo] = useState<VideoFile | null>(null);
 
   // DnD state
@@ -314,9 +314,6 @@ export default function Home() {
   const [popoutVideo, setPopoutVideo] = useState<VideoFile | null>(null);
   const [popoutRect, setPopoutRect] = useState<DOMRect | null>(null);
 
-  const toggleTheme = () => {
-    setIsDarkMode(!isDarkMode);
-  };
 
   const handleAddTitle = (text: string, size: string) => {
     const newTitle: TitleElement = {
@@ -355,12 +352,12 @@ export default function Home() {
               <div>
                 <h1 className="text-2xl text-terminal">DROPREEL</h1>
                 <div className="text-xs text-muted-foreground mt-1">
-                  DROP IN. CUT FAST. LOOK GOOD.
+                  DROP IT. SEND IT. BOOK IT.
                 </div>
               </div>
               <div className="flex items-center gap-4">
                 <button 
-                  onClick={toggleTheme}
+                  onClick={() => setIsDarkMode(!isDarkMode)}
                   className="control-button flex items-center gap-2"
                 >
                   {isDarkMode ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
@@ -374,30 +371,56 @@ export default function Home() {
             </div>
             
             {/* Button Grid */}
-            <div className="flex gap-4 mb-5 items-start">
-              <button className="brutal-button inline-flex px-4 py-3 items-center gap-2">
+            <div className="flex gap-4 mb-5 items-stretch w-full">
+              <button 
+                className={`brutal-button flex-1 inline-flex px-4 py-3 items-center gap-2 ${
+                  isDropboxAuthenticated ? 'bg-green-500 text-white' : 'bg-red-500 text-white'
+                }`}
+                onClick={isDropboxAuthenticated ? undefined : handleDropboxConnect}
+                disabled={isDropboxAuthLoading}
+              >
                 <Wifi className="w-4 h-4" />
-                <span>CONNECTED</span>
+                <span>{isDropboxAuthLoading ? 'CHECKING...' : isDropboxAuthenticated ? 'CONNECTED' : 'CONNECT'}</span>
               </button>
-              <button className="brutal-button inline-flex px-4 py-3 items-center gap-2">
+              <button 
+                className="brutal-button flex-1 inline-flex px-4 py-3 items-center gap-2"
+                onClick={handleAddVideosClick}
+                disabled={!isDropboxAuthenticated}
+              >
                 <Plus className="w-4 h-4" />
                 <span>ADD VIDEOS</span>
               </button>
-              <button className="brutal-button inline-flex px-4 py-3 items-center gap-2">
+              <button 
+                className="brutal-button flex-1 inline-flex px-4 py-3 items-center gap-2"
+                onClick={() => {
+                  const text = prompt('Enter title text:');
+                  const size = prompt('Enter size (small/medium/large):') || 'medium';
+                  if (text) handleAddTitle(text, size);
+                }}
+              >
                 <FileText className="w-4 h-4" />
                 <span>ADD TITLE</span>
               </button>
-              <button className="brutal-button inline-flex px-4 py-3 items-center gap-2">
+              <button 
+                className="brutal-button flex-1 inline-flex px-4 py-3 items-center gap-2"
+                disabled
+              >
                 <Palette className="w-4 h-4" />
                 <span>THEME MENU</span>
               </button>
-              <button className="brutal-button-accent inline-flex px-4 py-3 items-center gap-2">
+              <button 
+                className="brutal-button-accent flex-1 inline-flex px-4 py-3 items-center gap-2"
+                disabled={videoState.selects.length === 0}
+                onClick={() => {
+                  if (videoState.selects.length > 0) {
+                    alert(`Making reel with ${videoState.selects.length} videos!`);
+                  }
+                }}
+              >
                 <Zap className="w-4 h-4" />
                 <span>MAKE REEL</span>
               </button>
             </div>
-            {/* Horizontal Divider */}
-            <div className="w-full h-0.5 bg-black mb-0 mt-5" />
 
             {/* Titles Display */}
             {titles.length > 0 && (
@@ -423,49 +446,83 @@ export default function Home() {
               </div>
             )}
           </div>
+          
+          {/* Horizontal Divider - Full Width */}
+          <div className="horizontal-divider" />
 
           {/* Main Interface */}
           <div className="pt-0 pb-0 px-6">
             <div className="grid grid-cols-[1fr_1fr] gap-4 items-stretch mt-5">
               {/* Video Archive */}
-              <div className="flex flex-col bg-white border-2 border-black" style={{ height: '500px' }}>
+              <div className="panel" style={{ height: '500px' }}>
                 {/* Header */}
-                <div className="bg-black text-white px-6 py-4 flex items-center gap-2 flex-shrink-0 font-mono font-bold uppercase tracking-wider text-base">
+                <div className="panel-header px-6 py-4 flex items-center gap-2 flex-shrink-0 font-mono font-bold uppercase tracking-wider text-base">
                   <Database className="w-5 h-5 mr-2" />
                   <span>YOUR VIDEOS</span>
-                  <div className="ml-auto flex items-center gap-2 bg-white/20 px-2 py-1 rounded">
-                    <div className="text-xs font-mono text-white">
+                  <div className="ml-auto flex items-center gap-2" style={{ background: 'rgba(255, 255, 255, 0.2)' }}>
+                    <div className="text-xs font-mono px-2 py-1">
                       {videoState.yourVideos.length} FILES
                     </div>
                   </div>
                 </div>
                 {/* Video content with scroll */}
-                <div className="flex-1 p-4 overflow-hidden">
+                <div className="panel-content">
                   <div className="h-full overflow-y-auto">
-                    <SortableContext items={videoState.yourVideos.map(v => v.id)} strategy={rectSortingStrategy}>
-                      <DndKitVideoGrid
-                        videos={videoState.yourVideos}
-                        onReorder={newOrder => setVideoState(s => ({ ...s, yourVideos: newOrder }))}
-                        gridId="yourVideos"
-                        emptyMessage={isFetchingVideos ? 'Loading videos...' : error ? error : 'No videos loaded. Click "ADD VIDEOS" to get started.'}
-                        onVideoClick={handleVideoClick}
-                      />
-                    </SortableContext>
+                    {videoState.yourVideos.length === 0 ? (
+                      // Add Videos Button - Small Dotted Square
+                      <div className="flex flex-col items-center justify-center h-full text-center">
+                        <button
+                          onClick={handleAddVideosClick}
+                          className="flex flex-col items-center justify-center transition-all duration-200 hover:opacity-80"
+                          disabled={!isDropboxAuthenticated}
+                        >
+                          {/* Dotted Square with Plus */}
+                          <div 
+                            className="w-24 h-24 border-2 border-dashed flex items-center justify-center mb-4 hover:border-solid transition-all duration-200"
+                            style={{ 
+                              borderColor: 'var(--border)',
+                              background: 'transparent'
+                            }}
+                          >
+                            <Plus 
+                              className="w-8 h-8" 
+                              strokeWidth={2}
+                              style={{ color: 'var(--foreground)' }}
+                            />
+                          </div>
+                          {/* Black Text Below */}
+                          <div className="font-mono font-bold uppercase tracking-wider text-lg" style={{ color: 'var(--foreground)' }}>
+                            ADD VIDEOS
+                          </div>
+                        </button>
+                      </div>
+                    ) : (
+                      // Show videos when they exist
+                      <SortableContext items={videoState.yourVideos.map(v => v.id)} strategy={rectSortingStrategy}>
+                        <DndKitVideoGrid
+                          videos={videoState.yourVideos}
+                          onReorder={newOrder => setVideoState(s => ({ ...s, yourVideos: newOrder }))}
+                          gridId="yourVideos"
+                          emptyMessage={isFetchingVideos ? 'Loading videos...' : error ? error : 'No videos loaded.'}
+                          onVideoClick={handleVideoClick}
+                        />
+                      </SortableContext>
+                    )}
                   </div>
                 </div>
               </div>
               {/* Reel Constructor */}
-              <div className="flex flex-col bg-white border-2 border-black" style={{ height: '500px' }}>
-                <div className="bg-black text-white px-6 py-4 flex items-center gap-2 flex-shrink-0 font-mono font-bold uppercase tracking-wider text-base">
+              <div className="panel" style={{ height: '500px' }}>
+                <div className="panel-header px-6 py-4 flex items-center gap-2 flex-shrink-0 font-mono font-bold uppercase tracking-wider text-base">
                   <Star className="w-5 h-5 mr-2" />
                   <span>SELECTED VIDEOS</span>
-                  <div className="ml-auto flex items-center gap-2 bg-white/20 px-2 py-1 rounded">
-                    <div className="text-xs font-mono text-white">
+                  <div className="ml-auto flex items-center gap-2" style={{ background: 'rgba(255, 255, 255, 0.2)' }}>
+                    <div className="text-xs font-mono px-2 py-1">
                       {videoState.selects.length} FILES
                     </div>
                   </div>
                 </div>
-                <div className="flex-1 p-4 overflow-hidden">
+                <div className="panel-content">
                   <div className="h-full overflow-y-auto">
                     <SortableContext items={videoState.selects.map(v => v.id)} strategy={rectSortingStrategy}>
                       <DndKitVideoGrid

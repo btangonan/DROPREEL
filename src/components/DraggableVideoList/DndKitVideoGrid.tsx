@@ -57,21 +57,22 @@ function VideoGridItem({
 
   return (
     <div
-      className={`group cursor-pointer bg-background border-2 border-terminal hover:border-accent transition-all duration-100 hover:matrix-glow ${isDragging ? 'z-50' : ''}`}
+      className={`video-card ${isDragging ? 'z-50' : ''}`}
       style={{ ...style }}
       tabIndex={0}
       {...listeners}
       {...attributes}
     >
       {/* File header bar */}
-      <div className="bg-foreground text-background px-2 py-1 flex items-center text-xs">
-        <span className="truncate uppercase">{video.name}</span>
+      <div className="video-header">
+        <span className="truncate">{video.name}</span>
       </div>
       
       {/* Image preview */}
       <div 
         ref={thumbnailRef}
-        className={`relative aspect-video bg-muted ${popOutClass}`}
+        className={`relative aspect-video ${popOutClass}`}
+        style={{ background: 'var(--video-bg)' }}
       >
         {isInlinePreview ? (
           <div className="w-full h-full relative group">
@@ -110,11 +111,11 @@ function VideoGridItem({
               className="w-full h-full object-cover transition-all duration-200"
             />
             {/* Duration overlay - bottom right corner */}
-            <div className="absolute bottom-2 right-2 bg-foreground bg-opacity-90 text-background px-2 py-1 text-xs">
+            <div className="matrix-video-duration">
               {video.duration || '0:00'}
             </div>
             {/* Play overlay - very translucent to see video clearly underneath */}
-            <div className="absolute inset-0 bg-foreground bg-opacity-15 opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex items-center justify-center">
+            <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex items-center justify-center" style={{ background: 'rgba(0, 255, 0, 0.1)' }}>
               <button
                 type="button"
                 onClick={e => {
@@ -126,10 +127,11 @@ function VideoGridItem({
                     onClick(video, { play: true, rect });
                   }
                 }}
-                className="text-background text-center drop-shadow-lg focus:outline-none"
+                className="text-center drop-shadow-lg focus:outline-none"
+                style={{ color: 'var(--video-header-text)' }}
               >
                 <Play className="w-8 h-8 mx-auto mb-2" fill="currentColor" />
-                <div className="text-xs">PLAY</div>
+                <div className="text-xs matrix-text">PLAY</div>
               </button>
             </div>
           </>
@@ -148,15 +150,23 @@ function VideoGridItem({
 
 function EmptyDropZone({ children }: { children: React.ReactNode }) {
   return (
-    <div
-      className="flex flex-col items-center justify-center h-64 w-full col-span-full text-terminal transition-colors"
-      style={{ minHeight: '16rem' }}
-    >
-      <div className="text-center">
-        <div className="text-6xl mb-4 opacity-30">📁</div>
-        <div className="text-lg uppercase tracking-wide mb-2">NO VIDEOS SELECTED</div>
-        <div className="text-sm text-accent uppercase tracking-wide">DRAG VIDEO FILES HERE</div>
+    <div className="matrix-empty-state">
+      <div className="mb-6">
+        <svg 
+          width="80" 
+          height="64" 
+          viewBox="0 0 24 24" 
+          fill="none" 
+          stroke="currentColor" 
+          strokeWidth="1.5" 
+          className="opacity-50"
+          style={{ color: 'var(--foreground)' }}
+        >
+          <path d="M3 7v10a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-6l-2-2H5a2 2 0 0 0-2 2v0"/>
+        </svg>
       </div>
+      <div className="matrix-empty-title">NO VIDEOS SELECTED</div>
+      <div className="matrix-empty-subtitle">DRAG VIDEO FILES HERE</div>
     </div>
   );
 }
@@ -205,14 +215,14 @@ export default function DndKitVideoGrid({ videos, gridId, onVideoClick, emptyMes
   console.log(`[DndKitVideoGrid] gridId: ${gridId}, video count: ${videos.length}, IDs:`, itemIds);
 
   return (
-    <div ref={setNodeRef} className="w-full">
-      <div className="grid grid-cols-3 gap-3 min-h-[100px]">
-        {videos.length === 0 ? (
-          <EmptyDropZone>
-            {emptyMessage}
-          </EmptyDropZone>
-        ) : (
-          videos.map(video => (
+    <div ref={setNodeRef} className="w-full h-full">
+      {videos.length === 0 ? (
+        <EmptyDropZone>
+          {emptyMessage}
+        </EmptyDropZone>
+      ) : (
+        <div className="grid grid-cols-3 gap-3 min-h-[100px]">
+          {videos.map(video => (
             <SortableVideoGridItem
               key={video.id}
               video={video}
@@ -220,9 +230,9 @@ export default function DndKitVideoGrid({ videos, gridId, onVideoClick, emptyMes
               isInlinePreview={inlinePreviewVideoId === video.id}
               onCloseInlinePreview={onCloseInlinePreview}
             />
-          ))
-        )}
-      </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

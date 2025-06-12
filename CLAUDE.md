@@ -367,3 +367,49 @@ Located in `src/app/globals.css`:
 - Optimize bundle size and performance
 
 This guide should provide enough context to understand, modify, and extend the DropReel application after losing session context.
+
+---
+
+## 2024 UI/UX Debugging & Lessons Learned (Session Log)
+
+### Tailwind Setup & Fixes
+- Resolved missing Tailwind utility classes by:
+  - Ensuring `tailwindcss` was installed and the CLI binary was present in `node_modules/.bin`.
+  - Running `npx tailwindcss init -p` to generate config files.
+  - Updating `tailwind.config.js` to include all source files in the `content` array.
+  - Installing missing dependencies: `lucide-react`, `autoprefixer`, and `postcss`.
+
+### Button Row & Panel Layout
+- Ensured button row uses `flex gap-4` for visible spacing between buttons.
+- Removed all `w-full`, `flex-1`, and min-width from buttons to prevent stretching.
+- Used browser inspector to confirm no conflicting styles were present.
+
+### Divider & Panel Spacing
+- Added a thin horizontal divider below the button row using `<div className="w-full h-0.5 bg-black" />`.
+- Replaced thick vertical bar between panels with a thin divider or removed it for a clean gap.
+- Used `gap-4` (16px) and later `gap-5` (20px) for consistent spacing between panels.
+- Balanced vertical spacing by:
+  - Adjusting margin and padding above/below the divider and panels.
+  - Removing bottom padding from `.matrix-header` to eliminate extra gap.
+  - Ensuring the grid's `mt-5` (20px) sets the gap below the divider.
+
+### Panel Borders
+- Restored original panel borders (`border-2 border-black` on all sides) for both panels after testing border removal.
+- Confirmed that panel borders do not add extra visual gap when spacing is set correctly.
+
+### Error Message Handling
+- Discovered that error messages rendered between the divider and panels caused unexpected large gaps.
+- Solution: Removed error message display from the main UI and rely on the CONNECT button for user feedback.
+
+### Debugging Process
+- Used browser inspector to check for margin, padding, and border issues.
+- Verified all spacing utilities in JSX and CSS.
+- Iteratively adjusted layout and confirmed changes visually after each step.
+
+### Key Takeaways
+- Always check for hidden error messages or conditional UI that may affect layout spacing.
+- Panel borders and divider lines should be managed independently for clean, predictable spacing.
+- Tailwind config and dependency setup is critical for utility classes to work as expected.
+- Use the inspector and remove/add classes live to debug persistent UI issues.
+
+---
