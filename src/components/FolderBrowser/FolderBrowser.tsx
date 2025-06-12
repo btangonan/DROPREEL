@@ -15,9 +15,10 @@ interface FolderBrowserProps {
   onClose: () => void;
   initialPath?: string;
   onAuthError?: () => void;
+  isAddingToExisting?: boolean;
 }
 
-export default function FolderBrowser({ onFolderSelect, onClose, initialPath = '', onAuthError }: FolderBrowserProps) {
+export default function FolderBrowser({ onFolderSelect, onClose, initialPath = '', onAuthError, isAddingToExisting = false }: FolderBrowserProps) {
   const [currentPath, setCurrentPath] = useState('');
   const [contents, setContents] = useState<FolderItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -278,7 +279,9 @@ export default function FolderBrowser({ onFolderSelect, onClose, initialPath = '
       <div className="modal-content" style={{ width: '600px', height: '500px' }}>
         {/* Header */}
         <div className="modal-header">
-          <h2 className="text-xl font-mono font-bold uppercase tracking-wider">BROWSE DROPBOX</h2>
+          <h2 className="text-xl font-mono font-bold uppercase tracking-wider">
+            {isAddingToExisting ? 'ADD MORE VIDEOS' : 'BROWSE DROPBOX'}
+          </h2>
           <button 
             onClick={onClose} 
             className="control-button p-2 text-sm"
@@ -347,7 +350,7 @@ export default function FolderBrowser({ onFolderSelect, onClose, initialPath = '
             onClick={handleSelectFolder}
             className="control-button"
           >
-            SELECT THIS FOLDER
+{isAddingToExisting ? 'ADD VIDEOS FROM FOLDER' : 'SELECT THIS FOLDER'}
           </button>
         </div>
       </div>

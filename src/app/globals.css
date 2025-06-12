@@ -303,14 +303,19 @@
 
   .panel-content {
     flex: 1;
-    padding: 1rem;
-    overflow: hidden;
+    display: flex;
+    flex-direction: column;
     background: var(--panel-bg);
+    min-height: 0; /* Allow flex children to shrink */
   }
 
   .panel-scroll {
-    height: 100%;
+    flex: 1;
     overflow-y: auto;
+    overflow-x: hidden; /* Prevent horizontal overflow */
+    padding: 1rem;
+    min-height: 0; /* Allow flex children to shrink */
+    box-sizing: border-box; /* Include padding in width calculation */
   }
 
   /* Video Grid */
@@ -325,6 +330,10 @@
     background: var(--video-bg);
     cursor: pointer;
     transition: none;
+    width: 100%;
+    min-width: 0;
+    overflow: hidden;
+    box-sizing: border-box;
   }
 
   .video-card:hover {

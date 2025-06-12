@@ -163,6 +163,52 @@ export default function Home() {
     console.log('[page] isDropboxAuthLoading:', isDropboxAuthLoading);
   }, [isDropboxAuthLoading]);
 
+  // Helper function to get video duration
+  const getVideoDuration = (videoUrl: string): Promise<string> => {
+    return new Promise((resolve) => {
+      const video = document.createElement('video');
+      video.crossOrigin = 'anonymous';
+      video.preload = 'metadata';
+      
+      const cleanup = () => {
+        video.removeEventListener('loadedmetadata', onLoadedMetadata);
+        video.removeEventListener('error', onError);
+        video.src = '';
+        video.load();
+      };
+      
+      const onLoadedMetadata = () => {
+        const duration = video.duration;
+        cleanup();
+        
+        if (isNaN(duration) || duration === 0) {
+          resolve('0:00');
+          return;
+        }
+        
+        const minutes = Math.floor(duration / 60);
+        const seconds = Math.floor(duration % 60);
+        resolve(`${minutes}:${seconds.toString().padStart(2, '0')}`);
+      };
+      
+      const onError = () => {
+        cleanup();
+        resolve('0:00');
+      };
+      
+      video.addEventListener('loadedmetadata', onLoadedMetadata);
+      video.addEventListener('error', onError);
+      
+      // Timeout after 5 seconds
+      setTimeout(() => {
+        cleanup();
+        resolve('0:00');
+      }, 5000);
+      
+      video.src = videoUrl;
+    });
+  };
+
   const handleAddVideosClick = async () => {
     console.log('[handleAddVideosClick] Called');
     if (await checkDropboxAuth()) {
@@ -174,7 +220,7 @@ export default function Home() {
     }
   };
 
-  const fetchVideos = async (path: string) => {
+  const fetchVideos = async (path: string, appendToExisting = false) => {
     if (!path) {
       setError('Please enter a Dropbox folder path or link');
       return;
@@ -200,27 +246,88 @@ export default function Home() {
             return {
               ...video,
               streamUrl: streamData.url,
-              thumbnailUrl
+              thumbnailUrl,
+              duration: '0:00' // Will be updated asynchronously
             };
           })
         );
-        setLoadedVideos(videosWithUrls);
+        
+        // Load durations asynchronously after videos are displayed
+        setTimeout(async () => {
+          const videosWithDurations = await Promise.all(
+            videosWithUrls.map(async (video) => {
+              try {
+                const duration = await getVideoDuration(video.streamUrl);
+                console.log(`[fetchVideos] Got duration for ${video.name}: ${duration}`);
+                return { ...video, duration };
+              } catch (error) {
+                console.warn(`[fetchVideos] Failed to get duration for ${video.name}:`, error);
+                return video;
+              }
+            })
+          );
+          
+          // Update the loaded videos with durations
+          if (appendToExisting) {
+            setLoadedVideos(prev => {
+              const existingPaths = new Set(prev.map(v => v.path));
+              const newVideosWithDurations = videosWithDurations.filter(v => !existingPaths.has(v.path));
+              // Replace any videos that already exist with duration-updated versions
+              const updatedExisting = prev.map(existingVideo => {
+                const updated = videosWithDurations.find(v => v.path === existingVideo.path);
+                return updated || existingVideo;
+              });
+              return [...updatedExisting, ...newVideosWithDurations];
+            });
+          } else {
+            setLoadedVideos(videosWithDurations);
+          }
+        }, 100);
+        
+        if (appendToExisting) {
+          // Filter out duplicates based on video path
+          const existingPaths = new Set(loadedVideos.map(v => v.path));
+          const newVideos = videosWithUrls.filter(v => !existingPaths.has(v.path));
+          setLoadedVideos(prev => [...prev, ...newVideos]);
+          console.log(`[fetchVideos] Added ${newVideos.length} new videos, ${videosWithUrls.length - newVideos.length} duplicates skipped`);
+        } else {
+          setLoadedVideos(videosWithUrls);
+          console.log(`[fetchVideos] Loaded ${videosWithUrls.length} videos (replacing existing)`);
+        }
       } else {
-        setLoadedVideos([]);
+        if (!appendToExisting) {
+          setLoadedVideos([]);
+        }
         setError('No video files found in the specified folder');
       }
     } catch (error: unknown) {
       const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred';
       setError(`Error loading videos: ${errorMessage}`);
-      setLoadedVideos([]);
+      if (!appendToExisting) {
+        setLoadedVideos([]);
+      }
     } finally {
       setIsFetchingVideos(false);
     }
   };
 
-  // When loadedVideos changes, put all videos in yourVideos and clear selects
+  // When loadedVideos changes, update yourVideos while preserving selects
   useEffect(() => {
-    setVideoState({ yourVideos: loadedVideos, selects: [] });
+    setVideoState(prev => {
+      // Update yourVideos with new loaded videos
+      const updatedYourVideos = loadedVideos;
+      
+      // Update any selected videos that have new duration info
+      const updatedSelects = prev.selects.map(selectedVideo => {
+        const updatedVideo = loadedVideos.find(v => v.id === selectedVideo.id);
+        return updatedVideo || selectedVideo;
+      });
+      
+      return {
+        yourVideos: updatedYourVideos,
+        selects: updatedSelects
+      };
+    });
   }, [loadedVideos]);
 
   // Handler for drag end (cross-panel and reorder)
@@ -518,7 +625,7 @@ export default function Home() {
                 </div>
                 {/* Video content with scroll */}
                 <div className="panel-content">
-                  <div className="h-full overflow-y-auto">
+                  <div className="panel-scroll">
                     <SortableContext items={videoState.yourVideos.map(v => v.id)} strategy={rectSortingStrategy}>
                       <DndKitVideoGrid
                         videos={videoState.yourVideos}
@@ -572,7 +679,7 @@ export default function Home() {
                   </div>
                 </div>
                 <div className="panel-content">
-                  <div className="h-full overflow-y-auto">
+                  <div className="panel-scroll">
                     <SortableContext items={videoState.selects.map(v => v.id)} strategy={rectSortingStrategy}>
                       <DndKitVideoGrid
                         videos={videoState.selects}
@@ -608,10 +715,13 @@ export default function Home() {
             onFolderSelect={path => {
               setFolderPath(path);
               setShowFolderBrowser(false);
-              fetchVideos(path);
+              // If we already have videos, append new ones; otherwise replace
+              const shouldAppend = loadedVideos.length > 0;
+              fetchVideos(path, shouldAppend);
             }}
             onClose={() => setShowFolderBrowser(false)}
             initialPath={folderPath}
+            isAddingToExisting={loadedVideos.length > 0}
             onAuthError={() => {
               setIsDropboxAuthenticated(false);
               setShowFolderBrowser(false);

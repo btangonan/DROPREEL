@@ -200,7 +200,7 @@ function SortableVideoGridItem({
   };
 
   return (
-    <div ref={setNodeRef} style={style} className="w-full">
+    <div ref={setNodeRef} style={style} className="w-full min-w-0 overflow-hidden">
       <VideoGridItem
         video={video}
         listeners={listeners}
@@ -223,10 +223,10 @@ export default function DndKitVideoGrid({ videos, gridId, onVideoClick, emptyMes
   return (
     <div 
       ref={setNodeRef} 
-      className="w-full h-full"
+      className="w-full min-h-full overflow-hidden"
     >
       {videos.length === 0 ? (
-        <div className="w-full h-full flex items-center justify-center">
+        <div className="w-full min-h-[300px] flex items-center justify-center">
           {customEmptyContent || (
             <EmptyDropZone>
               {emptyMessage}
@@ -234,7 +234,7 @@ export default function DndKitVideoGrid({ videos, gridId, onVideoClick, emptyMes
           )}
         </div>
       ) : (
-        <div className="grid grid-cols-3 gap-3 min-h-[100px]">
+        <div className="grid grid-cols-3 gap-3 pb-4 w-full box-border">
           {videos.map(video => (
             <SortableVideoGridItem
               key={video.id}
