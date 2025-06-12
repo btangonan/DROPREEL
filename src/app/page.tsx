@@ -485,12 +485,14 @@ export default function Home() {
 
   const handleVideoClick = (video: VideoFile, action?: VideoClickAction) => {
     const safeAction = action || {};
-    if (safeAction.play) {
-      setPopoutVideo(video);
-      setPopoutRect(safeAction.rect || null);
-    } else {
-      setPreviewVideo(video);
-    }
+    console.log('[handleVideoClick] Video clicked:', video.name, 'Action:', safeAction);
+    
+    // Always use the VideoPreviewModal for both play and preview
+    setPreviewVideo(video);
+    
+    // Clear any existing popout state
+    setPopoutVideo(null);
+    setPopoutRect(null);
   };
 
   return (

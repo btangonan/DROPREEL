@@ -72,8 +72,16 @@ function VideoGridItem({
       {/* Image preview */}
       <div 
         ref={thumbnailRef}
-        className={`relative aspect-video ${popOutClass}`}
+        className={`relative aspect-video ${popOutClass} cursor-pointer group`}
         style={{ background: 'var(--video-bg)' }}
+        onClick={(e) => {
+          e.stopPropagation();
+          e.preventDefault();
+          if (typeof onClick === 'function' && video) {
+            console.log('[VideoGridItem] Thumbnail clicked:', video.name);
+            onClick(video, { play: true });
+          }
+        }}
       >
         {isInlinePreview ? (
           <div className="w-full h-full relative group">
