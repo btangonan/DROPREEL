@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { VideoFile } from '@/types';
 import { extractDropboxPath } from '@/lib/utils/dropboxUtils';
 import { checkAllVideosCompatibility } from '@/lib/utils/videoCompatibility';
+import { useRouter } from 'next/navigation';
 import FolderBrowser from '@/components/FolderBrowser/FolderBrowser';
 import VideoPreviewModal from '@/components/VideoPreviewModal';
 import TitleEditor from '@/components/TitleEditor/TitleEditor';
@@ -42,6 +43,7 @@ interface TitleElement {
 }
 
 export default function Home() {
+  const router = useRouter();
   const [isDropboxAuthenticated, setIsDropboxAuthenticated] = useState(false);
   const [isDropboxAuthLoading, setIsDropboxAuthLoading] = useState(true);
   const [, setDropboxAuthStatus] = useState<string | null>(null);
@@ -619,7 +621,12 @@ export default function Home() {
                 disabled={videoState.selects.length === 0}
                 onClick={() => {
                   if (videoState.selects.length > 0) {
-                    alert(`Making reel with ${videoState.selects.length} videos!`);
+                    // Store selected videos and titles in localStorage for the reel creation page
+                    localStorage.setItem('reelData', JSON.stringify({
+                      videos: videoState.selects,
+                      titles: titles
+                    }));
+                    router.push('/reels/create');
                   }
                 }}
               >
