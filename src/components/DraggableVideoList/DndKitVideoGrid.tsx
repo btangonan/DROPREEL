@@ -142,26 +142,48 @@ function VideoGridItem({
             <div className="matrix-video-duration">
               {video.duration || '0:00'}
             </div>
-            {/* Play overlay - very translucent to see video clearly underneath */}
-            <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex items-center justify-center" style={{ background: 'rgba(0, 255, 0, 0.1)' }}>
-              <button
-                type="button"
-                onClick={e => {
-                  e.stopPropagation();
-                  e.preventDefault();
-                  if (typeof onClick === 'function' && video) {
-                    // Get bounding rect of the thumbnail
-                    const rect = thumbnailRef.current?.getBoundingClientRect();
-                    onClick(video, { play: true, rect });
-                  }
-                }}
-                className="text-center drop-shadow-lg focus:outline-none"
-                style={{ color: 'var(--video-header-text)' }}
-              >
-                <Play className="w-8 h-8 mx-auto mb-2" fill="currentColor" />
-                <div className="text-xs text-white font-mono uppercase tracking-wider">PLAY</div>
-              </button>
-            </div>
+            
+            {/* Incompatible video overlay - show warning instead of play button */}
+            {video.isCompatible === false ? (
+              <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex items-center justify-center" style={{ background: 'rgba(255, 0, 0, 0.1)' }}>
+                <button
+                  type="button"
+                  onClick={e => {
+                    e.stopPropagation();
+                    e.preventDefault();
+                    if (typeof onClick === 'function' && video) {
+                      onClick(video, { play: true });
+                    }
+                  }}
+                  className="text-center drop-shadow-lg focus:outline-none"
+                  style={{ color: 'var(--video-header-text)' }}
+                >
+                  <div className="text-red-400 text-2xl mx-auto mb-2">⚠</div>
+                  <div className="text-xs text-white font-mono uppercase tracking-wider">INCOMPATIBLE</div>
+                </button>
+              </div>
+            ) : (
+              /* Play overlay - very translucent to see video clearly underneath */
+              <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex items-center justify-center" style={{ background: 'rgba(0, 255, 0, 0.1)' }}>
+                <button
+                  type="button"
+                  onClick={e => {
+                    e.stopPropagation();
+                    e.preventDefault();
+                    if (typeof onClick === 'function' && video) {
+                      // Get bounding rect of the thumbnail
+                      const rect = thumbnailRef.current?.getBoundingClientRect();
+                      onClick(video, { play: true, rect });
+                    }
+                  }}
+                  className="text-center drop-shadow-lg focus:outline-none"
+                  style={{ color: 'var(--video-header-text)' }}
+                >
+                  <Play className="w-8 h-8 mx-auto mb-2" fill="currentColor" />
+                  <div className="text-xs text-white font-mono uppercase tracking-wider">PLAY</div>
+                </button>
+              </div>
+            )}
           </>
         ) : (
           <div className="flex items-center justify-center h-full w-full">
