@@ -95,20 +95,20 @@ export default function VideoPlayer({ video, onEnded }: VideoPlayerProps) {
       videoRef.current.innerHTML = '';
       videoRef.current.appendChild(videoElement);
       
-      // Set up video element to fill container and crop if needed
+      // Force the container to maintain 16:9 aspect ratio
       videoElement.style.width = '100%';
-      videoElement.style.height = '400px'; // Fixed height for consistency
-      videoElement.style.objectFit = 'cover'; // Fill container, crop if needed
+      videoElement.style.height = '100%';
+      videoElement.style.objectFit = 'contain';
       
-      // Initialize player with dynamic aspect ratio
+      // Initialize player with fixed aspect ratio
       const player = videojs(videoElement, {
         autoplay: false,
         controls: true,
         preload: 'auto',
         poster: video.thumbnailUrl || '',
-        fluid: true, // Enable fluid for better responsiveness
+        fluid: false, // Disable fluid to prevent aspect ratio changes
         responsive: true,
-        // Remove fixed aspect ratio to let video determine its own size
+        aspectRatio: '16:9', // Force 16:9 aspect ratio
         // Error handling options
         errorDisplay: true,
         liveui: false,
@@ -192,9 +192,9 @@ export default function VideoPlayer({ video, onEnded }: VideoPlayerProps) {
     };
   }, [video, onEnded]);
 
-  // Use a flexible container that adapts to video content
+  // Use a container with forced 16:9 aspect ratio and fixed position
   return (
-    <div className="w-full relative" style={{ maxHeight: '60vh', overflow: 'hidden' }}>
+    <div className="w-full relative" style={{ paddingBottom: '56.25%', height: 0, overflow: 'hidden' }}>
       {isLoading && (
         <div className="absolute inset-0 flex items-center justify-center z-10">
           <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
@@ -234,7 +234,7 @@ export default function VideoPlayer({ video, onEnded }: VideoPlayerProps) {
         </div>
       )}
       
-      <div ref={videoRef} className="w-full"></div>
+      <div ref={videoRef} className="absolute top-0 left-0 w-full h-full"></div>
     </div>
   );
 }

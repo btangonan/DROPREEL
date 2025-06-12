@@ -262,7 +262,7 @@ function SortableVideoGridItem({
 export default function DndKitVideoGrid({ videos, gridId, onVideoClick, onVideoDelete, emptyMessage, inlinePreviewVideoId, onCloseInlinePreview, customEmptyContent }: DndKitVideoGridProps) {
   const { setNodeRef, isOver } = useDroppable({ id: gridId });
   // Debug output for gridId, video count, and IDs
-  const itemIds = videos.map(v => v.id);
+  const itemIds = videos.map(v => `${gridId}-${v.id}`);
   console.log(`[DndKitVideoGrid] gridId: ${gridId}, video count: ${videos.length}, IDs:`, itemIds, 'isOver:', isOver);
 
   return (
@@ -286,10 +286,10 @@ export default function DndKitVideoGrid({ videos, gridId, onVideoClick, onVideoD
         <div className="grid grid-cols-3 gap-3 w-full box-border">
           {videos.map(video => (
             <SortableVideoGridItem
-              key={video.id}
-              video={video}
-              onClick={onVideoClick}
-              onDelete={onVideoDelete}
+              key={`${gridId}-${video.id}`}
+              video={{ ...video, id: `${gridId}-${video.id}` }}
+              onClick={(clickedVideo) => onVideoClick?.(video)} // Use original video for callback
+              onDelete={(deletedVideo) => onVideoDelete?.(video)} // Use original video for callback
               isInlinePreview={inlinePreviewVideoId === video.id}
               onCloseInlinePreview={onCloseInlinePreview}
             />

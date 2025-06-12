@@ -4,10 +4,10 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { VideoFile } from '@/types';
 import { extractDropboxPath } from '@/lib/utils/dropboxUtils';
 import { checkAllVideosCompatibility } from '@/lib/utils/videoCompatibility';
-import { useRouter } from 'next/navigation';
 import FolderBrowser from '@/components/FolderBrowser/FolderBrowser';
 import VideoPreviewModal from '@/components/VideoPreviewModal';
 import TitleEditor from '@/components/TitleEditor/TitleEditor';
+import { useRouter } from 'next/navigation';
 import {
   DndContext,
   closestCenter,
@@ -375,12 +375,29 @@ export default function Home() {
     setVideoState(prev => {
       const newState = { yourVideos: [...prev.yourVideos], selects: [...prev.selects] };
 
-      const sourceId = active.id;
+      // Find the video item by looking for the active.id which might be a compound key
+      const activeIdStr = String(active.id);
+      let sourceVideo: VideoFile | undefined;
       let sourceContainer: 'yourVideos' | 'selects' = 'yourVideos';
-      let sourceIndex = newState.yourVideos.findIndex(v => v.id === sourceId);
-      if (sourceIndex === -1) {
-        sourceContainer = 'selects';
-        sourceIndex = newState.selects.findIndex(v => v.id === sourceId);
+      let sourceIndex = -1;
+
+      // Check yourVideos first
+      sourceIndex = newState.yourVideos.findIndex(v => `yourVideos-${v.id}` === activeIdStr || v.id === activeIdStr);
+      if (sourceIndex !== -1) {
+        sourceVideo = newState.yourVideos[sourceIndex];
+        sourceContainer = 'yourVideos';
+      } else {
+        // Check selects
+        sourceIndex = newState.selects.findIndex(v => `selects-${v.id}` === activeIdStr || v.id === activeIdStr);
+        if (sourceIndex !== -1) {
+          sourceVideo = newState.selects[sourceIndex];
+          sourceContainer = 'selects';
+        }
+      }
+
+      if (!sourceVideo) {
+        console.log('[handleDragEnd] Source video not found');
+        return newState;
       }
 
       // Determine destination container and index
@@ -394,16 +411,17 @@ export default function Home() {
         console.log('[handleDragEnd] Dropped on container:', destContainer);
       } else {
         // Dropped on an item - find which container it belongs to
-        const foundInYourVideos = newState.yourVideos.find(v => v.id === over.id);
-        const foundInSelects = newState.selects.find(v => v.id === over.id);
+        const overIdStr = String(over.id);
+        const foundInYourVideos = newState.yourVideos.find(v => `yourVideos-${v.id}` === overIdStr || v.id === overIdStr);
+        const foundInSelects = newState.selects.find(v => `selects-${v.id}` === overIdStr || v.id === overIdStr);
         
         if (foundInYourVideos) {
           destContainer = 'yourVideos';
-          destIndex = newState.yourVideos.findIndex(v => v.id === over.id);
+          destIndex = newState.yourVideos.findIndex(v => `yourVideos-${v.id}` === overIdStr || v.id === overIdStr);
           console.log('[handleDragEnd] Dropped on item in yourVideos at index:', destIndex);
         } else if (foundInSelects) {
           destContainer = 'selects';
-          destIndex = newState.selects.findIndex(v => v.id === over.id);
+          destIndex = newState.selects.findIndex(v => `selects-${v.id}` === overIdStr || v.id === overIdStr);
           console.log('[handleDragEnd] Dropped on item in selects at index:', destIndex);
         }
       }
@@ -451,7 +469,10 @@ export default function Home() {
 
   // For DragOverlay
   const allVideos = [...videoState.yourVideos, ...videoState.selects];
-  const activeVideo = allVideos.find(v => v.id === activeId) || null;
+  const activeVideo = allVideos.find(v => {
+    const activeIdStr = String(activeId);
+    return v.id === activeIdStr || `yourVideos-${v.id}` === activeIdStr || `selects-${v.id}` === activeIdStr;
+  }) || null;
 
   // Check Dropbox authentication status
   const checkDropboxAuth = async () => {
@@ -547,6 +568,34 @@ export default function Home() {
     });
   };
 
+  const handleMakeReel = async () => {
+    if (videoState.selects.length === 0) return;
+
+    try {
+      const response = await fetch('/api/reels', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          videos: videoState.selects,
+          title: `Reel ${new Date().toLocaleDateString()}`,
+          description: `Created with ${videoState.selects.length} videos`,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to create reel');
+      }
+
+      const newReel = await response.json();
+      router.push(`/r/${newReel.id}`);
+    } catch (error) {
+      console.error('Error creating reel:', error);
+      setError('Failed to create reel. Please try again.');
+    }
+  };
+
   return (
     <>
       <div className="min-h-screen bg-background text-foreground">
@@ -619,16 +668,7 @@ export default function Home() {
               <button 
                 className="brutal-button-accent flex-1 inline-flex px-4 py-3 items-center gap-2"
                 disabled={videoState.selects.length === 0}
-                onClick={() => {
-                  if (videoState.selects.length > 0) {
-                    // Store selected videos and titles in localStorage for the reel creation page
-                    localStorage.setItem('reelData', JSON.stringify({
-                      videos: videoState.selects,
-                      titles: titles
-                    }));
-                    router.push('/reels/create');
-                  }
-                }}
+                onClick={handleMakeReel}
               >
                 <Zap className="w-4 h-4" />
                 <span>MAKE REEL</span>
@@ -681,7 +721,7 @@ export default function Home() {
                 {/* Video content with scroll */}
                 <div className="panel-content">
                   <div className="panel-scroll">
-                    <SortableContext items={videoState.yourVideos.map(v => v.id)} strategy={rectSortingStrategy}>
+                    <SortableContext items={videoState.yourVideos.map(v => `yourVideos-${v.id}`)} strategy={rectSortingStrategy}>
                       <DndKitVideoGrid
                         videos={videoState.yourVideos}
                         onReorder={newOrder => setVideoState(s => ({ ...s, yourVideos: newOrder }))}
@@ -736,7 +776,7 @@ export default function Home() {
                 </div>
                 <div className="panel-content">
                   <div className="panel-scroll">
-                    <SortableContext items={videoState.selects.map(v => v.id)} strategy={rectSortingStrategy}>
+                    <SortableContext items={videoState.selects.map(v => `selects-${v.id}`)} strategy={rectSortingStrategy}>
                       <DndKitVideoGrid
                         videos={videoState.selects}
                         onReorder={newOrder => setVideoState(s => ({ ...s, selects: newOrder }))}

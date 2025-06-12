@@ -92,48 +92,73 @@ export default function ReelPage() {
   };
 
   return (
-    <div className="min-h-screen bg-white text-black">
+    <div className="min-h-screen bg-background text-foreground">
       <div className="w-full max-w-screen-xl mx-auto">
-        <div className="py-3 px-4 flex justify-between items-center border-b">
-          <Link href="/reels" className="text-sm hover:underline">← Back to My Reels</Link>
+        <div className="py-3 px-4 flex justify-between items-center border-b-2 border-black">
+          <Link href="/reels" className="brutal-button text-sm">← BACK TO MY REELS</Link>
           {/* Logo placeholder - can be replaced with custom logo */}
           <div className="h-10 flex items-center">
-            <span className="text-xl font-medium">DropReel</span>
+            <span className="text-xl font-medium font-mono">DROPREEL</span>
           </div>
           <Link 
             href={`/reels/edit/${reelId}`} 
-            className="flex items-center text-sm bg-blue-500 hover:bg-blue-600 text-white px-4 py-1.5 rounded transition-colors">
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            className="brutal-button-accent text-sm flex items-center gap-2">
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
             </svg>
-            Edit Reel
+            EDIT REEL
           </Link>
         </div>
 
-        <div className="w-full">
+        <div className="w-full relative min-h-[600px]">
+          {/* Navigation Arrows - positioned at page edges */}
+          {!showDirectorBio && currentVideo && (
+            <>
+              <button
+                onClick={handlePrevious}
+                className="absolute left-4 top-1/2 transform -translate-y-1/2 brutal-button p-2 z-20"
+                aria-label="Previous video"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                </svg>
+              </button>
+              
+              <button
+                onClick={handleNext}
+                className="absolute right-4 top-1/2 transform -translate-y-1/2 brutal-button p-2 z-20"
+                aria-label="Next video"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                </svg>
+              </button>
+            </>
+          )}
+
           <div className="max-w-screen-xl mx-auto px-16 py-8">
             {/* Display director bio if available and showDirectorBio is true */}
             {reel.directorInfo && showDirectorBio ? (
-              <div className="bg-gray-900 text-white py-8 mx-auto">
+              <div className="bg-background border-2 border-black py-8 mx-auto">
                 <div className="grid grid-cols-2 gap-8 items-start">
                   {reel.directorInfo.image && (
                     <div className="col-span-1">
                       <img 
                         src={reel.directorInfo.image} 
                         alt="Director" 
-                        className="w-full h-auto rounded-sm"
+                        className="w-full h-auto border-2 border-black"
                       />
                     </div>
                   )}
                   <div className="col-span-1 flex flex-col justify-center h-full">
                     <div className="text-center sm:text-left">
-                      <h2 className="text-lg font-bold uppercase mb-2 tracking-wider">Bradley Tangonan</h2>
-                      <p className="text-sm text-gray-300">Director</p>
+                      <h2 className="text-lg font-bold uppercase mb-2 tracking-wider font-mono">BRADLEY TANGONAN</h2>
+                      <p className="text-sm text-muted-foreground font-mono uppercase">DIRECTOR</p>
                       <button 
                         onClick={() => setShowDirectorBio(false)}
-                        className="mt-6 border border-white hover:bg-white hover:text-black text-white py-1 px-4 text-sm transition duration-200"
+                        className="mt-6 brutal-button-accent text-sm"
                       >
-                        View Work
+                        VIEW WORK
                       </button>
                     </div>
                   </div>
@@ -142,40 +167,13 @@ export default function ReelPage() {
             ) : (
               /* Show video player when not showing director bio */
               currentVideo && (
-                <div className="relative bg-transparent">
-                  {/* Left Arrow */}
-                  <button
-                    onClick={handlePrevious}
-                    className="absolute left-2 top-1/2 transform -translate-y-1/2 bg-black/40 hover:bg-black/70 text-white p-3 rounded-full z-20"
-                    aria-label="Previous video"
-                  >
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-                    </svg>
-                  </button>
-                  
-                  {/* Video Player */}
-                  <div className="w-full max-w-5xl mx-auto bg-transparent rounded-lg overflow-hidden relative mb-4">
+                <div className="bg-transparent">
+                  {/* Video Player - centered with proper spacing */}
+                  <div className="w-full max-w-5xl mx-auto bg-transparent overflow-hidden relative mb-4">
                     <VideoPlayer
                       video={currentVideo}
                       onEnded={handleNext}
                     />
-                  </div>
-                  
-                  {/* Right Arrow */}
-                  <button
-                    onClick={handleNext}
-                    className="absolute right-2 top-1/2 transform -translate-y-1/2 bg-black/40 hover:bg-black/70 text-white p-3 rounded-full z-20"
-                    aria-label="Next video"
-                  >
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                    </svg>
-                  </button>
-                  
-                  {/* Counter - Moved to bottom right */}
-                  <div className="absolute bottom-5 right-5 bg-black/70 px-3 py-1 rounded-full text-white text-sm z-10">
-                    {currentIndex + 1} / {reel.videos.length}
                   </div>
                 </div>
               )
@@ -184,19 +182,11 @@ export default function ReelPage() {
         </div>
         
         {/* Project title and info */}
-        <div className="w-full border-t border-b py-3 px-4">
+        <div className="w-full border-t-2 border-b-2 border-black py-3 px-4">
           <div className="max-w-screen-xl mx-auto flex items-center justify-between">
-            <div className="text-sm">
-              DropReel | {reel.title} | {currentIndex + 1}/{reel.videos.length}
+            <div className="text-sm font-mono uppercase tracking-wider">
+              DROPREEL | {reel.title?.toUpperCase()} | {currentIndex + 1}/{reel.videos.length}
             </div>
-            {!showDirectorBio && (
-              <button 
-                onClick={() => setShowDirectorBio(true)}
-                className="text-sm hover:underline"
-              >
-                Director Bio
-              </button>
-            )}
           </div>
         </div>
         
@@ -207,7 +197,7 @@ export default function ReelPage() {
               {/* Director bio card if available */}
               {reel.directorInfo && (
                 <div 
-                  className={`flex-shrink-0 w-28 border overflow-hidden relative ${showDirectorBio ? 'ring-1 ring-black' : 'cursor-pointer hover:opacity-80'}`}
+                  className={`flex-shrink-0 w-28 border-2 border-black overflow-hidden relative ${showDirectorBio ? 'ring-2 ring-accent' : 'cursor-pointer hover:opacity-80'}`}
                   onClick={() => setShowDirectorBio(true)}
                 >
                   {reel.directorInfo.image ? (
@@ -217,8 +207,8 @@ export default function ReelPage() {
                       className="w-full h-full object-cover"
                     />
                   ) : (
-                    <div className="bg-gray-200 w-full aspect-video flex items-center justify-center text-center p-2">
-                      <p className="text-xs">Director Bio</p>
+                    <div className="bg-background w-full aspect-video flex items-center justify-center text-center p-2">
+                      <p className="text-xs font-mono uppercase">DIRECTOR BIO</p>
                     </div>
                   )}
                 </div>
@@ -228,7 +218,7 @@ export default function ReelPage() {
               {reel.videos.map((video, idx) => (
                 <div 
                   key={video.id}
-                  className={`flex-shrink-0 w-28 border overflow-hidden cursor-pointer hover:opacity-80 ${currentIndex === idx && !showDirectorBio ? 'ring-1 ring-black' : ''}`}
+                  className={`flex-shrink-0 w-28 border-2 border-black overflow-hidden cursor-pointer hover:opacity-80 ${currentIndex === idx && !showDirectorBio ? 'ring-2 ring-accent' : ''}`}
                   onClick={() => selectVideo(idx)}
                 >
                   {video.thumbnailUrl ? (
@@ -238,8 +228,8 @@ export default function ReelPage() {
                       className="w-full aspect-video object-cover"
                     />
                   ) : (
-                    <div className="bg-gray-200 w-full aspect-video flex items-center justify-center">
-                      <p className="text-xs text-center p-2 truncate">{video.name}</p>
+                    <div className="bg-background w-full aspect-video flex items-center justify-center">
+                      <p className="text-xs text-center p-2 truncate font-mono">{video.name}</p>
                     </div>
                   )}
                 </div>
