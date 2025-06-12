@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { VideoFile } from '@/types';
 import { extractDropboxPath } from '@/lib/utils/dropboxUtils';
 import FolderBrowser from '@/components/FolderBrowser/FolderBrowser';
-import DropboxAuth from '@/components/DropboxAuth/DropboxAuth';
+import VideoPreviewModal from '@/components/VideoPreviewModal';
 import {
   DndContext,
   closestCenter,
@@ -20,10 +20,18 @@ import {
 } from '@dnd-kit/sortable';
 import DndKitVideoGrid, { VideoGridItem } from '@/components/DraggableVideoList/DndKitVideoGrid';
 import PopoutVideoOverlay from '@/components/DraggableVideoList/PopoutVideoOverlay';
+import { Wifi, Plus, FileText, Palette, Zap, Database, Star, Sun, Moon, LogIn } from 'lucide-react';
 
 interface VideoClickAction {
   play?: boolean;
   rect?: DOMRect;
+}
+
+interface TitleElement {
+  id: string;
+  text: string;
+  size: string;
+  timestamp: number;
 }
 
 export default function Home() {
@@ -38,11 +46,19 @@ export default function Home() {
   const [isFetchingVideos, setIsFetchingVideos] = useState(false);
   const [loadedVideos, setLoadedVideos] = useState<VideoFile[]>([]);
   const [error, setError] = useState('');
+  const [titles, setTitles] = useState<TitleElement[]>([]);
+  const [isDarkMode, setIsDarkMode] = useState(true); // Default to dark mode for Matrix theme
+  const [previewVideo, setPreviewVideo] = useState<VideoFile | null>(null);
 
   // DnD state
   const [videoState, setVideoState] = useState<{ yourVideos: VideoFile[]; selects: VideoFile[] }>({ yourVideos: [], selects: [] });
   const [activeId, setActiveId] = useState<string | null>(null);
   const sensors = useSensors(useSensor(PointerSensor));
+
+  // Apply theme to document
+  useEffect(() => {
+    document.documentElement.classList.toggle('dark', isDarkMode);
+  }, [isDarkMode]);
 
   // Centralized user flow state
   type Step = 'connect' | 'addVideos' | 'addTitle';
@@ -80,7 +96,6 @@ export default function Home() {
     } else {
       setError('Authentication required. Please click CONNECT to continue.');
       console.log('[handleAddVideosClick] Not authenticated, showing error');
-      // Optionally, visually highlight the CONNECT button here
     }
   };
 
@@ -132,12 +147,6 @@ export default function Home() {
   useEffect(() => {
     setVideoState({ yourVideos: loadedVideos, selects: [] });
   }, [loadedVideos]);
-
-  // Keep the function but mark as unused to avoid breaking code
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const findVideoById = (id: string) => {
-    return videoState.yourVideos.findIndex(v => v.id === id);
-  };
 
   // Handler for drag end (cross-panel and reorder)
   const handleDragEnd = useCallback((e: { active: { id: string | number; data: { current: { droppableId: string } } }; over: { id: string | number; data: { current: { droppableId: string } } } | null }) => {
@@ -305,9 +314,33 @@ export default function Home() {
   const [popoutVideo, setPopoutVideo] = useState<VideoFile | null>(null);
   const [popoutRect, setPopoutRect] = useState<DOMRect | null>(null);
 
+  const toggleTheme = () => {
+    setIsDarkMode(!isDarkMode);
+  };
+
+  const handleAddTitle = (text: string, size: string) => {
+    const newTitle: TitleElement = {
+      id: Date.now().toString(),
+      text: text.toUpperCase(),
+      size,
+      timestamp: Date.now()
+    };
+    setTitles([...titles, newTitle]);
+  };
+
+  const handleVideoClick = (video: VideoFile, action?: VideoClickAction) => {
+    const safeAction = action || {};
+    if (safeAction.play) {
+      setPopoutVideo(video);
+      setPopoutRect(safeAction.rect || null);
+    } else {
+      setPreviewVideo(video);
+    }
+  };
+
   return (
     <>
-      <div className="min-h-screen p-2 md:p-6">
+      <div className="min-h-screen bg-background text-foreground">
         <DndContext
           sensors={sensors}
           collisionDetection={closestCenter}
@@ -315,107 +348,140 @@ export default function Home() {
           onDragEnd={handleDragEnd}
           onDragCancel={() => setActiveId(null)}
         >
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 grid-rows-[auto_1fr_auto] gap-2 md:gap-4 w-full max-w-screen-2xl mx-auto">
-            {/* Top Row */}
-            <div className="col-span-1 md:col-span-1 lg:col-span-1 row-span-1 flex items-center justify-center min-h-[64px] md:h-24">
-              <DropboxAuth
-                isAuthenticated={isDropboxAuthenticated}
-                isLoading={isDropboxAuthLoading}
-                onConnectClick={handleDropboxConnect}
-                highlight={!isDropboxAuthenticated}
-              />
-            </div>
-            <button
-              className={`glass-pane text-glass col-span-1 md:col-span-1 lg:col-span-1 row-span-1 flex items-center justify-center min-h-[64px] md:h-24 font-black text-xl md:text-2xl transition-all focus:outline-none w-full h-full
-                ${isDropboxAuthenticated && loadedVideos.length === 0 ? 'animate-pulse !bg-blue-500/60 backdrop-blur-md border border-white/30 shadow-lg' :
-                  isDropboxAuthenticated && loadedVideos.length > 0 ? '!bg-green-500/60 backdrop-blur-md border border-white/30 shadow-lg' :
-                  (!isDropboxAuthenticated && getStepStatus('addVideos') !== 'next' ? 'opacity-50 pointer-events-none' : 'bg-white bg-opacity-80 hover:bg-opacity-100 active:opacity-100')}
-              `}
-              onClick={handleAddVideosClick}
-              disabled={!isDropboxAuthenticated && getStepStatus('addVideos') !== 'next'}
-              type="button"
-            >
-              ADD VIDEOS
-            </button>
-            <div className={`glass-pane text-gray-300 col-span-1 md:col-span-2 lg:col-span-2 row-span-1 flex items-center justify-center min-h-[64px] md:h-24 font-black text-3xl md:text-5xl lg:text-6xl text-center transition-opacity`}>
-              ADD TITLE HERE
-            </div>
-            {/* Middle Row: DnD Panels */}
-            <div className={`glass-pane col-span-1 md:col-span-1 lg:col-span-2 row-span-1 p-2 md:p-4 transition-opacity ${!isDropboxAuthenticated ? 'opacity-50 pointer-events-none' : ''}`}>
-              <div className="font-black text-lg md:text-xl mb-2">YOUR VIDEOS</div>
-              <div className="min-h-[128px] md:h-64 rounded overflow-y-auto p-2" style={{background: 'rgba(255,255,255,0.08)'}}>
-                <SortableContext items={videoState.yourVideos.map(v => v.id)} strategy={rectSortingStrategy}>
-                  <DndKitVideoGrid
-                    videos={videoState.yourVideos}
-                    onReorder={newOrder => setVideoState(s => ({ ...s, yourVideos: newOrder }))}
-                    gridId="yourVideos"
-                    emptyMessage={isFetchingVideos ? 'Loading videos...' : error ? error : 'No videos loaded.'}
-                    onVideoClick={(video, action?: VideoClickAction) => {
-                      const safeAction = action || {};
-                      if (safeAction.play) {
-                        setPopoutVideo(video);
-                        setPopoutRect(safeAction.rect || null);
-                      }
-                    }}
-                  />
-                </SortableContext>
+          {/* Header */}
+          <div className="matrix-header pt-6 pr-6 pl-6 pb-0">
+            {/* Top bar with logo, theme toggle, and login */}
+            <div className="flex items-center justify-between mb-8">
+              <div>
+                <h1 className="text-2xl text-terminal">DROPREEL</h1>
+                <div className="text-xs text-muted-foreground mt-1">
+                  DROP IN. CUT FAST. LOOK GOOD.
+                </div>
+              </div>
+              <div className="flex items-center gap-4">
+                <button 
+                  onClick={toggleTheme}
+                  className="control-button flex items-center gap-2"
+                >
+                  {isDarkMode ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+                  <span>{isDarkMode ? 'LIGHT' : 'DARK'}</span>
+                </button>
+                <button className="control-button flex items-center gap-2">
+                  <LogIn className="w-4 h-4" />
+                  <span>LOGIN</span>
+                </button>
               </div>
             </div>
-            <div className={`glass-pane col-span-1 md:col-span-1 lg:col-span-2 row-span-1 p-2 md:p-4 transition-opacity
-              ${!isDropboxAuthenticated ? 'opacity-50 pointer-events-none' :
-                (isDropboxAuthenticated && loadedVideos.length > 0 && videoState.selects.length === 0) ? 'animate-pulse !bg-blue-500/60 backdrop-blur-md border border-white/30 shadow-lg' :
-                (isDropboxAuthenticated && loadedVideos.length > 0 && videoState.selects.length > 0) ? '!bg-green-500/60 backdrop-blur-md border border-white/30 shadow-lg' :
-                ''}
-            `}>
-              <div className="font-black text-lg md:text-xl mb-2">SELECTS</div>
-              <div className="min-h-[128px] md:h-64 rounded overflow-y-auto p-2" style={{background: 'rgba(255,255,255,0.08)'}}>
-                <SortableContext items={videoState.selects.map(v => v.id)} strategy={rectSortingStrategy}>
-                  <DndKitVideoGrid
-                    videos={videoState.selects}
-                    onReorder={newOrder => setVideoState(s => ({ ...s, selects: newOrder }))}
-                    gridId="selects"
-                    emptyMessage="No videos selected. Drag videos here."
-                    onVideoClick={(video, action?: VideoClickAction) => {
-                      const safeAction = action || {};
-                      if (safeAction.play) {
-                        setPopoutVideo(video);
-                        setPopoutRect(safeAction.rect || null);
-                      }
-                    }}
-                  />
-                </SortableContext>
-              </div>
+            
+            {/* Button Grid */}
+            <div className="flex gap-4 mb-5 items-start">
+              <button className="brutal-button inline-flex px-4 py-3 items-center gap-2">
+                <Wifi className="w-4 h-4" />
+                <span>CONNECTED</span>
+              </button>
+              <button className="brutal-button inline-flex px-4 py-3 items-center gap-2">
+                <Plus className="w-4 h-4" />
+                <span>ADD VIDEOS</span>
+              </button>
+              <button className="brutal-button inline-flex px-4 py-3 items-center gap-2">
+                <FileText className="w-4 h-4" />
+                <span>ADD TITLE</span>
+              </button>
+              <button className="brutal-button inline-flex px-4 py-3 items-center gap-2">
+                <Palette className="w-4 h-4" />
+                <span>THEME MENU</span>
+              </button>
+              <button className="brutal-button-accent inline-flex px-4 py-3 items-center gap-2">
+                <Zap className="w-4 h-4" />
+                <span>MAKE REEL</span>
+              </button>
             </div>
-            {/* Bottom Row */}
-            <div className={`glass-pane col-span-1 md:col-span-1 lg:col-span-2 row-span-1 flex items-center justify-center min-h-[48px] md:h-20 font-black text-2xl md:text-3xl transition-opacity ${!isDropboxAuthenticated ? 'opacity-50 pointer-events-none' : ''}`}>THEME (MENU)</div>
-            <button
-              className={`glass-pane col-span-1 md:col-span-1 lg:col-span-2 row-span-1 flex items-center justify-center min-h-[48px] md:h-20 font-black text-2xl md:text-3xl transition-opacity ${(!isDropboxAuthenticated || videoState.selects.length === 0) ? 'opacity-50 pointer-events-none' : '!bg-blue-500/60 backdrop-blur-md border border-white/30 shadow-lg hover:opacity-90 cursor-pointer'}`}
-              disabled={!isDropboxAuthenticated || videoState.selects.length === 0}
-              onClick={async () => {
-                if (!isDropboxAuthenticated || videoState.selects.length === 0) return;
-                try {
-                  const newReel = {
-                    title: 'Untitled Reel',
-                    videos: videoState.selects,
-                    createdAt: new Date().toISOString(),
-                    updatedAt: new Date().toISOString()
-                  };
-                  const response = await fetch('/api/reels', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(newReel)
-                  });
-                  if (!response.ok) throw new Error('Failed to create reel');
-                  const createdReel = await response.json();
-                  window.location.href = `/r/${createdReel.id}`;
-                } catch {
-                  alert('Failed to create reel. Please try again.');
-                }
-              }}
-            >
-              MAKE REEL
-            </button>
+            {/* Horizontal Divider */}
+            <div className="w-full h-0.5 bg-black mb-0 mt-5" />
+
+            {/* Titles Display */}
+            {titles.length > 0 && (
+              <div className="mt-4 border-t border-terminal pt-4">
+                <div className="text-xs text-terminal mb-2">ADDED TITLES:</div>
+                <div className="flex flex-wrap gap-2">
+                  {titles.map((title) => (
+                    <div
+                      key={title.id}
+                      className="bg-muted border border-terminal px-2 py-1 text-xs text-terminal flex items-center gap-2"
+                    >
+                      <span>{title.text}</span>
+                      <span className="text-muted-foreground">({title.size})</span>
+                      <button
+                        onClick={() => setTitles(titles.filter(t => t.id !== title.id))}
+                        className="text-destructive hover:text-muted-foreground transition-colors"
+                      >
+                        ×
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
+
+          {/* Main Interface */}
+          <div className="pt-0 pb-0 px-6">
+            <div className="grid grid-cols-[1fr_1fr] gap-4 items-stretch mt-5">
+              {/* Video Archive */}
+              <div className="flex flex-col bg-white border-2 border-black" style={{ height: '500px' }}>
+                {/* Header */}
+                <div className="bg-black text-white px-6 py-4 flex items-center gap-2 flex-shrink-0 font-mono font-bold uppercase tracking-wider text-base">
+                  <Database className="w-5 h-5 mr-2" />
+                  <span>YOUR VIDEOS</span>
+                  <div className="ml-auto flex items-center gap-2 bg-white/20 px-2 py-1 rounded">
+                    <div className="text-xs font-mono text-white">
+                      {videoState.yourVideos.length} FILES
+                    </div>
+                  </div>
+                </div>
+                {/* Video content with scroll */}
+                <div className="flex-1 p-4 overflow-hidden">
+                  <div className="h-full overflow-y-auto">
+                    <SortableContext items={videoState.yourVideos.map(v => v.id)} strategy={rectSortingStrategy}>
+                      <DndKitVideoGrid
+                        videos={videoState.yourVideos}
+                        onReorder={newOrder => setVideoState(s => ({ ...s, yourVideos: newOrder }))}
+                        gridId="yourVideos"
+                        emptyMessage={isFetchingVideos ? 'Loading videos...' : error ? error : 'No videos loaded. Click "ADD VIDEOS" to get started.'}
+                        onVideoClick={handleVideoClick}
+                      />
+                    </SortableContext>
+                  </div>
+                </div>
+              </div>
+              {/* Reel Constructor */}
+              <div className="flex flex-col bg-white border-2 border-black" style={{ height: '500px' }}>
+                <div className="bg-black text-white px-6 py-4 flex items-center gap-2 flex-shrink-0 font-mono font-bold uppercase tracking-wider text-base">
+                  <Star className="w-5 h-5 mr-2" />
+                  <span>SELECTED VIDEOS</span>
+                  <div className="ml-auto flex items-center gap-2 bg-white/20 px-2 py-1 rounded">
+                    <div className="text-xs font-mono text-white">
+                      {videoState.selects.length} FILES
+                    </div>
+                  </div>
+                </div>
+                <div className="flex-1 p-4 overflow-hidden">
+                  <div className="h-full overflow-y-auto">
+                    <SortableContext items={videoState.selects.map(v => v.id)} strategy={rectSortingStrategy}>
+                      <DndKitVideoGrid
+                        videos={videoState.selects}
+                        onReorder={newOrder => setVideoState(s => ({ ...s, selects: newOrder }))}
+                        gridId="selects"
+                        emptyMessage="No videos selected. Drag videos from the left panel to get started."
+                        onVideoClick={handleVideoClick}
+                      />
+                    </SortableContext>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
           <DragOverlay>
             {activeVideo ? (
               <div style={{ width: '100%' }}>
@@ -430,6 +496,7 @@ export default function Home() {
             ) : null}
           </DragOverlay>
         </DndContext>
+
         {showFolderBrowser && (
           <FolderBrowser
             onFolderSelect={path => {
@@ -446,6 +513,17 @@ export default function Home() {
             }}
           />
         )}
+
+        {/* Video Preview Modal */}
+        {previewVideo && (
+          <VideoPreviewModal
+            isOpen={!!previewVideo}
+            onClose={() => setPreviewVideo(null)}
+            videoSrc={previewVideo.streamUrl || ''}
+            title={previewVideo.name || previewVideo.title || ''}
+          />
+        )}
+
         {/* Popout Video Overlay */}
         {popoutVideo && (
           <PopoutVideoOverlay

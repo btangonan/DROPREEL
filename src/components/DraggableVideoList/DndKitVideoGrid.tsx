@@ -2,7 +2,8 @@ import React, { useRef, useEffect, type CSSProperties } from 'react';
 import { useDroppable } from '@dnd-kit/core';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import Image from 'next/image';
+import { Play } from 'lucide-react';
+import { ImageWithFallback } from '@/components/figma/ImageWithFallback';
 import { VideoFile } from '@/types';
 import './popout-animation.css';
 
@@ -56,53 +57,22 @@ function VideoGridItem({
 
   return (
     <div
-      className={`w-full flex flex-col items-center cursor-pointer transition-colors ${isDragging ? 'z-50' : ''}`}
-      style={{ borderRadius: '0.5rem', padding: 0, ...style }}
+      className={`group cursor-pointer bg-background border-2 border-terminal hover:border-accent transition-all duration-100 hover:matrix-glow ${isDragging ? 'z-50' : ''}`}
+      style={{ ...style }}
       tabIndex={0}
+      {...listeners}
+      {...attributes}
     >
-      <div
+      {/* File header bar */}
+      <div className="bg-foreground text-background px-2 py-1 flex items-center text-xs">
+        <span className="truncate uppercase">{video.name}</span>
+      </div>
+      
+      {/* Image preview */}
+      <div 
         ref={thumbnailRef}
-        className={`relative w-full aspect-video rounded overflow-hidden ${isDragging ? 'shadow-lg' : ''} ${popOutClass}`}
-        style={{ transition: 'none', background: 'rgba(255,255,255,0.10)' }}
+        className={`relative aspect-video bg-muted ${popOutClass}`}
       >
-        {/* Play button overlay (no DnD listeners/attributes) */}
-        {!isInlinePreview && (
-          <button
-            type="button"
-            className="absolute inset-0 flex items-center justify-center focus:outline-none z-20"
-            style={{ pointerEvents: 'auto', width: '40%', height: '40%', left: '30%', top: '30%' }}
-            tabIndex={-1}
-            onClick={e => {
-              e.stopPropagation();
-              e.preventDefault();
-              if (typeof onClick === 'function' && video) {
-                // Get bounding rect of the thumbnail
-                const rect = thumbnailRef.current?.getBoundingClientRect();
-                onClick(video, { play: true, rect });
-              }
-            }}
-          >
-            <span className="bg-white/50 hover:bg-white/70 text-gray-900 rounded-full p-2 shadow flex items-center justify-center transition-colors" style={{ fontSize: 16, opacity: 0.95 }}>
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="currentColor" viewBox="0 0 24 24">
-                <polygon points="8,5 19,12 8,19" />
-              </svg>
-            </span>
-          </button>
-        )}
-        {/* Drag handle overlay (covers everything except play button) */}
-        {!isInlinePreview && (
-          <div
-            className="absolute inset-0 z-10"
-            style={{ pointerEvents: 'auto' }}
-            {...listeners}
-            {...attributes}
-            onClick={onClick}
-          >
-            {/* Exclude play button area from drag handle using pointer-events: none */}
-            <div style={{ position: 'absolute', left: '30%', top: '30%', width: '40%', height: '40%', pointerEvents: 'none', zIndex: 30 }} />
-          </div>
-        )}
-        {/* Video or thumbnail */}
         {isInlinePreview ? (
           <div className="w-full h-full relative group">
             <video
@@ -111,7 +81,7 @@ function VideoGridItem({
               controls
               autoPlay
               muted
-              className="w-full h-full object-cover rounded cursor-pointer"
+              className="w-full h-full object-cover cursor-pointer"
               style={{ background: '#000' }}
               onClick={e => {
                 e.stopPropagation();
@@ -120,7 +90,7 @@ function VideoGridItem({
             />
             <button
               type="button"
-              className="absolute top-2 right-2 bg-black/60 text-white rounded-full p-1 hover:bg-black/80 focus:outline-none z-10"
+              className="absolute top-2 right-2 bg-foreground text-background p-1 hover:bg-accent focus:outline-none z-10"
               onClick={e => {
                 e.stopPropagation();
                 if (onCloseInlinePreview) onCloseInlinePreview();
@@ -133,31 +103,45 @@ function VideoGridItem({
             </button>
           </div>
         ) : video.thumbnailUrl ? (
-          <div className="relative w-full h-full">
-            <Image
+          <>
+            <ImageWithFallback
               src={video.thumbnailUrl}
               alt={video.name}
-              fill
-              className="object-cover rounded"
-              style={{ transition: 'none' }}
-              onError={(e) => {
-                const target = e.target as HTMLImageElement;
-                target.style.display = 'none';
-              }}
-              loading="lazy"
-              unoptimized={true} // Consider setting up proper image optimization if needed
+              className="w-full h-full object-cover transition-all duration-200"
             />
-          </div>
+            {/* Duration overlay - bottom right corner */}
+            <div className="absolute bottom-2 right-2 bg-foreground bg-opacity-90 text-background px-2 py-1 text-xs">
+              {video.duration || '0:00'}
+            </div>
+            {/* Play overlay - very translucent to see video clearly underneath */}
+            <div className="absolute inset-0 bg-foreground bg-opacity-15 opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex items-center justify-center">
+              <button
+                type="button"
+                onClick={e => {
+                  e.stopPropagation();
+                  e.preventDefault();
+                  if (typeof onClick === 'function' && video) {
+                    // Get bounding rect of the thumbnail
+                    const rect = thumbnailRef.current?.getBoundingClientRect();
+                    onClick(video, { play: true, rect });
+                  }
+                }}
+                className="text-background text-center drop-shadow-lg focus:outline-none"
+              >
+                <Play className="w-8 h-8 mx-auto mb-2" fill="currentColor" />
+                <div className="text-xs">PLAY</div>
+              </button>
+            </div>
+          </>
         ) : (
           <div className="flex items-center justify-center h-full w-full">
-            <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+            <svg className="w-8 h-8 text-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"></path>
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
             </svg>
           </div>
         )}
       </div>
-      <div className="truncate text-xs text-center mt-1 w-full" title={video.name}>{video.name}</div>
     </div>
   );
 }
@@ -165,10 +149,14 @@ function VideoGridItem({
 function EmptyDropZone({ children }: { children: React.ReactNode }) {
   return (
     <div
-      className={`flex items-center justify-center h-32 w-full col-span-full rounded-lg transition-colors`}
-      style={{ minHeight: '6rem', background: 'transparent', border: 'none' }}
+      className="flex flex-col items-center justify-center h-64 w-full col-span-full text-terminal transition-colors"
+      style={{ minHeight: '16rem' }}
     >
-      {children}
+      <div className="text-center">
+        <div className="text-6xl mb-4 opacity-30">📁</div>
+        <div className="text-lg uppercase tracking-wide mb-2">NO VIDEOS SELECTED</div>
+        <div className="text-sm text-accent uppercase tracking-wide">DRAG VIDEO FILES HERE</div>
+      </div>
     </div>
   );
 }
@@ -218,7 +206,7 @@ export default function DndKitVideoGrid({ videos, gridId, onVideoClick, emptyMes
 
   return (
     <div ref={setNodeRef} className="w-full">
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-2 min-h-[100px]">
+      <div className="grid grid-cols-3 gap-3 min-h-[100px]">
         {videos.length === 0 ? (
           <EmptyDropZone>
             {emptyMessage}

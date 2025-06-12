@@ -1,15 +1,11 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { JetBrains_Mono } from "next/font/google";
 import "./globals.css";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
+const jetbrainsMono = JetBrains_Mono({
+  variable: "--font-mono",
   subsets: ["latin"],
-});
-
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
+  weight: ["400", "500", "700"],
 });
 
 export const metadata: Metadata = {
@@ -27,9 +23,7 @@ export default function RootLayout({
       <head>
         <link rel="icon" href="/dropreel-logo.svg" type="image/svg+xml" />
       </head>
-      <body
-        className={`bg-grain ${geistSans.variable} ${geistMono.variable} antialiased`}
-      >
+      <body className={`${jetbrainsMono.variable} font-mono bg-white text-black antialiased`}>
         {children}
       </body>
     </html>
