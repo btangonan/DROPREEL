@@ -2,7 +2,7 @@ import React, { useRef, useEffect, type CSSProperties } from 'react';
 import { useDroppable } from '@dnd-kit/core';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { Play } from 'lucide-react';
+import { Play, MousePointer2, X } from 'lucide-react';
 import { ImageWithFallback } from '@/components/figma/ImageWithFallback';
 import { VideoFile } from '@/types';
 import './popout-animation.css';
@@ -13,6 +13,7 @@ interface VideoGridItemProps {
   attributes: any; // TODO: Replace with proper type from dnd-kit
   isDragging: boolean;
   onClick?: (video: VideoFile, action?: { play?: boolean; rect?: DOMRect }) => void;
+  onDelete?: (video: VideoFile) => void;
   style?: CSSProperties;
   isInlinePreview?: boolean;
   onCloseInlinePreview?: () => void;
@@ -21,6 +22,7 @@ interface VideoGridItemProps {
 interface SortableVideoGridItemProps {
   video: VideoFile;
   onClick?: (video: VideoFile, action?: { play?: boolean; rect?: DOMRect }) => void;
+  onDelete?: (video: VideoFile) => void;
   isInlinePreview?: boolean;
   onCloseInlinePreview?: () => void;
 }
@@ -30,6 +32,7 @@ interface DndKitVideoGridProps {
   onReorder: (videos: VideoFile[]) => void;
   gridId: string;
   onVideoClick?: (video: VideoFile, action?: { play?: boolean }) => void;
+  onVideoDelete?: (video: VideoFile) => void;
   emptyMessage?: string;
   inlinePreviewVideoId?: string;
   onCloseInlinePreview?: () => void;
@@ -42,6 +45,7 @@ function VideoGridItem({
   attributes, 
   isDragging, 
   onClick, 
+  onDelete,
   style, 
   isInlinePreview, 
   onCloseInlinePreview 
@@ -58,15 +62,30 @@ function VideoGridItem({
 
   return (
     <div
-      className={`video-card ${isDragging ? 'z-50' : ''}`}
+      className={`video-card group ${isDragging ? 'z-50' : ''}`}
       style={{ ...style }}
       tabIndex={0}
       {...listeners}
       {...attributes}
     >
       {/* File header bar */}
-      <div className="video-header">
-        <span className="truncate">{video.name}</span>
+      <div className="video-header flex items-center justify-between">
+        <span className="truncate flex-1 mr-2 overflow-hidden whitespace-nowrap text-ellipsis">{video.name}</span>
+        {/* Delete button - top right corner */}
+        {onDelete && (
+          <button
+            type="button"
+            onClick={e => {
+              e.stopPropagation();
+              e.preventDefault();
+              onDelete(video);
+            }}
+            className="w-5 h-5 bg-white text-black border-2 border-black opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex items-center justify-center hover:bg-gray-100 focus:outline-none flex-shrink-0 ml-2"
+            title="Remove video"
+          >
+            <X className="w-3 h-3" strokeWidth={3} />
+          </button>
+        )}
       </div>
       
       {/* Image preview */}
@@ -140,7 +159,7 @@ function VideoGridItem({
                 style={{ color: 'var(--video-header-text)' }}
               >
                 <Play className="w-8 h-8 mx-auto mb-2" fill="currentColor" />
-                <div className="text-xs matrix-text">PLAY</div>
+                <div className="text-xs text-white font-mono uppercase tracking-wider">PLAY</div>
               </button>
             </div>
           </>
@@ -161,18 +180,12 @@ function EmptyDropZone({ children }: { children: React.ReactNode }) {
   return (
     <div className="matrix-empty-state">
       <div className="mb-6">
-        <svg 
-          width="80" 
-          height="64" 
-          viewBox="0 0 24 24" 
-          fill="none" 
-          stroke="currentColor" 
-          strokeWidth="1.5" 
+        <MousePointer2 
+          size={80}
+          strokeWidth={1}
           className="opacity-50"
-          style={{ color: 'var(--foreground)' }}
-        >
-          <path d="M3 7v10a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-6l-2-2H5a2 2 0 0 0-2 2v0"/>
-        </svg>
+          style={{ color: '#000000' }}
+        />
       </div>
       <div className="matrix-empty-title">NO VIDEOS SELECTED</div>
       <div className="matrix-empty-subtitle">DRAG VIDEO FILES HERE</div>
@@ -183,6 +196,7 @@ function EmptyDropZone({ children }: { children: React.ReactNode }) {
 function SortableVideoGridItem({ 
   video, 
   onClick, 
+  onDelete,
   isInlinePreview, 
   onCloseInlinePreview 
 }: SortableVideoGridItemProps) {
@@ -215,6 +229,7 @@ function SortableVideoGridItem({
         attributes={attributes}
         isDragging={isDragging}
         onClick={onClick}
+        onDelete={onDelete}
         isInlinePreview={isInlinePreview}
         onCloseInlinePreview={onCloseInlinePreview}
       />
@@ -222,7 +237,7 @@ function SortableVideoGridItem({
   );
 }
 
-export default function DndKitVideoGrid({ videos, gridId, onVideoClick, emptyMessage, inlinePreviewVideoId, onCloseInlinePreview, customEmptyContent }: DndKitVideoGridProps) {
+export default function DndKitVideoGrid({ videos, gridId, onVideoClick, onVideoDelete, emptyMessage, inlinePreviewVideoId, onCloseInlinePreview, customEmptyContent }: DndKitVideoGridProps) {
   const { setNodeRef, isOver } = useDroppable({ id: gridId });
   // Debug output for gridId, video count, and IDs
   const itemIds = videos.map(v => v.id);
@@ -231,10 +246,14 @@ export default function DndKitVideoGrid({ videos, gridId, onVideoClick, emptyMes
   return (
     <div 
       ref={setNodeRef} 
-      className="w-full min-h-full overflow-hidden"
+      className="w-full overflow-hidden"
+      style={{ 
+        minHeight: videos.length === 0 ? '100%' : 'fit-content',
+        alignSelf: videos.length === 0 ? 'stretch' : 'flex-start' 
+      }}
     >
       {videos.length === 0 ? (
-        <div className="w-full min-h-[300px] flex items-center justify-center">
+        <div className="w-full h-full flex items-center justify-center">
           {customEmptyContent || (
             <EmptyDropZone>
               {emptyMessage}
@@ -242,12 +261,13 @@ export default function DndKitVideoGrid({ videos, gridId, onVideoClick, emptyMes
           )}
         </div>
       ) : (
-        <div className="grid grid-cols-3 gap-3 pb-4 w-full box-border">
+        <div className="grid grid-cols-3 gap-3 w-full box-border">
           {videos.map(video => (
             <SortableVideoGridItem
               key={video.id}
               video={video}
               onClick={onVideoClick}
+              onDelete={onVideoDelete}
               isInlinePreview={inlinePreviewVideoId === video.id}
               onCloseInlinePreview={onCloseInlinePreview}
             />

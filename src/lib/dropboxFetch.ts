@@ -193,7 +193,22 @@ export const getTemporaryLink = async (accessToken: string, path: string) => {
   try {
     const client = getDropboxClient(accessToken);
     const response = await client.filesGetTemporaryLink({ path });
-    return response.result.link;
+    
+    // Dropbox temporary links sometimes have download=1 parameter which can cause issues
+    // Remove it to get a streaming-friendly URL
+    let link = response.result.link;
+    if (link.includes('?dl=1')) {
+      link = link.replace('?dl=1', '?raw=1');
+    } else if (link.includes('&dl=1')) {
+      link = link.replace('&dl=1', '&raw=1');
+    } else if (!link.includes('raw=1')) {
+      // Add raw parameter for better video streaming
+      const separator = link.includes('?') ? '&' : '?';
+      link = `${link}${separator}raw=1`;
+    }
+    
+    console.log(`[getTemporaryLink] Generated streaming URL for: ${path}`);
+    return link;
   } catch (error) {
     console.error('Error getting temporary link:', error);
     throw error;

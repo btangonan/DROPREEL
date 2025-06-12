@@ -5,6 +5,7 @@ import { VideoFile } from '@/types';
 import { extractDropboxPath } from '@/lib/utils/dropboxUtils';
 import FolderBrowser from '@/components/FolderBrowser/FolderBrowser';
 import VideoPreviewModal from '@/components/VideoPreviewModal';
+import TitleEditor from '@/components/TitleEditor/TitleEditor';
 import {
   DndContext,
   closestCenter,
@@ -25,7 +26,7 @@ import {
 } from '@dnd-kit/sortable';
 import DndKitVideoGrid, { VideoGridItem } from '@/components/DraggableVideoList/DndKitVideoGrid';
 import PopoutVideoOverlay from '@/components/DraggableVideoList/PopoutVideoOverlay';
-import { Wifi, Plus, FileText, Palette, Zap, Database, Star, Sun, Moon, LogIn } from 'lucide-react';
+import { Wifi, Plus, FileText, Palette, Zap, Database, Star, Sun, Moon, LogIn, MousePointer2 } from 'lucide-react';
 
 interface VideoClickAction {
   play?: boolean;
@@ -54,6 +55,7 @@ export default function Home() {
   const [titles, setTitles] = useState<TitleElement[]>([]);
   const [isDarkMode, setIsDarkMode] = useState(false); // Default to light mode for brutalist theme
   const [previewVideo, setPreviewVideo] = useState<VideoFile | null>(null);
+  const [showTitleEditor, setShowTitleEditor] = useState(false);
 
   // Custom collision detection for grid positioning
   const customCollisionDetection = useCallback((args: any) => {
@@ -495,6 +497,27 @@ export default function Home() {
     setPopoutRect(null);
   };
 
+  const handleVideoDelete = (video: VideoFile, sourcePanel: 'yourVideos' | 'selects') => {
+    console.log('[handleVideoDelete] Deleting video:', video.name, 'from:', sourcePanel);
+    
+    setVideoState(prev => {
+      const newState = { ...prev };
+      
+      if (sourcePanel === 'yourVideos') {
+        newState.yourVideos = prev.yourVideos.filter(v => v.id !== video.id);
+      } else {
+        newState.selects = prev.selects.filter(v => v.id !== video.id);
+      }
+      
+      console.log('[handleVideoDelete] Updated state:', {
+        yourVideosCount: newState.yourVideos.length,
+        selectsCount: newState.selects.length
+      });
+      
+      return newState;
+    });
+  };
+
   return (
     <>
       <div className="min-h-screen bg-background text-foreground">
@@ -510,7 +533,7 @@ export default function Home() {
             {/* Top bar with logo, theme toggle, and login */}
             <div className="flex items-center justify-between mb-8">
               <div>
-                <h1 className="text-2xl text-terminal">DROPREEL</h1>
+                <h1 className="text-2xl text-terminal">REELDROP</h1>
                 <div className="text-xs text-muted-foreground mt-1">
                   DROP IT. SEND IT. BOOK IT.
                 </div>
@@ -552,11 +575,7 @@ export default function Home() {
               </button>
               <button 
                 className="brutal-button flex-1 inline-flex px-4 py-3 items-center gap-2"
-                onClick={() => {
-                  const text = prompt('Enter title text:');
-                  const size = prompt('Enter size (small/medium/large):') || 'medium';
-                  if (text) handleAddTitle(text, size);
-                }}
+                onClick={() => setShowTitleEditor(true)}
               >
                 <FileText className="w-4 h-4" />
                 <span>ADD TITLE</span>
@@ -635,6 +654,7 @@ export default function Home() {
                         gridId="yourVideos"
                         emptyMessage=""
                         onVideoClick={handleVideoClick}
+                        onVideoDelete={(video) => handleVideoDelete(video, 'yourVideos')}
                         customEmptyContent={
                           // Add Videos Button - Small Dotted Square
                           <div className="flex flex-col items-center justify-center h-full text-center">
@@ -672,7 +692,7 @@ export default function Home() {
               {/* Reel Constructor */}
               <div className="panel" style={{ height: '500px' }}>
                 <div className="panel-header px-6 py-4 flex items-center gap-2 flex-shrink-0 font-mono font-bold uppercase tracking-wider text-base">
-                  <Star className="w-5 h-5 mr-2" />
+                  <MousePointer2 className="w-5 h-5 mr-2" />
                   <span>SELECTED VIDEOS</span>
                   <div className="ml-auto flex items-center gap-2" style={{ background: 'rgba(255, 255, 255, 0.2)' }}>
                     <div className="text-xs font-mono px-2 py-1">
@@ -689,6 +709,7 @@ export default function Home() {
                         gridId="selects"
                         emptyMessage="No videos selected. Drag videos from the left panel to get started."
                         onVideoClick={handleVideoClick}
+                        onVideoDelete={(video) => handleVideoDelete(video, 'selects')}
                       />
                     </SortableContext>
                   </div>
@@ -753,6 +774,13 @@ export default function Home() {
             }}
           />
         )}
+
+        {/* Title Editor Modal */}
+        <TitleEditor
+          isOpen={showTitleEditor}
+          onClose={() => setShowTitleEditor(false)}
+          onAddTitle={handleAddTitle}
+        />
       </div>
     </>
   );

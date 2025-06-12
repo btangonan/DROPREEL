@@ -276,10 +276,10 @@ export default function FolderBrowser({ onFolderSelect, onClose, initialPath = '
   
   return (
     <div className="modal-overlay">
-      <div className="modal-content" style={{ width: '600px', height: '500px' }}>
+      <div className="modal-content" style={{ width: '600px', height: '500px', borderColor: 'var(--accent)' }}>
         {/* Header */}
-        <div className="modal-header">
-          <h2 className="text-xl font-mono font-bold uppercase tracking-wider">
+        <div className="modal-header" style={{ padding: '0.75rem 1.5rem' }}>
+          <h2 className="text-lg font-mono font-bold uppercase tracking-wider">
             {isAddingToExisting ? 'ADD MORE VIDEOS' : 'BROWSE DROPBOX'}
           </h2>
           <button 
@@ -339,18 +339,18 @@ export default function FolderBrowser({ onFolderSelect, onClose, initialPath = '
         </div>
         
         {/* Footer with actions */}
-        <div className="modal-footer">
-          <button
-            onClick={onClose}
-            className="control-button"
-          >
-            CANCEL
-          </button>
+        <div className="modal-footer" style={{ padding: '0.75rem 1.5rem' }}>
           <button
             onClick={handleSelectFolder}
-            className="control-button"
+            className="control-button-dark"
           >
 {isAddingToExisting ? 'ADD VIDEOS FROM FOLDER' : 'SELECT THIS FOLDER'}
+          </button>
+          <button
+            onClick={onClose}
+            className="control-button-dark"
+          >
+            CANCEL
           </button>
         </div>
       </div>

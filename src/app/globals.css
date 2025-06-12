@@ -114,6 +114,35 @@
     pointer-events: none;
   }
 
+  /* Control button variant for dark backgrounds */
+  .control-button-dark {
+    font-family: var(--font-mono);
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    border: 2px solid #ffffff;
+    background: #ffffff;
+    color: #000000;
+    padding: 0.75rem 1.5rem;
+    transition: none;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+  }
+
+  .control-button-dark:hover {
+    background: #000000;
+    color: #ffffff;
+    border-color: #ffffff;
+  }
+
+  .control-button-dark:disabled {
+    opacity: 0.5;
+    pointer-events: none;
+  }
+
   .brutal-button {
     border: 2px solid var(--button-border);
     background: var(--button-bg);
@@ -316,6 +345,9 @@
     padding: 1rem;
     min-height: 0; /* Allow flex children to shrink */
     box-sizing: border-box; /* Include padding in width calculation */
+    display: flex;
+    align-items: center; /* Center content vertically */
+    justify-content: center; /* Center content horizontally */
   }
 
   /* Video Grid */
@@ -441,7 +473,8 @@
   }
 
   .modal-footer {
-    background: var(--panel-bg);
+    background: var(--video-header-bg);
+    color: var(--video-header-text);
     border-top: 2px solid var(--panel-border);
     padding: 1.5rem;
     display: flex;
