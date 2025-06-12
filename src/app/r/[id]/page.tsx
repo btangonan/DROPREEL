@@ -95,11 +95,6 @@ export default function ReelPage() {
     <div className="min-h-screen bg-background text-foreground">
       <div className="w-full max-w-screen-xl mx-auto">
         <div className="py-3 px-4 flex justify-between items-center border-b-2 border-black">
-          <Link href="/reels" className="brutal-button text-sm">← BACK TO MY REELS</Link>
-          {/* Logo placeholder - can be replaced with custom logo */}
-          <div className="h-10 flex items-center">
-            <span className="text-xl font-medium font-mono">DROPREEL</span>
-          </div>
           <Link 
             href={`/reels/edit/${reelId}`} 
             className="brutal-button-accent text-sm flex items-center gap-2">
@@ -108,9 +103,14 @@ export default function ReelPage() {
             </svg>
             EDIT REEL
           </Link>
+          {/* Logo placeholder - can be replaced with custom logo */}
+          <div className="h-10 flex items-center">
+            <span className="text-xl font-medium font-mono">DROPREEL</span>
+          </div>
+          <Link href="/reels" className="brutal-button text-sm">← ALL REELS</Link>
         </div>
 
-        <div className="w-full relative min-h-[600px]">
+        <div className="w-full relative">
           {/* Navigation Arrows - positioned at page edges */}
           {!showDirectorBio && currentVideo && (
             <>
@@ -136,48 +136,48 @@ export default function ReelPage() {
             </>
           )}
 
-          <div className="max-w-screen-xl mx-auto px-16 py-8">
-            {/* Display director bio if available and showDirectorBio is true */}
-            {reel.directorInfo && showDirectorBio ? (
-              <div className="bg-background border-2 border-black py-8 mx-auto">
-                <div className="grid grid-cols-2 gap-8 items-start">
-                  {reel.directorInfo.image && (
-                    <div className="col-span-1">
-                      <img 
-                        src={reel.directorInfo.image} 
-                        alt="Director" 
-                        className="w-full h-auto border-2 border-black"
-                      />
-                    </div>
-                  )}
-                  <div className="col-span-1 flex flex-col justify-center h-full">
-                    <div className="text-center sm:text-left">
-                      <h2 className="text-lg font-bold uppercase mb-2 tracking-wider font-mono">BRADLEY TANGONAN</h2>
-                      <p className="text-sm text-muted-foreground font-mono uppercase">DIRECTOR</p>
-                      <button 
-                        onClick={() => setShowDirectorBio(false)}
-                        className="mt-6 brutal-button-accent text-sm"
-                      >
-                        VIEW WORK
-                      </button>
+          {/* Video container with intelligent sizing */}
+          <div className="w-full">
+            <div className="max-w-screen-xl mx-auto px-16 py-8 w-full">
+              {/* Display director bio if available and showDirectorBio is true */}
+              {reel.directorInfo && showDirectorBio ? (
+                <div className="bg-background border-2 border-black py-8 mx-auto">
+                  <div className="grid grid-cols-2 gap-8 items-start">
+                    {reel.directorInfo.image && (
+                      <div className="col-span-1">
+                        <img 
+                          src={reel.directorInfo.image} 
+                          alt="Director" 
+                          className="w-full h-auto border-2 border-black"
+                        />
+                      </div>
+                    )}
+                    <div className="col-span-1 flex flex-col justify-center h-full">
+                      <div className="text-center sm:text-left">
+                        <h2 className="text-lg font-bold uppercase mb-2 tracking-wider font-mono">BRADLEY TANGONAN</h2>
+                        <p className="text-sm text-muted-foreground font-mono uppercase">DIRECTOR</p>
+                        <button 
+                          onClick={() => setShowDirectorBio(false)}
+                          className="mt-6 brutal-button-accent text-sm"
+                        >
+                          VIEW WORK
+                        </button>
+                      </div>
                     </div>
                   </div>
                 </div>
-              </div>
-            ) : (
-              /* Show video player when not showing director bio */
-              currentVideo && (
-                <div className="bg-transparent">
-                  {/* Video Player - centered with proper spacing */}
-                  <div className="w-full max-w-5xl mx-auto bg-transparent overflow-hidden relative mb-4">
+              ) : (
+                /* Show video player when not showing director bio */
+                currentVideo && (
+                  <div className="w-full flex items-center justify-center" style={{ height: '60vh', overflow: 'hidden' }}>
                     <VideoPlayer
                       video={currentVideo}
                       onEnded={handleNext}
                     />
                   </div>
-                </div>
-              )
-            )}
+                )
+              )}
+            </div>
           </div>
         </div>
         

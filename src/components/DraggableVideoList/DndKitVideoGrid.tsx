@@ -143,9 +143,9 @@ function VideoGridItem({
               {video.duration || '0:00'}
             </div>
             
-            {/* Incompatible video overlay - show warning instead of play button */}
+            {/* Incompatible video overlay - show warning permanently */}
             {video.isCompatible === false ? (
-              <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex items-center justify-center" style={{ background: 'rgba(255, 0, 0, 0.1)' }}>
+              <div className="absolute inset-0 flex items-center justify-center" style={{ background: 'rgba(255, 0, 0, 0.1)' }}>
                 <button
                   type="button"
                   onClick={e => {

@@ -16,6 +16,22 @@ export default function VideoPlayer({ video, onEnded }: VideoPlayerProps) {
   const playerRef = useRef<ReturnType<typeof videojs> | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(false);
+  
+  // Try to get aspect ratio from video metadata first, then fall back to detection
+  const getInitialAspectRatio = () => {
+    // Check if video has dimensions in mediaInfo
+    if (video.mediaInfo?.dimensions?.width && video.mediaInfo?.dimensions?.height) {
+      return video.mediaInfo.dimensions.width / video.mediaInfo.dimensions.height;
+    }
+    // Check for other metadata sources
+    if ((video as any).videoWidth && (video as any).videoHeight) {
+      return (video as any).videoWidth / (video as any).videoHeight;
+    }
+    // Default to a common cinematic ratio for wide videos, will be corrected when metadata loads
+    return 2.35; // Common cinematic ratio, better than 16:9 default
+  };
+  
+  const [aspectRatio, setAspectRatio] = useState<number>(getInitialAspectRatio());
 
   // Process video URLs and handle special cases like Dropbox
   function getProcessedUrl(url: string | undefined): string {
@@ -66,6 +82,9 @@ export default function VideoPlayer({ video, onEnded }: VideoPlayerProps) {
   useEffect(() => {
     if (!videoRef.current) return;
     
+    // Reset aspect ratio to initial value for new video
+    setAspectRatio(getInitialAspectRatio());
+    
     // Clean up previous player
     if (playerRef.current) {
       playerRef.current.dispose();
@@ -84,31 +103,83 @@ export default function VideoPlayer({ video, onEnded }: VideoPlayerProps) {
       setIsLoading(false);
       return;
     }
+
+    // Pre-load video metadata to get dimensions before initializing Video.js
+    const preloadVideo = document.createElement('video');
+    preloadVideo.crossOrigin = 'anonymous';
+    preloadVideo.preload = 'metadata';
+    preloadVideo.src = videoUrl;
     
+    const initializePlayer = (detectedAspectRatio?: number) => {
+      if (detectedAspectRatio) {
+        console.log(`Pre-detected aspect ratio: ${detectedAspectRatio}`);
+        setAspectRatio(detectedAspectRatio);
+      }
+      
+      // Small delay to allow aspect ratio state to update
+      setTimeout(() => {
+        initVideoJS();
+      }, 50);
+    };
+
+    // Set up preload events
+    preloadVideo.addEventListener('loadedmetadata', () => {
+      const { videoWidth, videoHeight } = preloadVideo;
+      if (videoWidth && videoHeight && videoWidth > 0 && videoHeight > 0) {
+        const detectedRatio = videoWidth / videoHeight;
+        initializePlayer(detectedRatio);
+      } else {
+        initializePlayer();
+      }
+    });
+
+    preloadVideo.addEventListener('error', () => {
+      console.warn('Could not preload video metadata, proceeding with default ratio');
+      initializePlayer();
+    });
+
+    // Timeout fallback
+    setTimeout(() => {
+      initializePlayer();
+    }, 2000);
+
+    const initVideoJS = () => {
+      if (!videoRef.current) return;
+      
     try {
       // Create video element
       const videoElement = document.createElement('video');
       videoElement.className = 'video-js vjs-big-play-centered';
       videoElement.style.width = '100%';
       
+      // Add direct event listener for video dimensions as backup
+      videoElement.addEventListener('loadedmetadata', () => {
+        const { videoWidth, videoHeight } = videoElement;
+        if (videoWidth && videoHeight && videoWidth > 0 && videoHeight > 0) {
+          const newAspectRatio = videoWidth / videoHeight;
+          console.log(`Direct video element dimensions: ${videoWidth}x${videoHeight}, aspect ratio: ${newAspectRatio}`);
+          setAspectRatio(newAspectRatio);
+        }
+      });
+      
       // Clear and append
       videoRef.current.innerHTML = '';
       videoRef.current.appendChild(videoElement);
       
-      // Force the container to maintain 16:9 aspect ratio
+      // Set video element styles for exact aspect ratio matching
       videoElement.style.width = '100%';
       videoElement.style.height = '100%';
-      videoElement.style.objectFit = 'contain';
+      videoElement.style.objectFit = 'contain'; // Contain the video without cutting off
       
-      // Initialize player with fixed aspect ratio
+      // Initialize player with dynamic aspect ratio
       const player = videojs(videoElement, {
         autoplay: false,
         controls: true,
         preload: 'auto',
         poster: video.thumbnailUrl || '',
-        fluid: false, // Disable fluid to prevent aspect ratio changes
+        fluid: true, // Enable fluid for responsive behavior
         responsive: true,
-        aspectRatio: '16:9', // Force 16:9 aspect ratio
+        // Remove fixed aspect ratio to allow dynamic sizing
         // Error handling options
         errorDisplay: true,
         liveui: false,
@@ -139,6 +210,32 @@ export default function VideoPlayer({ video, onEnded }: VideoPlayerProps) {
       player.ready(() => {
         console.log('Player ready');
         setIsLoading(false);
+        
+        // Get video dimensions and update aspect ratio
+        player.on('loadedmetadata', () => {
+          const videoWidth = player.videoWidth();
+          const videoHeight = player.videoHeight();
+          
+          if (videoWidth && videoHeight && videoWidth > 0 && videoHeight > 0) {
+            const newAspectRatio = videoWidth / videoHeight;
+            console.log(`Video dimensions: ${videoWidth}x${videoHeight}, aspect ratio: ${newAspectRatio}`);
+            setAspectRatio(newAspectRatio);
+          } else {
+            console.log('Video dimensions not available from player, using default aspect ratio');
+          }
+        });
+
+        // Also try to get dimensions when video can play
+        player.on('canplay', () => {
+          const videoWidth = player.videoWidth();
+          const videoHeight = player.videoHeight();
+          
+          if (videoWidth && videoHeight && videoWidth > 0 && videoHeight > 0) {
+            const newAspectRatio = videoWidth / videoHeight;
+            console.log(`Video dimensions from canplay: ${videoWidth}x${videoHeight}, aspect ratio: ${newAspectRatio}`);
+            setAspectRatio(newAspectRatio);
+          }
+        });
         
         // Force controls to be visible and interactive
         const controlBar = player.el().querySelector('.vjs-control-bar');
@@ -182,9 +279,15 @@ export default function VideoPlayer({ video, onEnded }: VideoPlayerProps) {
       setError(true);
       setIsLoading(false);
     }
+    };
+
+    // Start the preload process
+    // The preload events will trigger initialization
     
     // Cleanup on unmount
     return () => {
+      preloadVideo.src = '';
+      preloadVideo.load();
       if (playerRef.current) {
         playerRef.current.dispose();
         playerRef.current = null;
@@ -192,11 +295,42 @@ export default function VideoPlayer({ video, onEnded }: VideoPlayerProps) {
     };
   }, [video, onEnded]);
 
-  // Use a container with forced 16:9 aspect ratio and fixed position
+  // Calculate container dimensions based on aspect ratio - ensure minimum size for very wide videos
+  const getVideoContainerStyle = () => {
+    if (!aspectRatio) {
+      return { width: '100%', height: '100%', aspectRatio: '16 / 9' };
+    }
+
+    const orientation = aspectRatio > 1.1 ? 'landscape' : aspectRatio < 0.9 ? 'portrait' : 'square';
+    
+    if (orientation === 'portrait') {
+      // Portrait videos: limit height and let width adjust
+      return {
+        height: '60vh',
+        width: `calc(60vh * ${aspectRatio})`,
+        maxWidth: '100%',
+        aspectRatio: aspectRatio.toString(),
+        position: 'relative' as const,
+      };
+    } else {
+      // Landscape and square: ensure minimum height for very wide videos
+      const calculatedHeight = `calc(80vw / ${aspectRatio})`;
+      return {
+        width: '80vw',
+        height: calculatedHeight,
+        minHeight: '30vh', // Minimum height for very wide videos
+        aspectRatio: aspectRatio.toString(),
+        position: 'relative' as const,
+      };
+    }
+  };
+  
+  const containerStyle = getVideoContainerStyle();
+  
   return (
-    <div className="w-full relative" style={{ paddingBottom: '56.25%', height: 0, overflow: 'hidden' }}>
+    <div style={containerStyle}>
       {isLoading && (
-        <div className="absolute inset-0 flex items-center justify-center z-10">
+        <div className="absolute inset-0 flex items-center justify-center z-10 bg-black bg-opacity-50">
           <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
         </div>
       )}
@@ -234,7 +368,7 @@ export default function VideoPlayer({ video, onEnded }: VideoPlayerProps) {
         </div>
       )}
       
-      <div ref={videoRef} className="absolute top-0 left-0 w-full h-full"></div>
+      <div ref={videoRef} className="w-full h-full relative"></div>
     </div>
   );
 }

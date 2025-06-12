@@ -342,13 +342,16 @@ export default function Home() {
     }
   };
 
-  // When loadedVideos changes, update yourVideos while preserving selects
+  // When loadedVideos changes, update videos while preserving panel assignments
   useEffect(() => {
     setVideoState(prev => {
-      // Update yourVideos with new loaded videos
-      const updatedYourVideos = loadedVideos;
+      // Get IDs of videos currently in selects panel
+      const selectedVideoIds = new Set(prev.selects.map(v => v.id));
       
-      // Update any selected videos that have new duration info
+      // Only put videos in yourVideos if they're NOT already in selects
+      const updatedYourVideos = loadedVideos.filter(v => !selectedVideoIds.has(v.id));
+      
+      // Update any selected videos that have new duration/compatibility info
       const updatedSelects = prev.selects.map(selectedVideo => {
         const updatedVideo = loadedVideos.find(v => v.id === selectedVideo.id);
         return updatedVideo || selectedVideo;
@@ -589,7 +592,15 @@ export default function Home() {
       }
 
       const newReel = await response.json();
+      
+      // Manipulate browser history so back button goes to edit page
+      // Push edit page to history first
+      window.history.pushState({}, '', `/reels/edit/${newReel.id}`);
+      
+      // Then navigate to reel page - this makes the history:
+      // main page -> edit page -> reel page
       router.push(`/r/${newReel.id}`);
+      
     } catch (error) {
       console.error('Error creating reel:', error);
       setError('Failed to create reel. Please try again.');
