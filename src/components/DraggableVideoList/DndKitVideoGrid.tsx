@@ -33,6 +33,7 @@ interface DndKitVideoGridProps {
   emptyMessage?: string;
   inlinePreviewVideoId?: string;
   onCloseInlinePreview?: () => void;
+  customEmptyContent?: React.ReactNode;
 }
 
 function VideoGridItem({ 
@@ -184,13 +185,18 @@ function SortableVideoGridItem({
     transform,
     transition,
     isDragging,
+    isOver,
   } = useSortable({ id: video.id });
 
   const style: CSSProperties = {
     transform: CSS.Transform.toString(transform),
     transition,
-    // Hide the item while dragging
+    // Hide the dragged item but show displacement preview for others
     visibility: isDragging ? 'hidden' : undefined,
+    // Show displacement preview when another item is being dragged over this one
+    opacity: isOver && !isDragging ? 0.5 : 1,
+    background: isOver && !isDragging ? 'var(--accent)' : undefined,
+    borderRadius: isOver && !isDragging ? '4px' : undefined,
   };
 
   return (
@@ -208,18 +214,25 @@ function SortableVideoGridItem({
   );
 }
 
-export default function DndKitVideoGrid({ videos, gridId, onVideoClick, emptyMessage, inlinePreviewVideoId, onCloseInlinePreview }: DndKitVideoGridProps) {
-  const { setNodeRef } = useDroppable({ id: gridId });
+export default function DndKitVideoGrid({ videos, gridId, onVideoClick, emptyMessage, inlinePreviewVideoId, onCloseInlinePreview, customEmptyContent }: DndKitVideoGridProps) {
+  const { setNodeRef, isOver } = useDroppable({ id: gridId });
   // Debug output for gridId, video count, and IDs
   const itemIds = videos.map(v => v.id);
-  console.log(`[DndKitVideoGrid] gridId: ${gridId}, video count: ${videos.length}, IDs:`, itemIds);
+  console.log(`[DndKitVideoGrid] gridId: ${gridId}, video count: ${videos.length}, IDs:`, itemIds, 'isOver:', isOver);
 
   return (
-    <div ref={setNodeRef} className="w-full h-full">
+    <div 
+      ref={setNodeRef} 
+      className="w-full h-full"
+    >
       {videos.length === 0 ? (
-        <EmptyDropZone>
-          {emptyMessage}
-        </EmptyDropZone>
+        <div className="w-full h-full flex items-center justify-center">
+          {customEmptyContent || (
+            <EmptyDropZone>
+              {emptyMessage}
+            </EmptyDropZone>
+          )}
+        </div>
       ) : (
         <div className="grid grid-cols-3 gap-3 min-h-[100px]">
           {videos.map(video => (

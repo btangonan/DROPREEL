@@ -8,15 +8,20 @@ import VideoPreviewModal from '@/components/VideoPreviewModal';
 import {
   DndContext,
   closestCenter,
+  closestCorners,
   PointerSensor,
   useSensor,
   useSensors,
   DragOverlay,
+  pointerWithin,
+  rectIntersection,
 } from '@dnd-kit/core';
 import {
   arrayMove,
   SortableContext,
   rectSortingStrategy,
+  verticalListSortingStrategy,
+  horizontalListSortingStrategy,
 } from '@dnd-kit/sortable';
 import DndKitVideoGrid, { VideoGridItem } from '@/components/DraggableVideoList/DndKitVideoGrid';
 import PopoutVideoOverlay from '@/components/DraggableVideoList/PopoutVideoOverlay';
@@ -50,10 +55,80 @@ export default function Home() {
   const [isDarkMode, setIsDarkMode] = useState(false); // Default to light mode for brutalist theme
   const [previewVideo, setPreviewVideo] = useState<VideoFile | null>(null);
 
+  // Custom collision detection for grid positioning
+  const customCollisionDetection = useCallback((args: any) => {
+    const { active, droppableContainers, pointerCoordinates } = args;
+    
+    // First check if we're over a container
+    const pointerCollisions = pointerWithin(args);
+    const containerCollision = pointerCollisions.find(collision => 
+      collision.id === 'yourVideos' || collision.id === 'selects'
+    );
+    
+    if (containerCollision && pointerCollisions.length === 1) {
+      // Only container collision, append to end
+      return [containerCollision];
+    }
+    
+    // For items within containers, use a custom grid-aware detection
+    if (pointerCoordinates) {
+      const videoCollisions = [];
+      
+      for (const container of droppableContainers) {
+        const { id, rect } = container;
+        
+        // Skip container-level droppables
+        if (id === 'yourVideos' || id === 'selects') continue;
+        
+        if (rect.current) {
+          const { top, left, width, height } = rect.current;
+          const { x, y } = pointerCoordinates;
+          
+          // Check if pointer is within this video's bounds
+          if (x >= left && x <= left + width && y >= top && y <= top + height) {
+            // Calculate which quadrant for better positioning
+            const centerX = left + width / 2;
+            const centerY = top + height / 2;
+            const isLeft = x < centerX;
+            const isTop = y < centerY;
+            
+            videoCollisions.push({
+              id,
+              data: { 
+                quadrant: { isLeft, isTop },
+                bounds: { top, left, width, height }
+              }
+            });
+          }
+        }
+      }
+      
+      if (videoCollisions.length > 0) {
+        // Return the most relevant collision
+        return [videoCollisions[0]];
+      }
+    }
+    
+    // Fallback to rect intersection
+    const rectCollisions = rectIntersection(args);
+    if (rectCollisions.length > 0) {
+      return rectCollisions;
+    }
+    
+    // Final fallback
+    return closestCenter(args);
+  }, []);
+
   // DnD state
   const [videoState, setVideoState] = useState<{ yourVideos: VideoFile[]; selects: VideoFile[] }>({ yourVideos: [], selects: [] });
   const [activeId, setActiveId] = useState<string | null>(null);
-  const sensors = useSensors(useSensor(PointerSensor));
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 5, // Reduced distance for more responsive dragging
+      },
+    })
+  );
 
   // Apply theme to document
   useEffect(() => {
@@ -160,16 +235,7 @@ export default function Home() {
     console.log('[handleDragEnd] Drag ended:', { activeId: active.id, overId: over.id });
 
     setVideoState(prev => {
-      // Helper to get array by container name
-      const getArray = (state: { yourVideos: VideoFile[]; selects: VideoFile[] }, key: 'yourVideos' | 'selects') =>
-        key === 'yourVideos' ? state.yourVideos : state.selects;
-      const setArray = (state: { yourVideos: VideoFile[]; selects: VideoFile[] }, key: 'yourVideos' | 'selects', arr: VideoFile[]) => {
-        return key === 'yourVideos'
-          ? { ...state, yourVideos: arr }
-          : { ...state, selects: arr };
-      };
-
-      let newState = { yourVideos: [...prev.yourVideos], selects: [...prev.selects] };
+      const newState = { yourVideos: [...prev.yourVideos], selects: [...prev.selects] };
 
       const sourceId = active.id;
       let sourceContainer: 'yourVideos' | 'selects' = 'yourVideos';
@@ -179,79 +245,64 @@ export default function Home() {
         sourceIndex = newState.selects.findIndex(v => v.id === sourceId);
       }
 
-      // If dropped on a container, append to end
+      // Determine destination container and index
       let destContainer: 'yourVideos' | 'selects' | null = null;
       let destIndex: number = -1;
+      
       if (over.id === 'yourVideos' || over.id === 'selects') {
-        destContainer = over.id;
+        // Dropped on container - append to end
+        destContainer = over.id as 'yourVideos' | 'selects';
+        destIndex = newState[destContainer].length;
+        console.log('[handleDragEnd] Dropped on container:', destContainer);
       } else {
-        // Dropped on an item
-        destContainer = newState.yourVideos.find(v => v.id === over.id) ? 'yourVideos' : 'selects';
+        // Dropped on an item - find which container it belongs to
+        const foundInYourVideos = newState.yourVideos.find(v => v.id === over.id);
+        const foundInSelects = newState.selects.find(v => v.id === over.id);
+        
+        if (foundInYourVideos) {
+          destContainer = 'yourVideos';
+          destIndex = newState.yourVideos.findIndex(v => v.id === over.id);
+          console.log('[handleDragEnd] Dropped on item in yourVideos at index:', destIndex);
+        } else if (foundInSelects) {
+          destContainer = 'selects';
+          destIndex = newState.selects.findIndex(v => v.id === over.id);
+          console.log('[handleDragEnd] Dropped on item in selects at index:', destIndex);
+        }
       }
 
       // Guard: only proceed if destContainer is valid
-      if (!destContainer) {
-        console.log('[handleDragEnd] No valid destContainer found');
+      if (!destContainer || destIndex === -1) {
+        console.log('[handleDragEnd] No valid destination found');
         return newState;
       }
 
-      // Now it's safe to use newState[destContainer]
-      if (over.id === 'yourVideos' || over.id === 'selects') {
-        // Dropped directly on a container - append to the end
-        destIndex = newState[destContainer].length;
-      } else {
-        // Dropped on an item
-        destIndex = newState[destContainer].findIndex(v => v.id === over.id);
-        
-        // Fix for when destIndex is -1 (dropped outside any item)
-        if (destIndex === -1) {
-          console.log('[handleDragEnd] destIndex is -1, setting to end of list');
-          destIndex = newState[destContainer].length;
-        }
-        
-        // If dropping after self in the same container, adjust the destination index
-        if (sourceContainer === destContainer && sourceIndex < destIndex) {
-          // When removing the source item, all items after it shift up by 1
-          // So we need to decrease the destination index by 1 to account for this
-          destIndex--;
-        }
-      }
-
-      console.log('[handleDragEnd] Before move:', {
-        sourceContainer,
-        sourceIndex,
-        destContainer,
-        destIndex,
-        sourceItems: getArray(newState, sourceContainer).map(v => v.id),
-        destItems: getArray(newState, destContainer).map(v => v.id)
-      });
-
       if (sourceContainer === destContainer) {
-        // Reorder within same container
-        const reordered = arrayMove(
-          getArray(newState, sourceContainer),
-          sourceIndex,
-          destIndex
-        );
-        newState = setArray(newState, sourceContainer, reordered);
-      } else {
-        // Check if the item already exists in the destination container
-        const itemExists = newState[destContainer].some(v => v.id === sourceId);
-        if (itemExists) {
-          console.log('[handleDragEnd] Item already exists in destination, cancelling move');
-          return newState;
+        // Reorder within same container using arrayMove
+        const reordered = arrayMove(newState[sourceContainer], sourceIndex, destIndex);
+        if (sourceContainer === 'yourVideos') {
+          newState.yourVideos = reordered;
+        } else {
+          newState.selects = reordered;
         }
-        
+        console.log('[handleDragEnd] Reordered within container:', sourceContainer);
+      } else {
         // Move between containers
-        const sourceArr = [...getArray(newState, sourceContainer)];
-        const destArr = [...getArray(newState, destContainer)];
+        const sourceArr = [...newState[sourceContainer]];
+        const destArr = [...newState[destContainer]];
         const [movedItem] = sourceArr.splice(sourceIndex, 1);
         destArr.splice(destIndex, 0, movedItem);
-        newState = setArray(newState, sourceContainer, sourceArr);
-        newState = setArray(newState, destContainer, destArr);
+        
+        if (sourceContainer === 'yourVideos') {
+          newState.yourVideos = sourceArr;
+          newState.selects = destArr;
+        } else {
+          newState.selects = sourceArr;
+          newState.yourVideos = destArr;
+        }
+        console.log('[handleDragEnd] Moved between containers:', { from: sourceContainer, to: destContainer });
       }
 
-      console.log('[handleDragEnd] After move:', {
+      console.log('[handleDragEnd] Final state:', {
         yourVideosIds: newState.yourVideos.map(v => v.id),
         selectsIds: newState.selects.map(v => v.id)
       });
@@ -340,7 +391,7 @@ export default function Home() {
       <div className="min-h-screen bg-background text-foreground">
         <DndContext
           sensors={sensors}
-          collisionDetection={closestCenter}
+          collisionDetection={customCollisionDetection}
           onDragStart={e => setActiveId(e.active.id as string)}
           onDragEnd={handleDragEnd}
           onDragCancel={() => setActiveId(null)}
@@ -468,46 +519,44 @@ export default function Home() {
                 {/* Video content with scroll */}
                 <div className="panel-content">
                   <div className="h-full overflow-y-auto">
-                    {videoState.yourVideos.length === 0 ? (
-                      // Add Videos Button - Small Dotted Square
-                      <div className="flex flex-col items-center justify-center h-full text-center">
-                        <button
-                          onClick={handleAddVideosClick}
-                          className="flex flex-col items-center justify-center transition-all duration-200 hover:opacity-80"
-                          disabled={!isDropboxAuthenticated}
-                        >
-                          {/* Dotted Square with Plus */}
-                          <div 
-                            className="w-24 h-24 border-2 border-dashed flex items-center justify-center mb-4 hover:border-solid transition-all duration-200"
-                            style={{ 
-                              borderColor: 'var(--border)',
-                              background: 'transparent'
-                            }}
-                          >
-                            <Plus 
-                              className="w-8 h-8" 
-                              strokeWidth={2}
-                              style={{ color: 'var(--foreground)' }}
-                            />
+                    <SortableContext items={videoState.yourVideos.map(v => v.id)} strategy={rectSortingStrategy}>
+                      <DndKitVideoGrid
+                        videos={videoState.yourVideos}
+                        onReorder={newOrder => setVideoState(s => ({ ...s, yourVideos: newOrder }))}
+                        gridId="yourVideos"
+                        emptyMessage=""
+                        onVideoClick={handleVideoClick}
+                        customEmptyContent={
+                          // Add Videos Button - Small Dotted Square
+                          <div className="flex flex-col items-center justify-center h-full text-center">
+                            <button
+                              onClick={handleAddVideosClick}
+                              className="flex flex-col items-center justify-center transition-all duration-200 hover:opacity-80"
+                              disabled={!isDropboxAuthenticated}
+                            >
+                              {/* Dotted Square with Plus */}
+                              <div 
+                                className="w-24 h-24 border-2 border-dashed flex items-center justify-center mb-4 hover:border-solid transition-all duration-200"
+                                style={{ 
+                                  borderColor: 'var(--border)',
+                                  background: 'transparent'
+                                }}
+                              >
+                                <Plus 
+                                  className="w-8 h-8" 
+                                  strokeWidth={2}
+                                  style={{ color: 'var(--foreground)' }}
+                                />
+                              </div>
+                              {/* Black Text Below */}
+                              <div className="font-mono font-bold uppercase tracking-wider text-lg" style={{ color: 'var(--foreground)' }}>
+                                ADD VIDEOS
+                              </div>
+                            </button>
                           </div>
-                          {/* Black Text Below */}
-                          <div className="font-mono font-bold uppercase tracking-wider text-lg" style={{ color: 'var(--foreground)' }}>
-                            ADD VIDEOS
-                          </div>
-                        </button>
-                      </div>
-                    ) : (
-                      // Show videos when they exist
-                      <SortableContext items={videoState.yourVideos.map(v => v.id)} strategy={rectSortingStrategy}>
-                        <DndKitVideoGrid
-                          videos={videoState.yourVideos}
-                          onReorder={newOrder => setVideoState(s => ({ ...s, yourVideos: newOrder }))}
-                          gridId="yourVideos"
-                          emptyMessage={isFetchingVideos ? 'Loading videos...' : error ? error : 'No videos loaded.'}
-                          onVideoClick={handleVideoClick}
-                        />
-                      </SortableContext>
-                    )}
+                        }
+                      />
+                    </SortableContext>
                   </div>
                 </div>
               </div>
