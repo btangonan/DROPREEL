@@ -142,77 +142,149 @@ export default function Home() {
     document.documentElement.classList.toggle('dark', isDarkMode);
   }, [isDarkMode]);
 
-  // Check for edit parameter and load reel data
+  // Check for edit parameter and load reel data, OR restore from browser back navigation
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search);
     const editReelId = urlParams.get('edit');
     
+    // Check localStorage for browser back navigation from reel view
+    const lastReelEditState = localStorage.getItem('lastReelEditState');
+    let shouldRestoreFromBack = false;
+    let backReelId = null;
+    
+    if (lastReelEditState && !editReelId) {
+      try {
+        const stored = JSON.parse(lastReelEditState);
+        backReelId = stored.reelId;
+        // Only restore if we're on the main page without edit parameter
+        shouldRestoreFromBack = window.location.pathname === '/' && !editReelId;
+      } catch (e) {
+        console.error('Error parsing stored edit state:', e);
+      }
+    }
+    
+    console.log('Navigation detection:', {
+      editReelId,
+      currentURL: window.location.href,
+      editingReelId,
+      shouldRestoreFromBack,
+      backReelId,
+      hasStoredState: !!lastReelEditState
+    });
+    
     if (editReelId && editReelId !== editingReelId) {
+      // Edit via URL parameter (from EDIT REEL button)
       setEditingReelId(editReelId);
       setIsLoadingReel(true);
       
-      // Load the reel data
-      fetch(`/api/reels?id=${editReelId}`)
-        .then(response => response.json())
-        .then(data => {
-          console.log('Loading reel for editing:', data);
-          
-          // Restore the complete edit state if available
-          if (data.editState) {
-            const { allOriginalVideos, selectedVideos, folderPath: savedFolderPath, currentYourVideos, currentSelects } = data.editState;
-            
-            console.log('EditState found:', {
-              allOriginalVideos: allOriginalVideos?.length,
-              selectedVideos: selectedVideos?.length,
-              currentYourVideos: currentYourVideos?.length,
-              currentSelects: currentSelects?.length
-            });
-            
-            // Try to use the saved current panel state first (most accurate)
-            if (currentYourVideos && currentSelects) {
-              console.log('Using saved panel state');
-              setLoadedVideos([...currentYourVideos, ...currentSelects]); // Restore the original loaded videos
-              setVideoState({
-                yourVideos: currentYourVideos,
-                selects: currentSelects
-              });
-            } else if (allOriginalVideos && selectedVideos) {
-              console.log('Using reconstructed state from original videos');
-              // Reconstruct the exact state: 
-              // YOUR VIDEOS = all original videos MINUS the ones that were selected
-              const selectedVideoIds = new Set(selectedVideos.map((v: VideoFile) => v.id));
-              const unselectedVideos = allOriginalVideos.filter((v: VideoFile) => !selectedVideoIds.has(v.id));
-              
-              setLoadedVideos(allOriginalVideos); // Restore the original loaded videos
-              setVideoState({
-                yourVideos: unselectedVideos, // Videos that remained unselected
-                selects: selectedVideos // Videos that were selected for the reel
-              });
-            }
-            
-            if (savedFolderPath) {
-              setFolderPath(savedFolderPath);
-            }
-          } else if (data.videos) {
-            console.log('Fallback: using videos only');
-            // Fallback for older reels without editState
-            setVideoState({
-              yourVideos: [],
-              selects: data.videos
-            });
-          }
-          
-          if (data.title) {
-            setTitles([{ id: '1', text: data.title, size: 'text-4xl', timestamp: Date.now() }]);
-          }
-          setIsLoadingReel(false);
-        })
-        .catch(error => {
-          console.error('Error loading reel for editing:', error);
-          setIsLoadingReel(false);
+      console.log('Loading reel for editing via URL parameter:', editReelId);
+      loadReelForEditing(editReelId);
+    } else if (shouldRestoreFromBack && backReelId) {
+      // Browser back navigation - restore from localStorage
+      console.log('Detected browser back navigation, restoring reel:', backReelId);
+      
+      setEditingReelId(backReelId);
+      setIsLoadingReel(true);
+      
+      // Load from stored state first, then supplement with API data if needed
+      const stored = JSON.parse(lastReelEditState!);
+      if (stored.editState) {
+        const { currentYourVideos, currentSelects, folderPath: savedFolderPath } = stored.editState;
+        
+        console.log('Restoring from localStorage:', {
+          yourVideos: currentYourVideos?.length,
+          selects: currentSelects?.length,
+          folderPath: savedFolderPath
         });
+        
+        if (currentYourVideos && currentSelects) {
+          setLoadedVideos([...currentYourVideos, ...currentSelects]);
+          setVideoState({
+            yourVideos: currentYourVideos,
+            selects: currentSelects
+          });
+          
+          if (savedFolderPath) {
+            setFolderPath(savedFolderPath);
+          }
+          
+          setIsLoadingReel(false);
+        }
+      }
+      
+      // Update URL to include edit parameter for consistency
+      const newUrl = `${window.location.pathname}?edit=${backReelId}`;
+      window.history.replaceState(null, '', newUrl);
+      
+      // Clear the stored state after using it
+      localStorage.removeItem('lastReelEditState');
+    } else {
+      console.log('No reel editing detected');
     }
   }, [editingReelId]);
+
+  // Extracted function to load reel data for editing
+  const loadReelForEditing = (reelId: string) => {
+    fetch(`/api/reels?id=${reelId}`)
+      .then(response => response.json())
+      .then(data => {
+        console.log('Loading reel for editing:', data);
+        
+        // Restore the complete edit state if available
+        if (data.editState) {
+          const { allOriginalVideos, selectedVideos, folderPath: savedFolderPath, currentYourVideos, currentSelects } = data.editState;
+          
+          console.log('EditState found:', {
+            allOriginalVideos: allOriginalVideos?.length,
+            selectedVideos: selectedVideos?.length,
+            currentYourVideos: currentYourVideos?.length,
+            currentSelects: currentSelects?.length
+          });
+          
+          // Try to use the saved current panel state first (most accurate)
+          if (currentYourVideos && currentSelects) {
+            console.log('Using saved panel state');
+            setLoadedVideos([...currentYourVideos, ...currentSelects]); // Restore the original loaded videos
+            setVideoState({
+              yourVideos: currentYourVideos,
+              selects: currentSelects
+            });
+          } else if (allOriginalVideos && selectedVideos) {
+            console.log('Using reconstructed state from original videos');
+            // Reconstruct the exact state: 
+            // YOUR VIDEOS = all original videos MINUS the ones that were selected
+            const selectedVideoIds = new Set(selectedVideos.map((v: VideoFile) => v.id));
+            const unselectedVideos = allOriginalVideos.filter((v: VideoFile) => !selectedVideoIds.has(v.id));
+            
+            setLoadedVideos(allOriginalVideos); // Restore the original loaded videos
+            setVideoState({
+              yourVideos: unselectedVideos, // Videos that remained unselected
+              selects: selectedVideos // Videos that were selected for the reel
+            });
+          }
+          
+          if (savedFolderPath) {
+            setFolderPath(savedFolderPath);
+          }
+        } else if (data.videos) {
+          console.log('Fallback: using videos only');
+          // Fallback for older reels without editState
+          setVideoState({
+            yourVideos: [],
+            selects: data.videos
+          });
+        }
+        
+        if (data.title) {
+          setTitles([{ id: '1', text: data.title, size: 'text-4xl', timestamp: Date.now() }]);
+        }
+        setIsLoadingReel(false);
+      })
+      .catch(error => {
+        console.error('Error loading reel for editing:', error);
+        setIsLoadingReel(false);
+      });
+  };
 
   // Centralized user flow state
   type Step = 'connect' | 'addVideos' | 'addTitle';
@@ -689,12 +761,19 @@ export default function Home() {
 
       const newReel = await response.json();
       
-      // Manipulate browser history so back button goes to edit page
-      // Push edit page to history first
-      window.history.pushState({}, '', `/reels/edit/${newReel.id}`);
+      // Store the current edit state for browser back navigation
+      localStorage.setItem('lastReelEditState', JSON.stringify({
+        reelId: newReel.id,
+        editState: {
+          folderPath,
+          allOriginalVideos: loadedVideos,
+          selectedVideos: videoState.selects,
+          currentYourVideos: videoState.yourVideos,
+          currentSelects: videoState.selects
+        }
+      }));
       
-      // Then navigate to reel page - this makes the history:
-      // main page -> edit page -> reel page
+      // Navigate to reel page
       router.push(`/r/${newReel.id}`);
       
     } catch (error) {
