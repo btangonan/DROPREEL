@@ -60,16 +60,30 @@ function VideoGridItem({
   }, [isInlinePreview]);
   const popOutClass = isInlinePreview ? 'animate-popout shadow-2xl z-50' : '';
 
+  // Handle clicks on incompatible videos
+  const handleIncompatibleClick = (e: React.MouseEvent) => {
+    if (video.isCompatible === false) {
+      e.stopPropagation();
+      e.preventDefault();
+      // Show tooltip or error message
+      console.log('[VideoGridItem] Incompatible video clicked:', video.name, video.compatibilityError);
+      return false;
+    }
+  };
+
   return (
     <div
-      className={`video-card group ${isDragging ? 'z-50' : ''} ${video.isCompatible === false ? 'opacity-60' : ''}`}
+      className={`video-card group ${isDragging ? 'z-50' : ''} ${video.isCompatible === false ? 'select-none' : ''}`}
       style={{ 
         ...style,
-        cursor: video.isCompatible === false ? 'not-allowed' : 'grab'
+        cursor: video.isCompatible === false ? 'not-allowed' : 'grab',
+        userSelect: video.isCompatible === false ? 'none' : 'auto',
+        opacity: video.isCompatible === false ? 0.8 : 1
       }}
-      tabIndex={0}
+      tabIndex={video.isCompatible === false ? -1 : 0}
       {...(video.isCompatible === false ? {} : listeners)}
-      {...attributes}
+      {...(video.isCompatible === false ? {} : attributes)}
+      onClick={handleIncompatibleClick}
     >
       {/* File header bar */}
       <div className="video-header flex items-center justify-between">
@@ -94,9 +108,14 @@ function VideoGridItem({
       {/* Image preview */}
       <div 
         ref={thumbnailRef}
-        className={`relative aspect-video ${popOutClass} cursor-pointer group`}
+        className={`relative aspect-video ${popOutClass} ${video.isCompatible === false ? 'cursor-not-allowed pointer-events-none' : 'cursor-pointer'} group`}
         style={{ background: 'var(--video-bg)' }}
         onClick={(e) => {
+          if (video.isCompatible === false) {
+            e.stopPropagation();
+            e.preventDefault();
+            return;
+          }
           e.stopPropagation();
           e.preventDefault();
           if (typeof onClick === 'function' && video) {
@@ -148,22 +167,16 @@ function VideoGridItem({
             
             {/* Incompatible video overlay - show warning permanently */}
             {video.isCompatible === false ? (
-              <div className="absolute inset-0 flex items-center justify-center" style={{ background: 'rgba(255, 0, 0, 0.1)' }}>
-                <button
-                  type="button"
-                  onClick={e => {
-                    e.stopPropagation();
-                    e.preventDefault();
-                    if (typeof onClick === 'function' && video) {
-                      onClick(video, { play: true });
-                    }
-                  }}
-                  className="text-center drop-shadow-lg focus:outline-none"
+              <div className="absolute inset-0 flex items-center justify-center pointer-events-auto" style={{ background: 'rgba(0, 0, 0, 0.1)' }}>
+                <div
+                  className="text-center drop-shadow-lg cursor-not-allowed"
                   style={{ color: 'var(--video-header-text)' }}
+                  title={`Cannot use video: ${video.compatibilityError || 'Incompatible format'}`}
                 >
-                  <div className="text-red-400 text-2xl mx-auto mb-2">⚠</div>
-                  <div className="text-xs text-white font-mono uppercase tracking-wider">INCOMPATIBLE</div>
-                </button>
+                  <div className="text-red-500 text-4xl mx-auto mb-2">⚠</div>
+                  <div className="text-xs text-white font-mono uppercase tracking-wider font-bold">INCOMPATIBLE</div>
+                  <div className="text-xs text-white font-mono uppercase tracking-wider font-bold">FORMAT</div>
+                </div>
               </div>
             ) : (
               /* Play overlay - very translucent to see video clearly underneath */

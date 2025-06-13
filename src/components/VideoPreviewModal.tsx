@@ -334,29 +334,8 @@ export default function VideoPreviewModal({ isOpen, onClose, videoSrc, title, is
                 <div className="text-red-400 text-2xl mb-4">⚠</div>
                 <div className="text-sm font-mono uppercase tracking-wider mb-2">VIDEO ERROR</div>
                 <div className="text-xs text-gray-300 mb-4 max-w-md text-center leading-relaxed">INCOMPATIBLE FORMAT</div>
-                <div className="space-y-3">
-                  {!videoError.includes('ProRes') && (
-                    <button 
-                      onClick={retryVideo}
-                      disabled={isRetrying}
-                      className="bg-white text-black px-4 py-2 font-mono text-xs uppercase tracking-wider hover:bg-gray-200 disabled:opacity-50"
-                    >
-                      {isRetrying ? 'RETRYING...' : 'RETRY'}
-                    </button>
-                  )}
-                  <div className="text-xs text-gray-400 space-y-1">
-                    {videoError.includes('ProRes') ? (
-                      <>
-                        <div>• Open in Final Cut Pro, DaVinci Resolve, or Adobe Premiere</div>
-                        <div>• Convert to MP4 using HandBrake or similar tool</div>
-                        <div>• Use QuickTime Player on Mac</div>
-                      </>
-                    ) : (
-                      <>
-                        <div>• Convert to MP4 format</div>
-                      </>
-                    )}
-                  </div>
+                <div className="text-xs text-gray-400">
+                  Convert to H.264
                 </div>
               </>
             ) : (
