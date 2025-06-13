@@ -52,6 +52,7 @@ export default function ReelPage() {
   const handleNext = () => {
     if (!reel || !reel.videos.length) return;
     
+    setIsVideoLoading(true); // Show loading state
     const nextIndex = (currentIndex + 1) % reel.videos.length;
     setCurrentIndex(nextIndex);
     setCurrentVideo(reel.videos[nextIndex]);
@@ -60,6 +61,7 @@ export default function ReelPage() {
   const handlePrevious = () => {
     if (!reel || !reel.videos.length) return;
     
+    setIsVideoLoading(true); // Show loading state
     const prevIndex = (currentIndex - 1 + reel.videos.length) % reel.videos.length;
     setCurrentIndex(prevIndex);
     setCurrentVideo(reel.videos[prevIndex]);
@@ -126,6 +128,8 @@ export default function ReelPage() {
     const width = video.videoWidth;
     const height = video.videoHeight;
     
+    console.log('Video metadata loaded:', width, height);
+    
     if (width && height) {
       const ratio = width / height;
       let orientation: 'landscape' | 'portrait' | 'square';
@@ -140,7 +144,21 @@ export default function ReelPage() {
       
       setVideoAspectRatio({ width, height, aspectRatio: ratio, orientation });
       setIsVideoLoading(false); // Hide loading state when video is ready
+    } else {
+      // Fallback: hide loading after 2 seconds if no metadata
+      setTimeout(() => setIsVideoLoading(false), 2000);
     }
+  };
+
+  // Add additional event handlers for video loading
+  const handleVideoCanPlay = () => {
+    console.log('Video can play');
+    setIsVideoLoading(false);
+  };
+
+  const handleVideoError = (e: React.SyntheticEvent<HTMLVideoElement>) => {
+    console.error('Video error:', e.currentTarget.error);
+    setIsVideoLoading(false);
   };
 
   return (
@@ -148,7 +166,7 @@ export default function ReelPage() {
       <div className="w-full max-w-screen-xl mx-auto">
         <div className="py-3 px-4 flex justify-between items-center border-b-2 border-black">
           <Link 
-            href={`/reels/edit/${reelId}`} 
+            href={`/?edit=${reelId}`} 
             className="brutal-button-accent text-sm flex items-center gap-2">
             <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
@@ -229,18 +247,20 @@ export default function ReelPage() {
                       <video
                         key={currentVideo.id}
                         src={currentVideo.streamUrl}
-                        className="w-full h-full object-contain"
+                        className={`w-full h-full object-contain transition-opacity duration-150 ${isVideoLoading ? 'opacity-0' : 'opacity-100'}`}
                         controls
                         autoPlay
                         onEnded={handleNext}
                         onLoadedMetadata={handleVideoLoadedMetadata}
+                        onCanPlay={handleVideoCanPlay}
+                        onError={handleVideoError}
                         crossOrigin="anonymous"
                         playsInline
                       />
                       
                       {/* Clean loading overlay */}
                       {isVideoLoading && (
-                        <div className="absolute inset-0 bg-black bg-opacity-75 flex items-center justify-center">
+                        <div className="absolute inset-0 bg-black flex items-center justify-center">
                           <div className="text-white text-sm font-mono uppercase tracking-wider">
                             LOADING...
                           </div>

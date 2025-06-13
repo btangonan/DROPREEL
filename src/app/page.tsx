@@ -45,6 +45,8 @@ interface TitleElement {
 export default function Home() {
   const router = useRouter();
   const [isDropboxAuthenticated, setIsDropboxAuthenticated] = useState(false);
+  const [editingReelId, setEditingReelId] = useState<string | null>(null);
+  const [isLoadingReel, setIsLoadingReel] = useState(false);
   const [isDropboxAuthLoading, setIsDropboxAuthLoading] = useState(true);
   const [, setDropboxAuthStatus] = useState<string | null>(null);
   const [, setDropboxAuthErrorCode] = useState<string | null>(null);
@@ -139,6 +141,78 @@ export default function Home() {
   useEffect(() => {
     document.documentElement.classList.toggle('dark', isDarkMode);
   }, [isDarkMode]);
+
+  // Check for edit parameter and load reel data
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const editReelId = urlParams.get('edit');
+    
+    if (editReelId && editReelId !== editingReelId) {
+      setEditingReelId(editReelId);
+      setIsLoadingReel(true);
+      
+      // Load the reel data
+      fetch(`/api/reels?id=${editReelId}`)
+        .then(response => response.json())
+        .then(data => {
+          console.log('Loading reel for editing:', data);
+          
+          // Restore the complete edit state if available
+          if (data.editState) {
+            const { allOriginalVideos, selectedVideos, folderPath: savedFolderPath, currentYourVideos, currentSelects } = data.editState;
+            
+            console.log('EditState found:', {
+              allOriginalVideos: allOriginalVideos?.length,
+              selectedVideos: selectedVideos?.length,
+              currentYourVideos: currentYourVideos?.length,
+              currentSelects: currentSelects?.length
+            });
+            
+            // Try to use the saved current panel state first (most accurate)
+            if (currentYourVideos && currentSelects) {
+              console.log('Using saved panel state');
+              setLoadedVideos([...currentYourVideos, ...currentSelects]); // Restore the original loaded videos
+              setVideoState({
+                yourVideos: currentYourVideos,
+                selects: currentSelects
+              });
+            } else if (allOriginalVideos && selectedVideos) {
+              console.log('Using reconstructed state from original videos');
+              // Reconstruct the exact state: 
+              // YOUR VIDEOS = all original videos MINUS the ones that were selected
+              const selectedVideoIds = new Set(selectedVideos.map((v: VideoFile) => v.id));
+              const unselectedVideos = allOriginalVideos.filter((v: VideoFile) => !selectedVideoIds.has(v.id));
+              
+              setLoadedVideos(allOriginalVideos); // Restore the original loaded videos
+              setVideoState({
+                yourVideos: unselectedVideos, // Videos that remained unselected
+                selects: selectedVideos // Videos that were selected for the reel
+              });
+            }
+            
+            if (savedFolderPath) {
+              setFolderPath(savedFolderPath);
+            }
+          } else if (data.videos) {
+            console.log('Fallback: using videos only');
+            // Fallback for older reels without editState
+            setVideoState({
+              yourVideos: [],
+              selects: data.videos
+            });
+          }
+          
+          if (data.title) {
+            setTitles([{ id: '1', text: data.title, size: 'text-4xl', timestamp: Date.now() }]);
+          }
+          setIsLoadingReel(false);
+        })
+        .catch(error => {
+          console.error('Error loading reel for editing:', error);
+          setIsLoadingReel(false);
+        });
+    }
+  }, [editingReelId]);
 
   // Centralized user flow state
   type Step = 'connect' | 'addVideos' | 'addTitle';
@@ -574,6 +648,19 @@ export default function Home() {
   const handleMakeReel = async () => {
     if (videoState.selects.length === 0) return;
 
+    console.log('Creating reel with state:', {
+      folderPath,
+      loadedVideos: loadedVideos.length,
+      videoState,
+      editStateToSave: {
+        folderPath,
+        allOriginalVideos: loadedVideos,
+        selectedVideos: videoState.selects,
+        currentYourVideos: videoState.yourVideos,
+        currentSelects: videoState.selects
+      }
+    });
+
     try {
       const response = await fetch('/api/reels', {
         method: 'POST',
@@ -584,6 +671,15 @@ export default function Home() {
           videos: videoState.selects,
           title: `Reel ${new Date().toLocaleDateString()}`,
           description: `Created with ${videoState.selects.length} videos`,
+          // Save the complete state for editing
+          editState: {
+            folderPath,
+            allOriginalVideos: loadedVideos, // All videos originally loaded from Dropbox
+            selectedVideos: videoState.selects, // The videos that were selected for the reel
+            // Also save current panel state as backup
+            currentYourVideos: videoState.yourVideos,
+            currentSelects: videoState.selects
+          }
         }),
       });
 

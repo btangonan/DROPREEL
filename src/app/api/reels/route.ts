@@ -26,13 +26,13 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { videos, title, description, directorInfo } = body;
+    const { videos, title, description, directorInfo, editState } = body;
     
     if (!videos || !Array.isArray(videos) || videos.length === 0) {
       return NextResponse.json({ error: 'Videos array is required' }, { status: 400 });
     }
     
-    const newReel = createReel(videos, title, description, directorInfo);
+    const newReel = createReel(videos, title, description, directorInfo, editState);
     return NextResponse.json(newReel, { status: 201 });
   } catch (error) {
     console.error('Error creating reel:', error);

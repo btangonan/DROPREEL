@@ -20,6 +20,7 @@ export interface VideoReel {
   title?: string;
   description?: string;
   directorInfo?: DirectorInfo;
+  editState?: any; // State for round-trip editing
   createdAt: string;
   updatedAt: string;
 }
