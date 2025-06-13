@@ -35,6 +35,10 @@ export default function ReelPage() {
         
         if (data.videos && data.videos.length > 0) {
           setCurrentVideo(data.videos[0]);
+          // If no director info, show videos directly instead of bio
+          if (!data.directorInfo) {
+            setShowDirectorBio(false);
+          }
         }
       } catch (err) {
         setError('Error loading reel. It may have expired or been removed.');
@@ -181,25 +185,25 @@ export default function ReelPage() {
         </div>
 
         <div className="w-full relative">
-          {/* Navigation Arrows - positioned at page edges */}
+          {/* Navigation Arrows - positioned at sides of video */}
           {!showDirectorBio && currentVideo && (
             <>
               <button
                 onClick={handlePrevious}
-                className="absolute left-4 top-1/2 transform -translate-y-1/2 brutal-button p-2 z-20"
+                className="absolute left-4 top-1/2 transform -translate-y-1/2 brutal-button p-3 z-20"
                 aria-label="Previous video"
               >
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
                 </svg>
               </button>
               
               <button
                 onClick={handleNext}
-                className="absolute right-4 top-1/2 transform -translate-y-1/2 brutal-button p-2 z-20"
+                className="absolute right-4 top-1/2 transform -translate-y-1/2 brutal-button p-3 z-20"
                 aria-label="Next video"
               >
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                 </svg>
               </button>
@@ -208,7 +212,7 @@ export default function ReelPage() {
 
           {/* Video container with intelligent sizing */}
           <div className="w-full">
-            <div className="max-w-screen-xl mx-auto px-16 py-8 w-full">
+            <div className="max-w-screen-xl mx-auto px-24 py-8 w-full">
               {/* Display director bio if available and showDirectorBio is true */}
               {reel.directorInfo && showDirectorBio ? (
                 <div className="bg-background border-2 border-black py-8 mx-auto">
@@ -249,7 +253,6 @@ export default function ReelPage() {
                         src={currentVideo.streamUrl}
                         className={`w-full h-full object-contain transition-opacity duration-150 ${isVideoLoading ? 'opacity-0' : 'opacity-100'}`}
                         controls
-                        autoPlay
                         onEnded={handleNext}
                         onLoadedMetadata={handleVideoLoadedMetadata}
                         onCanPlay={handleVideoCanPlay}
