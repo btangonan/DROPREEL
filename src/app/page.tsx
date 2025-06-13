@@ -521,6 +521,28 @@ export default function Home() {
 
     console.log('[handleDragEnd] Drag ended:', { activeId: active.id, overId: over.id });
 
+    // Find the video being dragged to check compatibility
+    const activeIdStr = String(active.id);
+    let sourceVideo: VideoFile | undefined;
+    const allVideos = [...videoState.yourVideos, ...videoState.selects];
+    sourceVideo = allVideos.find(v => 
+      `yourVideos-${v.id}` === activeIdStr || 
+      `selects-${v.id}` === activeIdStr || 
+      v.id === activeIdStr
+    );
+
+    // Prevent dragging incompatible videos to the selects panel
+    if (sourceVideo && sourceVideo.isCompatible === false) {
+      const destContainer = String(over.id);
+      const isMovingToSelects = destContainer === 'selects' || destContainer.startsWith('selects-');
+      
+      if (isMovingToSelects) {
+        console.log('[handleDragEnd] Preventing incompatible video from being added to selects:', sourceVideo.name);
+        setError(`Cannot add "${sourceVideo.name}" to reel: ${sourceVideo.compatibilityError || 'Video format not supported'}`);
+        return;
+      }
+    }
+
     setVideoState(prev => {
       const newState = { yourVideos: [...prev.yourVideos], selects: [...prev.selects] };
 

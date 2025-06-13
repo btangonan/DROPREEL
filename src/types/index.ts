@@ -6,6 +6,12 @@ export interface VideoFile {
   streamUrl?: string;
   thumbnailUrl?: string;
   mediaInfo?: any;  // Additional media information from Dropbox API
+  // Compatibility checking fields
+  isCompatible?: boolean;
+  compatibilityError?: string | null;
+  dimensions?: { width: number; height: number } | null;
+  checkedWithBrowser?: boolean;
+  duration?: string;
 }
 
 export interface DirectorInfo {

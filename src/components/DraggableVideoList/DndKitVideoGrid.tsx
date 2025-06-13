@@ -62,10 +62,13 @@ function VideoGridItem({
 
   return (
     <div
-      className={`video-card group ${isDragging ? 'z-50' : ''}`}
-      style={{ ...style }}
+      className={`video-card group ${isDragging ? 'z-50' : ''} ${video.isCompatible === false ? 'opacity-60' : ''}`}
+      style={{ 
+        ...style,
+        cursor: video.isCompatible === false ? 'not-allowed' : 'grab'
+      }}
       tabIndex={0}
-      {...listeners}
+      {...(video.isCompatible === false ? {} : listeners)}
       {...attributes}
     >
       {/* File header bar */}
@@ -230,7 +233,10 @@ function SortableVideoGridItem({
     transition,
     isDragging,
     isOver,
-  } = useSortable({ id: video.id });
+  } = useSortable({ 
+    id: video.id,
+    disabled: video.isCompatible === false // Disable dragging for incompatible videos
+  });
 
   const style: CSSProperties = {
     transform: CSS.Transform.toString(transform),
