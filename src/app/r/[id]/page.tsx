@@ -5,6 +5,7 @@ import { VideoFile, VideoReel } from '@/types';
 import VideoPlayer from '@/components/VideoPlayer/VideoPlayer';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { initializeTheme } from '@/lib/theme';
 
 export default function ReelPage() {
   const params = useParams();
@@ -19,6 +20,11 @@ export default function ReelPage() {
   const [showDirectorBio, setShowDirectorBio] = useState(true); // To toggle between bio and video
   const [videoAspectRatio, setVideoAspectRatio] = useState<{ width: number; height: number; aspectRatio: number; orientation: 'landscape' | 'portrait' | 'square' } | null>(null);
   const [isVideoLoading, setIsVideoLoading] = useState(false);
+
+  // Initialize theme from localStorage on mount
+  useEffect(() => {
+    initializeTheme();
+  }, []);
 
   // Function to map title sizes to header CSS classes (larger than button sizes)
   const getTitleHeaderSize = (size: string) => {
@@ -180,7 +186,7 @@ export default function ReelPage() {
   return (
     <div className="min-h-screen bg-background text-foreground">
       <div className="w-full max-w-screen-xl mx-auto">
-        <div className="py-3 px-4 flex justify-between items-center border-b-2 border-black">
+        <div className="py-3 px-4 flex justify-between items-center border-b-2 border-border">
           <Link 
             href={`/?edit=${reelId}`} 
             className="brutal-button-accent text-sm flex items-center gap-2">
@@ -292,7 +298,7 @@ export default function ReelPage() {
         </div>
         
         {/* Project title and info */}
-        <div className="w-full border-t-2 border-b-2 border-black py-3 px-4">
+        <div className="w-full border-t-2 border-b-2 border-border py-3 px-4">
           <div className="max-w-screen-xl mx-auto flex items-center justify-between">
             <div className="text-sm font-mono uppercase tracking-wider">
               DROPREEL | {reel.title?.toUpperCase()} | {currentIndex + 1}/{reel.videos.length}
@@ -307,7 +313,7 @@ export default function ReelPage() {
               {/* Director bio card if available */}
               {reel.directorInfo && (
                 <div 
-                  className={`flex-shrink-0 w-28 border-2 border-black overflow-hidden relative ${showDirectorBio ? 'ring-2 ring-accent' : 'cursor-pointer hover:opacity-80'}`}
+                  className={`flex-shrink-0 w-28 border-2 border-border overflow-hidden relative ${showDirectorBio ? 'ring-2 ring-accent' : 'cursor-pointer hover:opacity-80'}`}
                   onClick={() => setShowDirectorBio(true)}
                 >
                   {reel.directorInfo.image ? (
@@ -328,7 +334,7 @@ export default function ReelPage() {
               {reel.videos.map((video, idx) => (
                 <div 
                   key={video.id}
-                  className={`flex-shrink-0 w-28 border-2 border-black overflow-hidden cursor-pointer hover:opacity-80 ${currentIndex === idx && !showDirectorBio ? 'ring-2 ring-accent' : ''}`}
+                  className={`flex-shrink-0 w-28 border-2 border-border overflow-hidden cursor-pointer hover:opacity-80 ${currentIndex === idx && !showDirectorBio ? 'ring-2 ring-accent' : ''}`}
                   onClick={() => selectVideo(idx)}
                 >
                   {video.thumbnailUrl ? (

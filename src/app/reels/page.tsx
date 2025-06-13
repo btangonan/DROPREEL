@@ -4,12 +4,18 @@ import { useState, useEffect } from 'react';
 import { VideoReel } from '@/types';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { initializeTheme } from '@/lib/theme';
 
 export default function ReelsPage() {
   const router = useRouter();
   const [reels, setReels] = useState<VideoReel[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
+
+  // Initialize theme from localStorage on mount
+  useEffect(() => {
+    initializeTheme();
+  }, []);
 
   useEffect(() => {
     const fetchReels = async () => {

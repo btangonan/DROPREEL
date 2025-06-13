@@ -80,6 +80,21 @@ export default function FolderBrowser({ onFolderSelect, onClose, initialPath = '
     // Start with root or provided initial path
     fetchFolderContents(initialPath || '');
   }, [initialPath]);
+
+  // Handle ESC key to close modal
+  useEffect(() => {
+    const handleEscKey = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        onClose();
+      }
+    };
+
+    document.addEventListener('keydown', handleEscKey);
+
+    return () => {
+      document.removeEventListener('keydown', handleEscKey);
+    };
+  }, [onClose]);
   
   // Update breadcrumbs whenever the path changes
   const updateBreadcrumbs = (path: string) => {

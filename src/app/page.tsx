@@ -29,6 +29,7 @@ import {
 import DndKitVideoGrid, { VideoGridItem } from '@/components/DraggableVideoList/DndKitVideoGrid';
 import PopoutVideoOverlay from '@/components/DraggableVideoList/PopoutVideoOverlay';
 import { Wifi, Plus, FileText, Palette, Zap, Database, Star, Sun, Moon, LogIn, MousePointer2 } from 'lucide-react';
+import { initializeTheme, toggleTheme } from '@/lib/theme';
 
 interface VideoClickAction {
   play?: boolean;
@@ -137,10 +138,17 @@ export default function Home() {
     })
   );
 
-  // Apply theme to document
+  // Initialize theme from localStorage on mount
   useEffect(() => {
-    document.documentElement.classList.toggle('dark', isDarkMode);
-  }, [isDarkMode]);
+    const savedTheme = initializeTheme();
+    setIsDarkMode(savedTheme);
+  }, []);
+
+  // Handle theme toggle
+  const handleThemeToggle = () => {
+    const newTheme = toggleTheme(isDarkMode);
+    setIsDarkMode(newTheme);
+  };
 
   // Check for edit parameter and load reel data, OR restore from browser back navigation
   useEffect(() => {
@@ -853,7 +861,7 @@ export default function Home() {
               </div>
               <div className="flex items-center gap-4">
                 <button 
-                  onClick={() => setIsDarkMode(!isDarkMode)}
+                  onClick={handleThemeToggle}
                   className="control-button flex items-center gap-2"
                 >
                   {isDarkMode ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}

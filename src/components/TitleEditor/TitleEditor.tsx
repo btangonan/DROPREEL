@@ -22,6 +22,9 @@ export default function TitleEditor({ isOpen, onClose, onAddTitle, initialTitle 
   const [selectedSize, setSelectedSize] = useState(initialSize);
   const [charCount, setCharCount] = useState(initialTitle.length);
   const maxChars = 100;
+  
+  // Determine if we're editing an existing title
+  const isUpdating = initialTitle.length > 0;
 
   const handleTextChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const text = e.target.value;
@@ -56,6 +59,23 @@ export default function TitleEditor({ isOpen, onClose, onAddTitle, initialTitle 
       setCharCount(initialTitle.length);
     }
   }, [isOpen, initialTitle, initialSize]);
+
+  // Handle ESC key to close modal
+  useEffect(() => {
+    const handleEscKey = (event: KeyboardEvent) => {
+      if (event.key === 'Escape' && isOpen) {
+        handleCancel();
+      }
+    };
+
+    if (isOpen) {
+      document.addEventListener('keydown', handleEscKey);
+    }
+
+    return () => {
+      document.removeEventListener('keydown', handleEscKey);
+    };
+  }, [isOpen]);
 
   if (!isOpen) return null;
 
@@ -110,18 +130,13 @@ export default function TitleEditor({ isOpen, onClose, onAddTitle, initialTitle 
                     {size.label}
                   </span>
                   <span 
-                    className={`font-bold tracking-wider ${
-                      selectedSize === size.id && size.isHighlight 
-                        ? 'text-purple-400' 
-                        : selectedSize === size.id 
-                          ? 'text-purple-600'
-                          : 'text-purple-500'
-                    }`}
+                    className="font-bold tracking-wider"
                     style={{ 
                       fontSize: size.id === 'small' ? '0.875rem' : 
                                size.id === 'medium' ? '1rem' :
                                size.id === 'large' ? '1.125rem' :
-                               size.id === 'extra-large' ? '1.25rem' : '1.375rem'
+                               size.id === 'extra-large' ? '1.25rem' : '1.375rem',
+                      color: 'var(--accent-bg)'
                     }}
                   >
                     {size.sample}
@@ -136,10 +151,20 @@ export default function TitleEditor({ isOpen, onClose, onAddTitle, initialTitle 
             <button
               onClick={handleAddTitle}
               disabled={!titleText.trim()}
-              className="flex-1 bg-purple-500 text-white font-bold py-3 px-6 border-2 border-black tracking-wider disabled:opacity-50 disabled:cursor-not-allowed hover:bg-purple-600 transition-none"
-              style={{ fontFamily: 'var(--font-mono)' }}
+              className={`flex-1 font-bold py-3 px-6 border-2 border-black tracking-wider disabled:opacity-50 disabled:cursor-not-allowed transition-none ${
+                isUpdating 
+                  ? 'hover:bg-gray-100' 
+                  : 'bg-purple-500 hover:bg-purple-600 text-white'
+              }`}
+              style={{ 
+                fontFamily: 'var(--font-mono)',
+                ...(isUpdating && {
+                  backgroundColor: 'var(--accent-bg)',
+                  color: 'var(--accent-text)'
+                })
+              }}
             >
-              ADD TITLE
+              {isUpdating ? 'UPDATE TITLE' : 'ADD TITLE'}
             </button>
             <button
               onClick={handleCancel}
