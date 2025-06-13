@@ -413,3 +413,169 @@ This guide should provide enough context to understand, modify, and extend the D
 - Use the inspector and remove/add classes live to debug persistent UI issues.
 
 ---
+
+## Video Playback & Aspect Ratio Management (December 2024)
+
+### The Challenge: Perfect Video Sizing Without Black Bars
+
+**Problem**: Video players often add letterboxing (black bars) when the video aspect ratio doesn't match the container. This was happening inconsistently between the VideoPreviewModal (which worked perfectly) and the reels page (which had black bars).
+
+**Root Cause**: Most video players, including Video.js, apply their own sizing logic that can override CSS and create letterboxing. The key insight was that the VideoPreviewModal worked because it used a simple `<video>` element with dynamic container sizing.
+
+### The Solution: Dynamic Container Sizing + Native Video Element
+
+#### Core Approach
+Instead of forcing videos into fixed containers, we calculate the container size to **exactly match each video's aspect ratio**, then use a native `<video>` element with `object-contain`.
+
+#### Implementation Steps
+
+1. **Aspect Ratio Detection**
+```typescript
+const handleVideoLoadedMetadata = (e: React.SyntheticEvent<HTMLVideoElement>) => {
+  const video = e.currentTarget;
+  const width = video.videoWidth;
+  const height = video.videoHeight;
+  
+  if (width && height) {
+    const ratio = width / height;
+    let orientation: 'landscape' | 'portrait' | 'square';
+    
+    if (ratio > 1.1) orientation = 'landscape';
+    else if (ratio < 0.9) orientation = 'portrait';
+    else orientation = 'square';
+    
+    setVideoAspectRatio({ width, height, aspectRatio: ratio, orientation });
+  }
+};
+```
+
+2. **Dynamic Container Calculation**
+```typescript
+const getVideoContainerStyle = () => {
+  if (!videoAspectRatio) {
+    return { aspectRatio: '16 / 9', maxWidth: '80vw', maxHeight: '60vh' };
+  }
+
+  const { orientation, aspectRatio: ratio } = videoAspectRatio;
+  
+  if (orientation === 'portrait') {
+    // Portrait: constrain height, calculate width
+    return {
+      maxHeight: '60vh',
+      maxWidth: `calc(60vh * ${ratio})`,
+      aspectRatio: `${videoAspectRatio.width} / ${videoAspectRatio.height}`
+    };
+  } else {
+    // Landscape/Square: constrain width, calculate height  
+    return {
+      maxWidth: '80vw',
+      maxHeight: `calc(80vw / ${ratio})`,
+      aspectRatio: `${videoAspectRatio.width} / ${videoAspectRatio.height}`
+    };
+  }
+};
+```
+
+3. **Native Video Element Implementation**
+```tsx
+<div className="w-full flex items-center justify-center" style={{ minHeight: '60vh' }}>
+  <div className="relative bg-black" style={getVideoContainerStyle()}>
+    <video
+      key={currentVideo.id}
+      src={currentVideo.streamUrl}
+      className="w-full h-full object-contain"
+      controls
+      autoPlay
+      onEnded={handleNext}
+      onLoadedMetadata={handleVideoLoadedMetadata}
+      crossOrigin="anonymous"
+      playsInline
+    />
+  </div>
+</div>
+```
+
+### Why This Works
+
+1. **No Fixed Containers**: Instead of forcing videos into rigid containers (like `height: 60vh`), the container resizes to match the video
+2. **Native Video Element**: Using `<video>` instead of Video.js eliminates player-imposed sizing constraints
+3. **object-contain**: Ensures the video fills its perfectly-sized container without cropping or letterboxing
+4. **Dynamic Detection**: `onLoadedMetadata` gets the actual video dimensions, not guessed metadata
+5. **Responsive Constraints**: `maxWidth: 80vw` and `maxHeight: 60vh` prevent videos from exceeding viewport bounds
+
+### Video Streaming Architecture
+
+#### Dropbox Integration
+- **Authentication**: OAuth flow stores access tokens for API calls
+- **File Discovery**: `/api/dropbox?action=listVideos` returns video file metadata
+- **Stream URL Generation**: `/api/dropbox?action=getStreamUrl` creates temporary download links
+- **URL Processing**: Converts Dropbox share links to direct streaming URLs
+
+#### Stream URL Processing
+```typescript
+function getProcessedUrl(url: string | undefined): string {
+  if (!url) return '';
+  
+  // Convert Dropbox URLs to direct download format
+  if (url.includes('dropbox.com') || url.includes('dropboxusercontent.com')) {
+    let processedUrl = url
+      .replace('www.dropbox.com/s/', 'dl.dropboxusercontent.com/s/')
+      .replace('?dl=0', '?raw=1&dl=1');
+    
+    // Add cache-busting parameter to prevent expired link caching
+    const cacheBuster = `&cb=${Date.now()}`;
+    processedUrl += processedUrl.includes('?') ? cacheBuster : `?${cacheBuster.substring(1)}`;
+    
+    return processedUrl;
+  }
+  
+  return url;
+}
+```
+
+#### Video Player Optimization
+- **Key-based Remounting**: `key={currentVideo.id}` forces clean transitions between videos
+- **Cross-Origin Support**: `crossOrigin="anonymous"` enables cross-domain video access
+- **Mobile Optimization**: `playsInline` prevents fullscreen on iOS
+- **Auto-progression**: `onEnded={handleNext}` automatically advances to next video
+
+### Aspect Ratio Handling by Type
+
+#### Portrait Videos (< 0.9 ratio)
+- **Container**: `maxHeight: 60vh`, `maxWidth: calc(60vh * ratio)`
+- **Result**: Height-constrained, width adjusts proportionally
+- **Example**: 9:16 TikTok-style videos
+
+#### Standard Landscape (0.9 - 2.2 ratio)  
+- **Container**: `maxWidth: 80vw`, `maxHeight: calc(80vw / ratio)`
+- **Result**: Width-constrained, height adjusts proportionally
+- **Example**: 16:9 YouTube videos, 4:3 traditional videos
+
+#### Anamorphic/Ultra-wide (> 2.2 ratio)
+- **Container**: `maxWidth: 80vw`, `maxHeight: calc(80vw / ratio)`
+- **Result**: Fills edge-to-edge width, minimal height
+- **Example**: 2.35:1 cinematic, 2.73:1 ultra-wide
+
+### Performance Optimizations
+
+#### Smooth Video Transitions
+- **Key Remounting**: Forces React to completely recreate video element on change
+- **Metadata Preloading**: `onLoadedMetadata` fires before full video load
+- **Container Pre-sizing**: Container calculates before video renders, eliminating resize flicker
+
+#### Memory Management
+- **URL Cache Busting**: Prevents browsers from caching expired Dropbox links
+- **Component Cleanup**: Key-based remounting automatically cleans up previous video instances
+- **Lazy Calculation**: Container sizing only calculates after metadata loads
+
+### Key Learnings
+
+1. **Never Force Aspect Ratios**: Let the video's natural dimensions drive container sizing
+2. **Native Elements > Complex Players**: Simple `<video>` often performs better than feature-rich players
+3. **Metadata Detection is Critical**: Always detect actual video dimensions rather than guessing
+4. **Responsive Constraints**: Use max-width/max-height instead of fixed dimensions
+5. **Clean State Management**: Key-based remounting eliminates transition glitches
+
+This approach ensures every video—from vertical phone recordings to ultra-wide cinematic shots—displays perfectly without black bars or cropping, matching the quality of professional video platforms.
+
+---

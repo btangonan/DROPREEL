@@ -17,6 +17,8 @@ export default function ReelPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
   const [showDirectorBio, setShowDirectorBio] = useState(true); // To toggle between bio and video
+  const [videoAspectRatio, setVideoAspectRatio] = useState<{ width: number; height: number; aspectRatio: number; orientation: 'landscape' | 'portrait' | 'square' } | null>(null);
+  const [isVideoLoading, setIsVideoLoading] = useState(false);
 
   useEffect(() => {
     const fetchReel = async () => {
@@ -86,9 +88,59 @@ export default function ReelPage() {
   const selectVideo = (index: number) => {
     if (!reel || !reel.videos.length) return;
     
+    setIsVideoLoading(true); // Show loading state
     setCurrentIndex(index);
     setCurrentVideo(reel.videos[index]);
     setShowDirectorBio(false); // Switch to video view
+    // DON'T reset videoAspectRatio here - keep previous container size until new video loads
+  };
+
+  // Calculate video container style exactly like VideoPreviewModal
+  const getVideoContainerStyle = () => {
+    if (!videoAspectRatio) {
+      return { aspectRatio: '16 / 9', maxWidth: '80vw', maxHeight: '60vh' };
+    }
+
+    const { orientation, aspectRatio: ratio } = videoAspectRatio;
+    
+    if (orientation === 'portrait') {
+      // Portrait videos: limit height and let width adjust
+      return {
+        maxHeight: '60vh',
+        maxWidth: `calc(60vh * ${ratio})`,
+        aspectRatio: `${videoAspectRatio.width} / ${videoAspectRatio.height}`
+      };
+    } else {
+      // Landscape and square: limit width and let height adjust
+      return {
+        maxWidth: '80vw',
+        maxHeight: `calc(80vw / ${ratio})`,
+        aspectRatio: `${videoAspectRatio.width} / ${videoAspectRatio.height}`
+      };
+    }
+  };
+
+  // Detect video aspect ratio like VideoPreviewModal
+  const handleVideoLoadedMetadata = (e: React.SyntheticEvent<HTMLVideoElement>) => {
+    const video = e.currentTarget;
+    const width = video.videoWidth;
+    const height = video.videoHeight;
+    
+    if (width && height) {
+      const ratio = width / height;
+      let orientation: 'landscape' | 'portrait' | 'square';
+      
+      if (ratio > 1.1) {
+        orientation = 'landscape';
+      } else if (ratio < 0.9) {
+        orientation = 'portrait';
+      } else {
+        orientation = 'square';
+      }
+      
+      setVideoAspectRatio({ width, height, aspectRatio: ratio, orientation });
+      setIsVideoLoading(false); // Hide loading state when video is ready
+    }
   };
 
   return (
@@ -169,11 +221,32 @@ export default function ReelPage() {
               ) : (
                 /* Show video player when not showing director bio */
                 currentVideo && (
-                  <div className="w-full flex items-center justify-center" style={{ height: '60vh', overflow: 'hidden' }}>
-                    <VideoPlayer
-                      video={currentVideo}
-                      onEnded={handleNext}
-                    />
+                  <div className="w-full flex items-center justify-center" style={{ minHeight: '60vh' }}>
+                    <div 
+                      className="relative bg-black" 
+                      style={getVideoContainerStyle()}
+                    >
+                      <video
+                        key={currentVideo.id}
+                        src={currentVideo.streamUrl}
+                        className="w-full h-full object-contain"
+                        controls
+                        autoPlay
+                        onEnded={handleNext}
+                        onLoadedMetadata={handleVideoLoadedMetadata}
+                        crossOrigin="anonymous"
+                        playsInline
+                      />
+                      
+                      {/* Clean loading overlay */}
+                      {isVideoLoading && (
+                        <div className="absolute inset-0 bg-black bg-opacity-75 flex items-center justify-center">
+                          <div className="text-white text-sm font-mono uppercase tracking-wider">
+                            LOADING...
+                          </div>
+                        </div>
+                      )}
+                    </div>
                   </div>
                 )
               )}

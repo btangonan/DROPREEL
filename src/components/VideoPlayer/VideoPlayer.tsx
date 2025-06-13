@@ -295,32 +295,37 @@ export default function VideoPlayer({ video, onEnded }: VideoPlayerProps) {
     };
   }, [video, onEnded]);
 
-  // Calculate container dimensions based on aspect ratio - ensure minimum size for very wide videos
+  // Calculate container dimensions to prevent Video.js letterboxing
   const getVideoContainerStyle = () => {
     if (!aspectRatio) {
-      return { width: '100%', height: '100%', aspectRatio: '16 / 9' };
+      return { width: '100%', height: '100%' };
     }
 
     const orientation = aspectRatio > 1.1 ? 'landscape' : aspectRatio < 0.9 ? 'portrait' : 'square';
     
     if (orientation === 'portrait') {
-      // Portrait videos: limit height and let width adjust
+      // Portrait videos: fit height to available space
       return {
-        height: '60vh',
-        width: `calc(60vh * ${aspectRatio})`,
+        height: '100%',
+        width: `calc(100% * ${aspectRatio})`,
         maxWidth: '100%',
         aspectRatio: aspectRatio.toString(),
-        position: 'relative' as const,
+      };
+    } else if (aspectRatio >= 2.2) {
+      // Anamorphic videos: fill width completely, calculate exact height
+      return {
+        width: '100%',
+        height: `calc(100vw / ${aspectRatio})`,
+        maxHeight: '100%',
+        aspectRatio: aspectRatio.toString(),
       };
     } else {
-      // Landscape and square: ensure minimum height for very wide videos
-      const calculatedHeight = `calc(80vw / ${aspectRatio})`;
+      // Standard landscape: fit to available space
       return {
-        width: '80vw',
-        height: calculatedHeight,
-        minHeight: '30vh', // Minimum height for very wide videos
+        height: '100%',
+        width: `calc(100% * ${aspectRatio})`,
+        maxWidth: '100%', 
         aspectRatio: aspectRatio.toString(),
-        position: 'relative' as const,
       };
     }
   };
