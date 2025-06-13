@@ -20,6 +20,18 @@ export default function ReelPage() {
   const [videoAspectRatio, setVideoAspectRatio] = useState<{ width: number; height: number; aspectRatio: number; orientation: 'landscape' | 'portrait' | 'square' } | null>(null);
   const [isVideoLoading, setIsVideoLoading] = useState(false);
 
+  // Function to map title sizes to header CSS classes (larger than button sizes)
+  const getTitleHeaderSize = (size: string) => {
+    switch (size) {
+      case 'small': return 'text-lg';     // h4 equivalent
+      case 'medium': return 'text-xl';    // h3 equivalent
+      case 'large': return 'text-2xl';    // h2 equivalent
+      case 'extra-large': return 'text-3xl'; // h1 equivalent
+      case 'huge': return 'text-4xl';     // Large h1 equivalent
+      default: return 'text-2xl';
+    }
+  };
+
   useEffect(() => {
     const fetchReel = async () => {
       try {
@@ -177,9 +189,11 @@ export default function ReelPage() {
             </svg>
             EDIT REEL
           </Link>
-          {/* Logo placeholder - can be replaced with custom logo */}
+          {/* Reel title */}
           <div className="h-10 flex items-center">
-            <span className="text-xl font-medium font-mono">DROPREEL</span>
+            <span className={`font-medium font-mono ${reel?.editState?.titles?.[0]?.size ? getTitleHeaderSize(reel.editState.titles[0].size) : 'text-xl'}`}>
+              {reel?.title?.toUpperCase() || 'DROPREEL'}
+            </span>
           </div>
           <Link href="/reels" className="brutal-button text-sm">← ALL REELS</Link>
         </div>

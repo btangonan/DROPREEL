@@ -1,10 +1,12 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { FileText, X } from 'lucide-react';
 
 interface TitleEditorProps {
   isOpen: boolean;
   onClose: () => void;
   onAddTitle: (text: string, size: string) => void;
+  initialTitle?: string;
+  initialSize?: string;
 }
 
 const titleSizes = [
@@ -15,10 +17,10 @@ const titleSizes = [
   { id: 'huge', label: 'HUGE TITLE', sample: 'SAMPLE TEXT' }
 ];
 
-export default function TitleEditor({ isOpen, onClose, onAddTitle }: TitleEditorProps) {
-  const [titleText, setTitleText] = useState('');
-  const [selectedSize, setSelectedSize] = useState('large');
-  const [charCount, setCharCount] = useState(0);
+export default function TitleEditor({ isOpen, onClose, onAddTitle, initialTitle = '', initialSize = 'large' }: TitleEditorProps) {
+  const [titleText, setTitleText] = useState(initialTitle);
+  const [selectedSize, setSelectedSize] = useState(initialSize);
+  const [charCount, setCharCount] = useState(initialTitle.length);
   const maxChars = 100;
 
   const handleTextChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -45,6 +47,15 @@ export default function TitleEditor({ isOpen, onClose, onAddTitle }: TitleEditor
     setSelectedSize('large');
     onClose();
   };
+
+  // Update state when props change (for editing existing titles)
+  useEffect(() => {
+    if (isOpen) {
+      setTitleText(initialTitle);
+      setSelectedSize(initialSize);
+      setCharCount(initialTitle.length);
+    }
+  }, [isOpen, initialTitle, initialSize]);
 
   if (!isOpen) return null;
 
@@ -90,10 +101,8 @@ export default function TitleEditor({ isOpen, onClose, onAddTitle }: TitleEditor
                   onClick={() => setSelectedSize(size.id)}
                   className={`w-full p-4 border-2 border-black text-left flex justify-between items-center transition-none ${
                     selectedSize === size.id
-                      ? size.isHighlight 
-                        ? 'bg-black text-white' 
-                        : 'bg-gray-100'
-                      : 'bg-white hover:bg-gray-50'
+                      ? 'bg-black text-white'
+                      : 'bg-white hover:bg-black hover:text-white'
                   }`}
                   style={{ fontFamily: 'var(--font-mono)' }}
                 >

@@ -275,8 +275,11 @@ export default function Home() {
           });
         }
         
-        if (data.title) {
-          setTitles([{ id: '1', text: data.title, size: 'text-4xl', timestamp: Date.now() }]);
+        // Restore titles from editState if available, otherwise use the basic title
+        if (data.editState && data.editState.titles && data.editState.titles.length > 0) {
+          setTitles(data.editState.titles);
+        } else if (data.title) {
+          setTitles([{ id: '1', text: data.title, size: 'large', timestamp: Date.now() }]);
         }
         setIsLoadingReel(false);
       })
@@ -695,6 +698,17 @@ export default function Home() {
   const [popoutVideo, setPopoutVideo] = useState<VideoFile | null>(null);
   const [popoutRect, setPopoutRect] = useState<DOMRect | null>(null);
 
+  // Function to map size IDs to CSS classes
+  const getTitleSizeClass = (size: string) => {
+    switch (size) {
+      case 'small': return 'text-xs';
+      case 'medium': return 'text-sm';
+      case 'large': return 'text-base';
+      case 'extra-large': return 'text-lg';
+      case 'huge': return 'text-xl';
+      default: return 'text-base';
+    }
+  };
 
   const handleAddTitle = (text: string, size: string) => {
     const newTitle: TitleElement = {
@@ -703,7 +717,8 @@ export default function Home() {
       size,
       timestamp: Date.now()
     };
-    setTitles([...titles, newTitle]);
+    // Replace existing title instead of adding to array
+    setTitles([newTitle]);
   };
 
   const handleVideoClick = (video: VideoFile, action?: VideoClickAction) => {
@@ -742,7 +757,11 @@ export default function Home() {
   const handleMakeReel = async () => {
     if (videoState.selects.length === 0) return;
 
-    console.log('Creating reel with state:', {
+    const isEditing = editingReelId !== null;
+    const actionText = isEditing ? 'Updating' : 'Creating';
+    
+    console.log(`${actionText} reel with state:`, {
+      reelId: editingReelId,
       folderPath,
       loadedVideos: loadedVideos.length,
       videoState,
@@ -756,36 +775,44 @@ export default function Home() {
     });
 
     try {
+      const method = isEditing ? 'PUT' : 'POST';
+      const requestBody = {
+        videos: videoState.selects,
+        title: titles.length > 0 ? titles[0].text : `Reel ${new Date().toLocaleDateString()}`,
+        description: `Created with ${videoState.selects.length} videos`,
+        // Save the complete state for editing
+        editState: {
+          folderPath,
+          allOriginalVideos: loadedVideos, // All videos originally loaded from Dropbox
+          selectedVideos: videoState.selects, // The videos that were selected for the reel
+          // Also save current panel state as backup
+          currentYourVideos: videoState.yourVideos,
+          currentSelects: videoState.selects,
+          // Save title data for restoration
+          titles: titles
+        },
+        // Include ID in body for PUT requests
+        ...(isEditing && { id: editingReelId })
+      };
+      
       const response = await fetch('/api/reels', {
-        method: 'POST',
+        method: method,
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          videos: videoState.selects,
-          title: `Reel ${new Date().toLocaleDateString()}`,
-          description: `Created with ${videoState.selects.length} videos`,
-          // Save the complete state for editing
-          editState: {
-            folderPath,
-            allOriginalVideos: loadedVideos, // All videos originally loaded from Dropbox
-            selectedVideos: videoState.selects, // The videos that were selected for the reel
-            // Also save current panel state as backup
-            currentYourVideos: videoState.yourVideos,
-            currentSelects: videoState.selects
-          }
-        }),
+        body: JSON.stringify(requestBody),
       });
 
       if (!response.ok) {
-        throw new Error('Failed to create reel');
+        throw new Error(`Failed to ${isEditing ? 'update' : 'create'} reel`);
       }
 
-      const newReel = await response.json();
+      const updatedReel = await response.json();
+      const reelId = isEditing ? editingReelId : updatedReel.id;
       
       // Store the current edit state for browser back navigation
       localStorage.setItem('lastReelEditState', JSON.stringify({
-        reelId: newReel.id,
+        reelId: reelId,
         editState: {
           folderPath,
           allOriginalVideos: loadedVideos,
@@ -796,11 +823,11 @@ export default function Home() {
       }));
       
       // Navigate to reel page
-      router.push(`/r/${newReel.id}`);
+      router.push(`/r/${reelId}`);
       
     } catch (error) {
-      console.error('Error creating reel:', error);
-      setError('Failed to create reel. Please try again.');
+      console.error(`Error ${isEditing ? 'updating' : 'creating'} reel:`, error);
+      setError(`Failed to ${isEditing ? 'update' : 'create'} reel. Please try again.`);
     }
   };
 
@@ -859,53 +886,33 @@ export default function Home() {
                 <Plus className="w-4 h-4" />
                 <span>ADD VIDEOS</span>
               </button>
-              <button 
-                className="brutal-button flex-1 inline-flex px-4 py-3 items-center gap-2"
-                onClick={() => setShowTitleEditor(true)}
-              >
-                <FileText className="w-4 h-4" />
-                <span>ADD TITLE</span>
-              </button>
-              <button 
-                className="brutal-button flex-1 inline-flex px-4 py-3 items-center gap-2"
-                disabled
-              >
-                <Palette className="w-4 h-4" />
-                <span>THEME MENU</span>
-              </button>
+              {titles.length > 0 ? (
+                <button 
+                  className="brutal-button flex-1 inline-flex px-4 py-3 items-center gap-2 bg-green-500 text-white hover:opacity-80"
+                  onClick={() => setShowTitleEditor(true)}
+                >
+                  <FileText className="w-4 h-4" />
+                  <span className={getTitleSizeClass(titles[0].size)}>{titles[0].text}</span>
+                </button>
+              ) : (
+                <button 
+                  className="brutal-button flex-1 inline-flex px-4 py-3 items-center gap-2"
+                  onClick={() => setShowTitleEditor(true)}
+                >
+                  <FileText className="w-4 h-4" />
+                  <span>ADD TITLE</span>
+                </button>
+              )}
               <button 
                 className="brutal-button-accent flex-1 inline-flex px-4 py-3 items-center gap-2"
                 disabled={videoState.selects.length === 0}
                 onClick={handleMakeReel}
               >
                 <Zap className="w-4 h-4" />
-                <span>MAKE REEL</span>
+                <span>{editingReelId ? 'UPDATE REEL' : 'MAKE REEL'}</span>
               </button>
             </div>
 
-            {/* Titles Display */}
-            {titles.length > 0 && (
-              <div className="mt-4 border-t border-terminal pt-4">
-                <div className="text-xs text-terminal mb-2">ADDED TITLES:</div>
-                <div className="flex flex-wrap gap-2">
-                  {titles.map((title) => (
-                    <div
-                      key={title.id}
-                      className="bg-muted border border-terminal px-2 py-1 text-xs text-terminal flex items-center gap-2"
-                    >
-                      <span>{title.text}</span>
-                      <span className="text-muted-foreground">({title.size})</span>
-                      <button
-                        onClick={() => setTitles(titles.filter(t => t.id !== title.id))}
-                        className="text-destructive hover:text-muted-foreground transition-colors"
-                      >
-                        ×
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
           </div>
           
           {/* Horizontal Divider - Full Width */}
@@ -1064,6 +1071,8 @@ export default function Home() {
           isOpen={showTitleEditor}
           onClose={() => setShowTitleEditor(false)}
           onAddTitle={handleAddTitle}
+          initialTitle={titles.length > 0 ? titles[0].text : ''}
+          initialSize={titles.length > 0 ? titles[0].size : 'large'}
         />
       </div>
     </>
