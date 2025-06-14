@@ -13,13 +13,14 @@ interface FolderItem {
 
 interface FolderBrowserProps {
   onFolderSelect: (path: string) => void;
+  onVideoSelect?: (videos: FolderItem[]) => void;
   onClose: () => void;
   initialPath?: string;
   onAuthError?: () => void;
   isAddingToExisting?: boolean;
 }
 
-export default function FolderBrowser({ onFolderSelect, onClose, initialPath = '', onAuthError, isAddingToExisting = false }: FolderBrowserProps) {
+export default function FolderBrowser({ onFolderSelect, onVideoSelect, onClose, initialPath = '', onAuthError, isAddingToExisting = false }: FolderBrowserProps) {
   const [currentPath, setCurrentPath] = useState('');
   const [contents, setContents] = useState<FolderItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -30,6 +31,8 @@ export default function FolderBrowser({ onFolderSelect, onClose, initialPath = '
   const [searchResults, setSearchResults] = useState<FolderItem[]>([]);
   const [isSearching, setIsSearching] = useState(false);
   const [searchError, setSearchError] = useState('');
+  const [selectedVideos, setSelectedVideos] = useState<Set<string>>(new Set());
+  const [lastSelectedVideo, setLastSelectedVideo] = useState<string | null>(null);
 
   // Load the folder contents on component mount and when path changes
   useEffect(() => {
@@ -200,12 +203,74 @@ export default function FolderBrowser({ onFolderSelect, onClose, initialPath = '
     return contents;
   }, [searchQuery, searchResults, contents]);
 
-  // Clear search when navigating to different folder
+  // Clear search and selected videos when navigating to different folder
   useEffect(() => {
     setSearchQuery('');
     setSearchResults([]);
     setSearchError('');
+    setSelectedVideos(new Set());
+    setLastSelectedVideo(null);
   }, [currentPath]);
+
+  // Handle individual video selection with modifier support
+  const handleVideoToggle = (video: FolderItem, event?: React.MouseEvent) => {
+    if (!video.isVideo) return;
+    
+    const isCtrlPressed = event?.ctrlKey || event?.metaKey; // Support both Ctrl and Cmd
+    const isShiftPressed = event?.shiftKey;
+    
+    setSelectedVideos(prev => {
+      const newSet = new Set(prev);
+      
+      if (isShiftPressed && lastSelectedVideo) {
+        // Shift+click: select range from last selected to current
+        const currentVideos = displayedContents.filter(item => item.isVideo);
+        const lastIndex = currentVideos.findIndex(v => v.path === lastSelectedVideo);
+        const currentIndex = currentVideos.findIndex(v => v.path === video.path);
+        
+        if (lastIndex !== -1 && currentIndex !== -1) {
+          const startIndex = Math.min(lastIndex, currentIndex);
+          const endIndex = Math.max(lastIndex, currentIndex);
+          
+          // Select all videos in range
+          for (let i = startIndex; i <= endIndex; i++) {
+            newSet.add(currentVideos[i].path);
+          }
+        } else {
+          // Fallback to single selection
+          newSet.add(video.path);
+        }
+      } else if (isCtrlPressed) {
+        // Ctrl+click: toggle selection (multi-select)
+        if (newSet.has(video.path)) {
+          newSet.delete(video.path);
+        } else {
+          newSet.add(video.path);
+        }
+      } else {
+        // Normal click: single selection (clear others)
+        newSet.clear();
+        newSet.add(video.path);
+      }
+      
+      return newSet;
+    });
+    
+    // Update last selected video for shift-click ranges
+    setLastSelectedVideo(video.path);
+  };
+
+
+  // Handle adding selected videos
+  const handleAddSelectedVideos = () => {
+    if (selectedVideos.size === 0 || !onVideoSelect) return;
+    
+    const videosToAdd = displayedContents.filter(item => 
+      item.isVideo && selectedVideos.has(item.path)
+    );
+    
+    onVideoSelect(videosToAdd);
+  };
   
   // Handle clicking on a folder to navigate into it
   const handleFolderClick = (folder: FolderItem) => {
@@ -299,17 +364,18 @@ export default function FolderBrowser({ onFolderSelect, onClose, initialPath = '
     const isSelectedFolder = selectedPath === item.path;
     const isSearchResult = searchQuery.trim().length > 0;
     const parentPath = (item as any).parentPath;
+    const isVideoSelected = item.isVideo && selectedVideos.has(item.path);
     
     return (
       <div 
         key={item.path} 
-        className="p-3 border-b cursor-pointer flex items-center transition-all hover:opacity-80"
+        className="p-3 border-b flex items-center transition-all hover:opacity-80 cursor-pointer"
         style={{ 
           borderColor: 'var(--panel-border)',
-          background: isSelectedFolder ? 'var(--video-header-bg)' : 'var(--panel-bg)',
-          color: isSelectedFolder ? 'var(--video-header-text)' : 'var(--foreground)'
+          background: isSelectedFolder ? 'var(--video-header-bg)' : isVideoSelected ? 'var(--accent)' : 'var(--panel-bg)',
+          color: isSelectedFolder ? 'var(--video-header-text)' : isVideoSelected ? 'var(--accent-text)' : 'var(--foreground)'
         }}
-        onClick={() => {
+        onClick={(event) => {
           if (isFolder) {
             // For search results, clear search first then navigate
             if (isSearchResult) {
@@ -317,6 +383,9 @@ export default function FolderBrowser({ onFolderSelect, onClose, initialPath = '
               setSearchResults([]);
             }
             handleFolderClick(item);
+          } else if (item.isVideo && onVideoSelect) {
+            // For videos, toggle selection with modifier support
+            handleVideoToggle(item, event);
           } else {
             // If it's a file in search results, navigate to its parent folder
             if (isSearchResult && parentPath) {
@@ -462,6 +531,7 @@ export default function FolderBrowser({ onFolderSelect, onClose, initialPath = '
             </div>
           )}
         </div>
+
         
         {/* Content */}
         <div className="modal-body">
@@ -508,11 +578,20 @@ export default function FolderBrowser({ onFolderSelect, onClose, initialPath = '
         
         {/* Footer with actions */}
         <div className="modal-footer" style={{ padding: '0.75rem 1.5rem' }}>
+          {onVideoSelect && selectedVideos.size > 0 && (
+            <button
+              onClick={handleAddSelectedVideos}
+              className="control-button-dark"
+              style={{ background: 'var(--accent-bg)', color: 'var(--accent-text)', borderColor: 'var(--accent-bg)' }}
+            >
+              {selectedVideos.size === 1 ? 'ADD VIDEO' : `ADD ${selectedVideos.size} VIDEOS`}
+            </button>
+          )}
           <button
             onClick={handleSelectFolder}
             className="control-button-dark"
           >
-{isAddingToExisting ? 'ADD VIDEOS FROM FOLDER' : 'SELECT THIS FOLDER'}
+            {isAddingToExisting ? 'ADD VIDEOS FROM FOLDER' : 'SELECT FOLDER'}
           </button>
           <button
             onClick={onClose}

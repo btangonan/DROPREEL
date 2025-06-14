@@ -9,6 +9,7 @@ import { DndContext, DragOverlay } from '@dnd-kit/core';
 import { VideoGridItem } from '@/components/DraggableVideoList/DndKitVideoGrid';
 import PopoutVideoOverlay from '@/components/DraggableVideoList/PopoutVideoOverlay';
 import { initializeTheme, toggleTheme } from '@/lib/theme';
+import { nanoid } from 'nanoid';
 
 // Import custom hooks
 import { useDropboxAuth } from '@/hooks/useDropboxAuth';
@@ -21,10 +22,6 @@ import { ReelMakerHeader } from '@/components/ReelMaker/ReelMakerHeader';
 import { ActionButtons } from '@/components/ReelMaker/ActionButtons';
 import { VideoPanels } from '@/components/ReelMaker/VideoPanels';
 
-interface VideoClickAction {
-  play?: boolean;
-  rect?: DOMRect;
-}
 
 
 export default function Home() {
@@ -36,6 +33,14 @@ export default function Home() {
   // Theme state
   const [isDarkMode, setIsDarkMode] = useState(false);
   const [error, setError] = useState('');
+  
+  // Clear error when it's set (auto-dismiss)
+  useEffect(() => {
+    if (error) {
+      const timer = setTimeout(() => setError(''), 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [error]);
   
   // Drag and drop hook
   const dnd = useDragAndDrop(videos.videoState, videos.setVideoState, setError);
@@ -106,7 +111,7 @@ export default function Home() {
     }
   };
 
-  const handleVideoClick = (video: VideoFile, action?: VideoClickAction) => {
+  const handleVideoClick = (video: VideoFile) => {
     // Always use the VideoPreviewModal for both play and preview
     setPreviewVideo(video);
     
@@ -120,6 +125,57 @@ export default function Home() {
       await reel.createOrUpdateReel(videos.videoState, videos.loadedVideos, videos.folderPath, reel.titles);
     } catch (error) {
       setError(error instanceof Error ? error.message : 'Failed to create reel');
+    }
+  };
+
+  // Handle individual video selection from FolderBrowser
+  const handleVideoSelect = async (selectedVideos: Array<{ name: string; path: string; type: string; isVideo: boolean }>) => {
+    try {
+      setShowFolderBrowser(false);
+      
+      // Convert FolderItems to VideoFiles format
+      const videoPromises = selectedVideos.map(async (item) => {
+        // Get stream URL for each video
+        const response = await fetch(`/api/dropbox?action=getStreamUrl&path=${encodeURIComponent(item.path)}`);
+        const streamData = await response.json();
+        
+        const videoFile: VideoFile = {
+          id: nanoid(),
+          name: item.name,
+          path: item.path,
+          streamUrl: streamData.url || '',
+          thumbnailUrl: `/api/dropbox/thumbnail?path=${encodeURIComponent(item.path)}`,
+          isCompatible: true, // Will be checked later
+          checkedWithBrowser: false
+        };
+        
+        return videoFile;
+      });
+      
+      const newVideos = await Promise.all(videoPromises);
+      
+      // Check compatibility for the new videos
+      const compatibilityResult = await videos.checkCompatibility(newVideos);
+      const compatibleVideos = compatibilityResult.videos;
+      
+      // Add to existing videos or replace based on context
+      const shouldAppend = videos.loadedVideos.length > 0;
+      if (shouldAppend) {
+        videos.setLoadedVideos(prev => [...prev, ...compatibleVideos]);
+        videos.setVideoState(prev => ({
+          ...prev,
+          yourVideos: [...prev.yourVideos, ...compatibleVideos]
+        }));
+      } else {
+        videos.setLoadedVideos(compatibleVideos);
+        videos.setVideoState({
+          yourVideos: compatibleVideos,
+          selects: []
+        });
+      }
+      
+    } catch (error) {
+      setError(error instanceof Error ? error.message : 'Failed to add selected videos');
     }
   };
 
@@ -202,6 +258,7 @@ export default function Home() {
                 setError(result.error);
               }
             }}
+            onVideoSelect={handleVideoSelect}
             onClose={() => setShowFolderBrowser(false)}
             initialPath={videos.folderPath}
             isAddingToExisting={videos.loadedVideos.length > 0}
@@ -218,9 +275,9 @@ export default function Home() {
             isOpen={!!previewVideo}
             onClose={() => setPreviewVideo(null)}
             videoSrc={previewVideo.streamUrl || ''}
-            title={previewVideo.name || previewVideo.title || ''}
+            title={previewVideo.name || ''}
             isCompatible={previewVideo.isCompatible}
-            compatibilityError={previewVideo.compatibilityError}
+            compatibilityError={previewVideo.compatibilityError || undefined}
           />
         )}
 

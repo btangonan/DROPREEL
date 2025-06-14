@@ -169,7 +169,7 @@ function VideoGridItem({
               <div className="absolute inset-0 flex items-center justify-center pointer-events-auto" style={{ background: 'rgba(0, 0, 0, 0.1)' }}>
                 <div
                   className="text-center drop-shadow-lg cursor-not-allowed"
-                  style={{ color: 'var(--video-header-text)' }}
+                  style={{ color: 'var(--video-header-text)', marginBottom: '3rem' }}
                   title={`Cannot use video: ${video.compatibilityError || 'Incompatible format'}`}
                 >
                   <div className="text-red-500 text-4xl mx-auto mb-2">⚠</div>
@@ -192,7 +192,7 @@ function VideoGridItem({
                     }
                   }}
                   className="text-center drop-shadow-lg focus:outline-none"
-                  style={{ color: 'var(--video-header-text)' }}
+                  style={{ color: 'var(--video-header-text)', marginBottom: '3rem' }}
                 >
                   <Play className="w-8 h-8 mx-auto mb-2" fill="currentColor" />
                   <div className="text-xs text-white font-mono uppercase tracking-wider">PLAY</div>
