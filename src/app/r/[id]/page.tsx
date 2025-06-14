@@ -16,9 +16,9 @@ export default function ReelPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
   const [showDirectorBio, setShowDirectorBio] = useState(true); // To toggle between bio and video
-  const [isVideoLoading, setIsVideoLoading] = useState(false);
   const [containerDimensions, setContainerDimensions] = useState<{ width: number; height: number } | null>(null);
   const [videoAspectRatio, setVideoAspectRatio] = useState<number | null>(null);
+  const [isVideoReady, setIsVideoReady] = useState(false);
 
   // Function to map title sizes to header CSS classes (larger than button sizes)
   const getTitleHeaderSize = (size: string) => {
@@ -38,26 +38,29 @@ export default function ReelPage() {
     const viewportHeight = window.innerHeight;
     
     // Responsive breakpoint calculations
-    let availableWidth: number;
+    let baseWidth: number;
     let availableHeight: number;
     let maxSupportedAspectRatio: number;
     
     if (viewportWidth < 768) {
       // Mobile: prioritize portrait videos, tighter constraints
-      availableWidth = viewportWidth * 0.9;
-      availableHeight = viewportHeight * 0.45;
+      baseWidth = viewportWidth * 0.9;
+      availableHeight = viewportHeight * 0.6;
       maxSupportedAspectRatio = 2.0; // Less support for ultra-wide on mobile
     } else if (viewportWidth < 1024) {
       // Tablet: balanced approach
-      availableWidth = viewportWidth * 0.85;
-      availableHeight = viewportHeight * 0.5;
+      baseWidth = viewportWidth * 0.85;
+      availableHeight = viewportHeight * 0.65;
       maxSupportedAspectRatio = 2.2;
     } else {
-      // Desktop: full ultra-wide support
-      availableWidth = viewportWidth * 0.8;
-      availableHeight = viewportHeight * 0.55;
+      // Desktop: maximize video size
+      baseWidth = viewportWidth * 0.8;
+      availableHeight = viewportHeight * 0.7;
       maxSupportedAspectRatio = 2.5;
     }
+    
+    // Constrain width to match max-w-screen-xl (1280px) used by divider lines
+    const availableWidth = Math.min(baseWidth, 1280);
     
     // Calculate safe height to prevent horizontal overflow
     const safeHeight = availableWidth / maxSupportedAspectRatio;
@@ -123,8 +126,8 @@ export default function ReelPage() {
   const handleNext = () => {
     if (!reel || !reel.videos.length) return;
     
-    setIsVideoLoading(true); // Show loading state
     setVideoAspectRatio(null); // Reset aspect ratio for new video
+    setIsVideoReady(false); // Hide video until ready
     const nextIndex = (currentIndex + 1) % reel.videos.length;
     setCurrentIndex(nextIndex);
     setCurrentVideo(reel.videos[nextIndex]);
@@ -133,8 +136,8 @@ export default function ReelPage() {
   const handlePrevious = () => {
     if (!reel || !reel.videos.length) return;
     
-    setIsVideoLoading(true); // Show loading state
     setVideoAspectRatio(null); // Reset aspect ratio for new video
+    setIsVideoReady(false); // Hide video until ready
     const prevIndex = (currentIndex - 1 + reel.videos.length) % reel.videos.length;
     setCurrentIndex(prevIndex);
     setCurrentVideo(reel.videos[prevIndex]);
@@ -163,8 +166,8 @@ export default function ReelPage() {
   const selectVideo = (index: number) => {
     if (!reel || !reel.videos.length) return;
     
-    setIsVideoLoading(true); // Show loading state
     setVideoAspectRatio(null); // Reset aspect ratio for new video
+    setIsVideoReady(false); // Hide video until ready
     setCurrentIndex(index);
     setCurrentVideo(reel.videos[index]);
     setShowDirectorBio(false); // Switch to video view
@@ -219,7 +222,7 @@ export default function ReelPage() {
     }
   };
 
-  // Detect video aspect ratio to prevent black bars
+  // Detect video aspect ratio and show video when ready
   const handleVideoLoadedMetadata = (e: React.SyntheticEvent<HTMLVideoElement>) => {
     const video = e.currentTarget;
     const width = video.videoWidth;
@@ -228,40 +231,24 @@ export default function ReelPage() {
     if (width && height) {
       const ratio = width / height;
       setVideoAspectRatio(ratio);
+      setIsVideoReady(true); // Show video now that it's ready
     }
-    
-    setIsVideoLoading(false); // Hide loading state when video is ready
-  };
-
-  // Add additional event handlers for video loading
-  const handleVideoCanPlay = () => {
-    setIsVideoLoading(false);
   };
 
   const handleVideoError = (e: React.SyntheticEvent<HTMLVideoElement>) => {
     console.error('Video error:', e.currentTarget.error);
-    setIsVideoLoading(false);
   };
 
   return (
     <div className="min-h-screen bg-background text-foreground">
       <div className="w-full max-w-screen-xl mx-auto">
-        <div className="py-3 px-4 flex justify-between items-center border-b-2 border-border">
-          <Link 
-            href={`/?edit=${reelId}`} 
-            className="brutal-button-accent text-sm flex items-center gap-2">
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-            </svg>
-            EDIT REEL
-          </Link>
+        <div className="py-3 px-4 flex justify-center items-center border-b-2 border-border">
           {/* Reel title */}
           <div className="h-10 flex items-center">
             <span className={`font-medium font-mono ${reel?.editState?.titles?.[0]?.size ? getTitleHeaderSize(reel.editState.titles[0].size) : 'text-xl'}`}>
               {reel?.title?.toUpperCase() || 'DROPREEL'}
             </span>
           </div>
-          <Link href="/reels" className="brutal-button text-sm">← ALL REELS</Link>
         </div>
 
         <div className="w-full relative">
@@ -331,30 +318,20 @@ export default function ReelPage() {
                     >
                       {/* Inner video container - exact aspect ratio */}
                       <div 
-                        className="relative bg-black" 
+                        className="relative" 
                         style={getVideoContainerStyle()}
                       >
                         <video
                           key={currentVideo.id}
                           src={currentVideo.streamUrl}
-                          className={`w-full h-full object-contain transition-opacity duration-150 ${isVideoLoading ? 'opacity-0' : 'opacity-100'}`}
+                          className={`w-full h-full object-contain transition-opacity duration-150 ${isVideoReady ? 'opacity-100' : 'opacity-0'}`}
                           controls
                           onEnded={handleNext}
                           onLoadedMetadata={handleVideoLoadedMetadata}
-                          onCanPlay={handleVideoCanPlay}
                           onError={handleVideoError}
                           crossOrigin="anonymous"
                           playsInline
                         />
-                        
-                        {/* Clean loading overlay */}
-                        {isVideoLoading && (
-                          <div className="absolute inset-0 bg-black flex items-center justify-center">
-                            <div className="text-white text-sm font-mono uppercase tracking-wider">
-                              LOADING...
-                            </div>
-                          </div>
-                        )}
                       </div>
                     </div>
                   </div>

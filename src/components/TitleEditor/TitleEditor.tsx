@@ -60,30 +60,43 @@ export default function TitleEditor({ isOpen, onClose, onAddTitle, initialTitle 
     }
   }, [isOpen, initialTitle, initialSize]);
 
-  // Handle ESC key to close modal
+  // Handle ESC and Enter keys
   useEffect(() => {
-    const handleEscKey = (event: KeyboardEvent) => {
-      if (event.key === 'Escape' && isOpen) {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (!isOpen) return;
+      
+      if (event.key === 'Escape') {
         handleCancel();
+      } else if (event.key === 'Enter') {
+        event.preventDefault();
+        handleAddTitle();
       }
     };
 
     if (isOpen) {
-      document.addEventListener('keydown', handleEscKey);
+      document.addEventListener('keydown', handleKeyDown);
     }
 
     return () => {
-      document.removeEventListener('keydown', handleEscKey);
+      document.removeEventListener('keydown', handleKeyDown);
     };
-  }, [isOpen]);
+  }, [isOpen, titleText, selectedSize]);
 
   if (!isOpen) return null;
 
   return (
-    <div className="modal-overlay" onClick={handleCancel}>
+    <div 
+      className="modal-overlay" 
+      onMouseDown={(e) => {
+        // Only close if clicking directly on the overlay, not when dragging or selecting text
+        if (e.target === e.currentTarget) {
+          handleCancel();
+        }
+      }}
+    >
       <div 
         className="bg-white border-2 border-black max-w-2xl w-full mx-4"
-        onClick={(e) => e.stopPropagation()}
+        onMouseDown={(e) => e.stopPropagation()}
         style={{ fontFamily: 'var(--font-mono)' }}
       >
         {/* Header */}
@@ -103,9 +116,16 @@ export default function TitleEditor({ isOpen, onClose, onAddTitle, initialTitle 
               type="text"
               value={titleText}
               onChange={handleTextChange}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault();
+                  handleAddTitle();
+                }
+              }}
               placeholder="ENTER YOUR TITLE..."
               className="w-full px-4 py-3 border-2 border-black bg-white text-black placeholder-gray-400 font-mono text-lg tracking-wider uppercase focus:outline-none"
               style={{ fontFamily: 'var(--font-mono)' }}
+              autoFocus
             />
           </div>
 

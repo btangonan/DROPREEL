@@ -5,6 +5,7 @@ import { VideoFile } from '@/types';
 import FolderBrowser from '@/components/FolderBrowser/FolderBrowser';
 import VideoPreviewModal from '@/components/VideoPreviewModal';
 import TitleEditor from '@/components/TitleEditor/TitleEditor';
+import ReelPreviewModal from '@/components/ReelPreviewModal';
 import { DndContext, DragOverlay } from '@dnd-kit/core';
 import { VideoGridItem } from '@/components/DraggableVideoList/DndKitVideoGrid';
 import PopoutVideoOverlay from '@/components/DraggableVideoList/PopoutVideoOverlay';
@@ -48,6 +49,7 @@ export default function Home() {
   // Modal states
   const [showFolderBrowser, setShowFolderBrowser] = useState(false);
   const [showTitleEditor, setShowTitleEditor] = useState(false);
+  const [showReelPreview, setShowReelPreview] = useState(false);
   const [previewVideo, setPreviewVideo] = useState<VideoFile | null>(null);
   const [popoutVideo, setPopoutVideo] = useState<VideoFile | null>(null);
   const [popoutRect, setPopoutRect] = useState<DOMRect | null>(null);
@@ -120,7 +122,12 @@ export default function Home() {
     setPopoutRect(null);
   };
 
-  const handleMakeReel = async () => {
+  const handlePreviewReel = () => {
+    if (videos.videoState.selects.length === 0) return;
+    setShowReelPreview(true);
+  };
+
+  const handleUpdateReel = async () => {
     try {
       await reel.createOrUpdateReel(videos.videoState, videos.loadedVideos, videos.folderPath, reel.titles);
     } catch (error) {
@@ -212,7 +219,8 @@ export default function Home() {
               titles={reel.titles}
               onShowTitleEditor={() => setShowTitleEditor(true)}
               videoState={videos.videoState}
-              onMakeReel={handleMakeReel}
+              onPreviewReel={handlePreviewReel}
+              onUpdateReel={handleUpdateReel}
               editingReelId={reel.editingReelId}
               getTitleSizeClass={getTitleSizeClass}
             />
@@ -300,6 +308,16 @@ export default function Home() {
           onAddTitle={reel.handleAddTitle}
           initialTitle={reel.titles.length > 0 ? reel.titles[0].text : ''}
           initialSize={reel.titles.length > 0 ? reel.titles[0].size : 'large'}
+        />
+
+        {/* Reel Preview Modal */}
+        <ReelPreviewModal
+          isOpen={showReelPreview}
+          onClose={() => setShowReelPreview(false)}
+          videos={videos.videoState.selects}
+          reelTitle={reel.titles.length > 0 ? reel.titles[0].text : `Reel ${new Date().toLocaleDateString()}`}
+          titles={reel.titles}
+          editingReelId={reel.editingReelId}
         />
       </div>
     </>
