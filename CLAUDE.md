@@ -5,10 +5,13 @@
 DropReel is a video reel creation application that integrates with Dropbox to help users create video presentations. Users can:
 
 1. **Connect to Dropbox** - Authenticate with their Dropbox account
-2. **Browse and Select Videos** - Navigate Dropbox folders and select video files
-3. **Organize Videos** - Drag and drop videos between "YOUR VIDEOS" and "SELECTS" panels
-4. **Preview Videos** - Watch videos in a full-screen modal player with controls
-5. **Create Reels** - Combine selected videos into presentation reels (planned feature)
+2. **Browse and Select Videos** - Navigate Dropbox folders and select video files with global search
+3. **Search Videos** - Search across entire Dropbox structure to find videos and folders instantly
+4. **Organize Videos** - Drag and drop videos between "YOUR VIDEOS" and "SELECTS" panels
+5. **Preview Videos** - Watch videos in a full-screen modal player with controls
+6. **Create Reels** - Combine selected videos into presentation reels with custom titles
+7. **Edit Reels** - Modify existing reels with persistent state management
+8. **Theme Support** - Switch between light and dark themes with persistence
 
 ## Design System: MATRIX Theme
 
@@ -81,47 +84,105 @@ src/
 ├── app/                          # Next.js App Router
 │   ├── api/                      # API routes
 │   │   ├── auth/dropbox/         # Dropbox authentication
-│   │   └── dropbox/              # Dropbox file operations
+│   │   └── dropbox/              # Dropbox file operations + search
 │   ├── globals.css               # Main CSS with brutalist design
 │   ├── layout.tsx                # Root layout
-│   └── page.tsx                  # Main page (redirect to reel maker)
+│   └── page.tsx                  # Refactored main page (~260 lines)
 ├── components/
-│   ├── BrutalistReelMaker.tsx    # MAIN COMPONENT - core app logic
+│   ├── ReelMaker/                # Refactored components
+│   │   ├── ReelMakerHeader.tsx   # Header with theme toggle
+│   │   ├── ActionButtons.tsx     # Button grid component
+│   │   └── VideoPanels.tsx       # Video grid panels
 │   ├── VideoPreviewModal.tsx     # Video player modal
-│   ├── FolderBrowser/            # Dropbox folder navigation
+│   ├── FolderBrowser/            # Enhanced folder navigation with search
+│   ├── TitleEditor/              # Title editing modal
 │   └── ui/                       # Reusable UI components
+├── hooks/                        # Custom React hooks
+│   ├── useDropboxAuth.ts         # Authentication logic
+│   ├── useVideoManagement.ts     # Video state management
+│   ├── useReelEditing.ts         # Reel creation/editing
+│   └── useDragAndDrop.ts         # Drag & drop functionality
 ├── lib/
 │   ├── auth/                     # Authentication utilities
 │   ├── dropbox/                  # Dropbox API client
+│   ├── theme.ts                  # Theme management utility
 │   └── storage/                  # Data management
 └── types/                        # TypeScript type definitions
 ```
 
-## Core Components Deep Dive
+## Architecture Deep Dive (Post-Refactoring)
 
-### BrutalistReelMaker.tsx (Main Component)
+### Refactored Architecture Benefits
+- **75% Size Reduction**: Main page.tsx reduced from 1087 lines to ~260 lines
+- **Separation of Concerns**: Logic split into focused custom hooks
+- **Improved Maintainability**: Each component has single responsibility
+- **Enhanced Testability**: Hooks and components can be tested independently
+- **Better Developer Experience**: Clear interfaces and responsibilities
 
-**State Management:**
-- `isConnected` - Dropbox authentication status
-- `videos` - Array of videos in "YOUR VIDEOS" panel
-- `selectedVideos` - Array of videos in "SELECTS" panel  
-- `draggedVideo` - Currently dragged video object
-- `isDraggingVideo` - ID of video being dragged (for visual feedback)
-- `dragPosition` - Mouse coordinates during drag
-- `dragDirection` - 'clockwise' or 'counterclockwise' rotation
+### Custom Hooks
 
-**Key Functions:**
-- `handleDragStart()` - Initiates drag with custom drag image and mouse tracking
-- `handleDrop()` - Moves videos between panels with unique selection IDs
-- `handleRemoveDrop()` - Moves videos back from SELECTS to YOUR VIDEOS
-- `openVideoPreview()` - Opens modal and fetches streaming URLs if needed
-- `loadVideosFromDropbox()` - Fetches videos from selected Dropbox folder
+#### `useDropboxAuth.ts`
+**Purpose**: Manages all Dropbox authentication logic
+**State:**
+- `isAuthenticated` - Connection status
+- `isLoading` - Authentication check state
+- `authError` - Error messages
+**Functions:**
+- `checkAuth()` - Verify current authentication status
+- `connect()` - Initiate Dropbox OAuth flow
+- Periodic auth checks every 2 minutes
 
-**Drag & Drop Logic:**
-- Videos get unique `selectionId` when moved to SELECTS panel
-- Original videos are removed from source panel (move, not copy)
-- Floating drag preview follows mouse cursor with rotation animation
-- Direction-aware rotation: clockwise when moving forward, counterclockwise when moving back
+#### `useVideoManagement.ts`
+**Purpose**: Handles video loading, compatibility, and state management
+**State:**
+- `loadedVideos` - All videos loaded from Dropbox
+- `videoState` - Panel organization (yourVideos/selects)
+- `isFetching` - Loading state for video operations
+**Functions:**
+- `fetchVideos()` - Load videos with compatibility checking
+- `deleteVideo()` - Remove videos from panels
+- `checkCompatibility()` - Validate video formats
+
+#### `useReelEditing.ts`
+**Purpose**: Manages reel creation, editing, and state persistence
+**State:**
+- `editingReelId` - Current reel being edited
+- `titles` - Title elements for reels
+- `isLoadingReel` - Reel loading state
+**Functions:**
+- `createOrUpdateReel()` - Save reel with complete state
+- `loadReelForEditing()` - Restore reel for editing
+- `handleAddTitle()` - Title management
+- Navigation state restoration for browser back button
+
+#### `useDragAndDrop.ts`
+**Purpose**: Encapsulates all drag & drop functionality
+**State:**
+- `activeId` - Currently dragged item
+- `activeVideo` - Video being dragged
+**Functions:**
+- `customCollisionDetection()` - Grid-aware drop zones
+- `handleDragEnd()` - Cross-panel movement and reordering
+- Compatibility checking for incompatible videos
+
+### Refactored Components
+
+#### `ReelMakerHeader.tsx`
+- Theme toggle functionality
+- Logo and branding
+- Login button (prepared for future auth)
+
+#### `ActionButtons.tsx`
+- CONNECT button with status indication
+- ADD VIDEOS button
+- Dynamic title button (ADD TITLE/UPDATE TITLE)
+- MAKE REEL/UPDATE REEL button
+
+#### `VideoPanels.tsx`
+- YOUR VIDEOS and SELECTED VIDEOS panels
+- Drag & drop context integration
+- Empty state handling
+- Video grid management
 
 ### VideoPreviewModal.tsx
 
