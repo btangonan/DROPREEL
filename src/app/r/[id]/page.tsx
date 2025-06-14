@@ -5,6 +5,7 @@ import { VideoFile, VideoReel } from '@/types';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import { initializeTheme } from '@/lib/theme';
+import SharedVideoPlayer from '@/components/SharedVideoPlayer';
 
 export default function ReelPage() {
   const params = useParams();
@@ -16,6 +17,7 @@ export default function ReelPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
   const [showDirectorBio, setShowDirectorBio] = useState(true); // To toggle between bio and video
+  const [isDownloading, setIsDownloading] = useState(false);
   const [containerDimensions, setContainerDimensions] = useState<{ width: number; height: number } | null>(null);
   const [videoAspectRatio, setVideoAspectRatio] = useState<number | null>(null);
   const [isVideoReady, setIsVideoReady] = useState(false);
@@ -239,6 +241,50 @@ export default function ReelPage() {
     console.error('Video error:', e.currentTarget.error);
   };
 
+  const handleDownloadCurrentVideo = async () => {
+    if (!currentVideo || isDownloading) return;
+
+    setIsDownloading(true);
+    try {
+      console.log('Starting download for current video:', currentVideo.name);
+      
+      // Get fresh stream URL for the current video
+      const response = await fetch(`/api/dropbox?action=getStreamUrl&path=${encodeURIComponent(currentVideo.path)}`);
+      
+      if (!response.ok) {
+        throw new Error('Failed to get video stream URL');
+      }
+      
+      const data = await response.json();
+      const streamUrl = data.streamUrl;
+      
+      console.log('Got stream URL, starting download...');
+      
+      // Create a direct download link
+      const link = document.createElement('a');
+      link.href = streamUrl;
+      link.download = currentVideo.name;
+      link.style.display = 'none';
+      document.body.appendChild(link);
+      
+      // Force download
+      link.click();
+      
+      // Cleanup
+      setTimeout(() => {
+        document.body.removeChild(link);
+      }, 100);
+      
+      console.log('Download initiated successfully for:', currentVideo.name);
+      
+    } catch (error) {
+      console.error('Download error:', error);
+      alert(`Failed to download video: ${error.message}`);
+    } finally {
+      setIsDownloading(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-background text-foreground">
       <div className="w-full max-w-screen-xl mx-auto">
@@ -347,6 +393,28 @@ export default function ReelPage() {
             <div className="text-sm font-mono uppercase tracking-wider">
               DROPREEL | {reel.title?.toUpperCase()} | {currentIndex + 1}/{reel.videos.length}
             </div>
+            <button
+              onClick={handleDownloadCurrentVideo}
+              disabled={isDownloading}
+              className="brutal-button-accent text-sm flex items-center gap-2 disabled:opacity-50"
+            >
+              {isDownloading ? (
+                <>
+                  <svg className="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="m4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                  DOWNLOADING...
+                </>
+              ) : (
+                <>
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                  </svg>
+                  DOWNLOAD
+                </>
+              )}
+            </button>
           </div>
         </div>
         

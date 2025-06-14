@@ -11,7 +11,8 @@ DropReel is a video reel creation application that integrates with Dropbox to he
 5. **Preview Videos** - Watch videos in a full-screen modal player with controls
 6. **Create Reels** - Combine selected videos into presentation reels with custom titles
 7. **Edit Reels** - Modify existing reels with persistent state management
-8. **Theme Support** - Switch between light and dark themes with persistence
+8. **Download Reels** - Download all videos in a reel as a ZIP file
+9. **Theme Support** - Switch between light and dark themes with persistence
 
 ## Design System: MATRIX Theme
 
@@ -84,8 +85,11 @@ src/
 ├── app/                          # Next.js App Router
 │   ├── api/                      # API routes
 │   │   ├── auth/dropbox/         # Dropbox authentication
-│   │   └── dropbox/              # Dropbox file operations + search
-│   ├── globals.css               # Main CSS with brutalist design
+│   │   ├── dropbox/              # Dropbox file operations + search
+│   │   └── reels/                # Reel CRUD operations
+│   │       └── download/         # ZIP download endpoint
+│   ├── r/[id]/                   # Reel viewing pages
+│   ├── globals.css               # Main CSS with MATRIX design
 │   ├── layout.tsx                # Root layout
 │   └── page.tsx                  # Refactored main page (~260 lines)
 ├── components/
@@ -93,7 +97,8 @@ src/
 │   │   ├── ReelMakerHeader.tsx   # Header with theme toggle
 │   │   ├── ActionButtons.tsx     # Button grid component
 │   │   └── VideoPanels.tsx       # Video grid panels
-│   ├── VideoPreviewModal.tsx     # Video player modal
+│   ├── SharedVideoPlayer.tsx     # Unified video player component
+│   ├── ReelPreviewModal.tsx      # Reel preview modal
 │   ├── FolderBrowser/            # Enhanced folder navigation with search
 │   ├── TitleEditor/              # Title editing modal
 │   └── ui/                       # Reusable UI components
@@ -106,6 +111,7 @@ src/
 │   ├── auth/                     # Authentication utilities
 │   ├── dropbox/                  # Dropbox API client
 │   ├── theme.ts                  # Theme management utility
+│   ├── reel-manager.ts           # Reel data management
 │   └── storage/                  # Data management
 └── types/                        # TypeScript type definitions
 ```
@@ -184,21 +190,46 @@ src/
 - Empty state handling
 - Video grid management
 
-### VideoPreviewModal.tsx
+### SharedVideoPlayer.tsx
+
+**Unified Video Player Component:**
+- **Shared Design**: Both preview modal and reel pages use the same component
+- **Automatic URL Refresh**: Detects expired Dropbox URLs and fetches fresh ones
+- **Loading States**: Shows spinner while processing URLs to prevent 410 errors
+- **Download Integration**: Includes ZIP download functionality when enabled
+- **Responsive Sizing**: Dynamic aspect ratio detection and container sizing
+- **Navigation Controls**: Arrows and video carousel with thumbnail selection
 
 **Features:**
-- Dynamic aspect ratio detection from video metadata or thumbnails
+- Dynamic aspect ratio detection from video metadata
 - Responsive modal sizing with device-specific constraints
 - Custom video player controls (play/pause, seek, volume, restart)
-- Loading states with thumbnail previews
+- Loading states with URL processing indicators
 - Keyboard shortcuts (Esc to close)
+- Cross-origin video support for Dropbox streams
 
-**Aspect Ratio Logic:**
+**URL Processing Logic:**
 ```typescript
-// Tries video metadata first, falls back to thumbnail image dimensions
-const aspectRatio = video.videoWidth / video.videoHeight;
-// Modal dimensions calculated to maintain video aspect ratio + controls space
+// Automatically refreshes expired Dropbox URLs
+const processVideos = async () => {
+  const updatedVideos = await Promise.all(
+    videos.map(async (video) => {
+      if (video.streamUrl?.includes('dropbox')) {
+        const response = await fetch(`/api/dropbox?action=getStreamUrl&path=${video.path}`);
+        const data = await response.json();
+        return { ...video, streamUrl: data.streamUrl };
+      }
+      return video;
+    })
+  );
+  setProcessedVideos(updatedVideos);
+};
 ```
+
+### ReelPreviewModal.tsx
+- **Legacy Implementation**: Individual video player logic (may be removed)
+- Full-screen preview modal for reel creation workflow
+- ESC key support and modal controls
 
 ## Styling System
 
@@ -311,12 +342,35 @@ Located in `src/app/globals.css`:
 
 ### File Operations
 - **List Videos**: `GET /api/dropbox?action=listVideos&folderPath={path}`
-- **Get Stream URL**: `GET /api/dropbox?action=getStreamUrl&path={path}`
+- **Get Stream URL**: `GET /api/dropbox?action=getStreamUrl&path={path}` - Returns `{streamUrl}`
 - **Get Thumbnails**: `GET /api/dropbox/thumbnail?path={path}`
+
+### Reel Operations
+- **Get All Reels**: `GET /api/reels`
+- **Get Specific Reel**: `GET /api/reels?id={reelId}`
+- **Create Reel**: `POST /api/reels`
+- **Update Reel**: `PUT /api/reels`
+- **Delete Reel**: `DELETE /api/reels?id={reelId}`
+- **Download Reel**: `POST /api/reels/download` - Returns ZIP file
 
 ### Authentication Check
 - `GET /api/auth/dropbox/status` - Returns `{isAuthenticated: boolean}`
 - Called on component mount to restore login state
+
+### Download System
+**Server-Side ZIP Generation:**
+```typescript
+// POST /api/reels/download
+const archive = archiver('zip');
+for (const video of reel.videos) {
+  const fileResponse = await dbx.filesDownload({ path: video.path });
+  archive.append(Buffer.from(fileResponse.result.fileBinary), { name: video.name });
+}
+```
+- Downloads all videos from Dropbox using `files/download` API
+- Creates ZIP archive with sanitized filenames
+- Streams ZIP directly to user as download
+- Handles large files efficiently without browser memory issues
 
 ## Development Workflow
 
@@ -641,7 +695,7 @@ This approach ensures every video—from vertical phone recordings to ultra-wide
 
 ---
 
-## Recent Feature Enhancements (Current Session 2025)
+## Recent Feature Enhancements (June 2025)
 
 ### Title Management System
 **Implemented comprehensive title functionality with size support and persistence:**
@@ -985,4 +1039,133 @@ else if (data.videos) {
 - **Restoration**: Multiple fallback strategies for data recovery
 - **Consistency**: Maintain UI state across navigation and refreshes
 
-This session focused on polish, user experience improvements, and architectural planning for future development. All changes maintain backward compatibility while significantly improving the overall user experience.
+### SharedVideoPlayer Architecture (Major Refactor)
+
+**Problem:** Duplicate video player code between ReelPreviewModal and reel pages caused maintenance overhead and inconsistent experiences.
+
+**Solution:** Created unified `SharedVideoPlayer.tsx` component with:
+
+#### **Centralized Video Logic**
+- **Single Source of Truth**: All video playback, navigation, and display logic in one component
+- **Consistent Experience**: Preview modal and reel pages now identical
+- **Easy Maintenance**: Changes apply to both preview and production views
+- **Reduced Code**: Eliminated 500+ lines of duplicate code
+
+#### **Automatic URL Management**
+```typescript
+// Detects expired Dropbox URLs and refreshes automatically
+useEffect(() => {
+  const processVideos = async () => {
+    setIsProcessingUrls(true);
+    const updatedVideos = await Promise.all(
+      videos.map(async (video) => {
+        if (video.streamUrl?.includes('dropbox')) {
+          const response = await fetch(`/api/dropbox?action=getStreamUrl&path=${video.path}`);
+          const data = await response.json();
+          return { ...video, streamUrl: data.streamUrl };
+        }
+        return video;
+      })
+    );
+    setProcessedVideos(updatedVideos);
+    setIsProcessingUrls(false);
+  };
+  processVideos();
+}, [videos]);
+```
+
+#### **Smart Loading States**
+- **URL Processing**: Shows spinner while refreshing expired Dropbox links
+- **Error Prevention**: Only renders video after fresh URLs are obtained
+- **Visual Feedback**: Loading indicators prevent user confusion
+- **Graceful Fallbacks**: "No video available" for edge cases
+
+### ZIP Download System
+
+**Complete server-side download implementation:**
+
+#### **API Endpoint** (`/api/reels/download`)
+- **ZIP Generation**: Uses `archiver` package for efficient ZIP creation
+- **Dropbox Integration**: Downloads files via `files/download` API
+- **Stream Processing**: Handles large files without memory issues
+- **Error Handling**: Continues with other videos if one fails
+
+#### **Frontend Integration**
+```typescript
+const handleDownloadReel = async () => {
+  const response = await fetch('/api/reels/download', {
+    method: 'POST',
+    body: JSON.stringify({ reelId })
+  });
+  const blob = await response.blob();
+  // Trigger browser download
+  const link = document.createElement('a');
+  link.href = window.URL.createObjectURL(blob);
+  link.download = `${reelTitle}.zip`;
+  link.click();
+};
+```
+
+#### **Download Button**
+- **Positioned**: In project info bar (black divider), opposite video counter
+- **Loading States**: Shows spinner and "DOWNLOADING..." during process
+- **Error Handling**: User feedback for failed downloads
+- **Clean UX**: Only appears on reel pages, not preview modal
+
+### URL Expiration Fix
+
+**Root Cause:** Dropbox temporary URLs expire after 4 hours, causing 410 errors.
+
+**Solution:** Automatic URL refresh system:
+1. **Detection**: Identifies expired Dropbox URLs by domain pattern
+2. **Refresh**: Calls `/api/dropbox?action=getStreamUrl` for fresh links
+3. **Prevention**: Only renders video after URLs are processed
+4. **Caching**: Fresh URLs valid for another 4 hours
+
+### Clean Architecture Benefits
+
+#### **Component Props Interface**
+```typescript
+interface SharedVideoPlayerProps {
+  videos: VideoFile[];
+  currentIndex: number;
+  onNext: () => void;
+  onPrevious: () => void;
+  onSelectVideo?: (index: number) => void;
+  reelTitle: string;
+  titles?: Array<{ text: string; size: string }>;
+  showCarousel?: boolean;
+  showProjectInfo?: boolean;
+  directorInfo?: any;
+  showDirectorBio?: boolean;
+  onToggleDirectorBio?: () => void;
+  reelId?: string;
+  showDownload?: boolean;
+}
+```
+
+#### **Usage Examples**
+```typescript
+// Reel Page - Full features
+<SharedVideoPlayer
+  videos={reel.videos}
+  currentIndex={currentIndex}
+  onNext={handleNext}
+  onPrevious={handlePrevious}
+  reelId={reelId}
+  showDownload={true}
+  // ... other props
+/>
+
+// Preview Modal - Limited features  
+<SharedVideoPlayer
+  videos={videos}
+  currentIndex={currentIndex}
+  onNext={handleNext}
+  onPrevious={handlePrevious}
+  showDownload={false}
+  // ... other props
+/>
+```
+
+This architecture ensures consistent video playback, eliminates URL expiration issues, and provides a seamless download experience while maintaining clean, maintainable code.
