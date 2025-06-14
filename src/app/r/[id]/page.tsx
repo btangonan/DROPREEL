@@ -2,13 +2,12 @@
 
 import { useEffect, useState } from 'react';
 import { VideoFile, VideoReel } from '@/types';
-import { useParams, useRouter } from 'next/navigation';
+import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import { initializeTheme } from '@/lib/theme';
 
 export default function ReelPage() {
   const params = useParams();
-  const router = useRouter();
   const reelId = params.id as string;
   
   const [reel, setReel] = useState<VideoReel | null>(null);
@@ -17,13 +16,9 @@ export default function ReelPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
   const [showDirectorBio, setShowDirectorBio] = useState(true); // To toggle between bio and video
-  const [videoAspectRatio, setVideoAspectRatio] = useState<{ width: number; height: number; aspectRatio: number; orientation: 'landscape' | 'portrait' | 'square' } | null>(null);
   const [isVideoLoading, setIsVideoLoading] = useState(false);
-
-  // Initialize theme from localStorage on mount
-  useEffect(() => {
-    initializeTheme();
-  }, []);
+  const [containerDimensions, setContainerDimensions] = useState<{ width: number; height: number } | null>(null);
+  const [videoAspectRatio, setVideoAspectRatio] = useState<number | null>(null);
 
   // Function to map title sizes to header CSS classes (larger than button sizes)
   const getTitleHeaderSize = (size: string) => {
@@ -36,6 +31,61 @@ export default function ReelPage() {
       default: return 'text-2xl';
     }
   };
+
+  // Calculate fixed container dimensions that prevent thumbnails from moving
+  const calculateFixedContainerDimensions = () => {
+    const viewportWidth = window.innerWidth;
+    const viewportHeight = window.innerHeight;
+    
+    // Responsive breakpoint calculations
+    let availableWidth: number;
+    let availableHeight: number;
+    let maxSupportedAspectRatio: number;
+    
+    if (viewportWidth < 768) {
+      // Mobile: prioritize portrait videos, tighter constraints
+      availableWidth = viewportWidth * 0.9;
+      availableHeight = viewportHeight * 0.45;
+      maxSupportedAspectRatio = 2.0; // Less support for ultra-wide on mobile
+    } else if (viewportWidth < 1024) {
+      // Tablet: balanced approach
+      availableWidth = viewportWidth * 0.85;
+      availableHeight = viewportHeight * 0.5;
+      maxSupportedAspectRatio = 2.2;
+    } else {
+      // Desktop: full ultra-wide support
+      availableWidth = viewportWidth * 0.8;
+      availableHeight = viewportHeight * 0.55;
+      maxSupportedAspectRatio = 2.5;
+    }
+    
+    // Calculate safe height to prevent horizontal overflow
+    const safeHeight = availableWidth / maxSupportedAspectRatio;
+    
+    // Use smaller of available height or safe height
+    const containerHeight = Math.min(availableHeight, safeHeight);
+    
+    return {
+      width: availableWidth,
+      height: containerHeight
+    };
+  };
+
+  // Initialize theme and container dimensions on mount
+  useEffect(() => {
+    initializeTheme();
+    
+    const updateDimensions = () => {
+      setContainerDimensions(calculateFixedContainerDimensions());
+    };
+
+    // Set initial dimensions
+    updateDimensions();
+
+    // Update on window resize
+    window.addEventListener('resize', updateDimensions);
+    return () => window.removeEventListener('resize', updateDimensions);
+  }, []);
 
   useEffect(() => {
     const fetchReel = async () => {
@@ -74,6 +124,7 @@ export default function ReelPage() {
     if (!reel || !reel.videos.length) return;
     
     setIsVideoLoading(true); // Show loading state
+    setVideoAspectRatio(null); // Reset aspect ratio for new video
     const nextIndex = (currentIndex + 1) % reel.videos.length;
     setCurrentIndex(nextIndex);
     setCurrentVideo(reel.videos[nextIndex]);
@@ -83,6 +134,7 @@ export default function ReelPage() {
     if (!reel || !reel.videos.length) return;
     
     setIsVideoLoading(true); // Show loading state
+    setVideoAspectRatio(null); // Reset aspect ratio for new video
     const prevIndex = (currentIndex - 1 + reel.videos.length) % reel.videos.length;
     setCurrentIndex(prevIndex);
     setCurrentVideo(reel.videos[prevIndex]);
@@ -112,62 +164,73 @@ export default function ReelPage() {
     if (!reel || !reel.videos.length) return;
     
     setIsVideoLoading(true); // Show loading state
+    setVideoAspectRatio(null); // Reset aspect ratio for new video
     setCurrentIndex(index);
     setCurrentVideo(reel.videos[index]);
     setShowDirectorBio(false); // Switch to video view
-    // DON'T reset videoAspectRatio here - keep previous container size until new video loads
   };
 
-  // Calculate video container style exactly like VideoPreviewModal
-  const getVideoContainerStyle = () => {
-    if (!videoAspectRatio) {
-      return { aspectRatio: '16 / 9', maxWidth: '80vw', maxHeight: '60vh' };
+
+  // Get fixed container style - NEVER changes height to keep thumbnails in place
+  const getFixedContainerStyle = () => {
+    if (!containerDimensions) {
+      return {
+        width: '80vw',
+        height: '60vh'
+      };
     }
 
-    const { orientation, aspectRatio: ratio } = videoAspectRatio;
+    const { width, height } = containerDimensions;
     
-    if (orientation === 'portrait') {
-      // Portrait videos: limit height and let width adjust
+    return {
+      width: `${width}px`,
+      height: `${height}px` // This NEVER changes - keeps thumbnails stable
+    };
+  };
+
+  // Get video container that matches exact aspect ratio within fixed bounds
+  const getVideoContainerStyle = () => {
+    if (!containerDimensions || !videoAspectRatio) {
       return {
-        maxHeight: '60vh',
-        maxWidth: `calc(60vh * ${ratio})`,
-        aspectRatio: `${videoAspectRatio.width} / ${videoAspectRatio.height}`
+        width: '100%',
+        height: '100%'
+      };
+    }
+
+    const { width: maxWidth, height: maxHeight } = containerDimensions;
+    
+    // Calculate video dimensions constrained by both width and height
+    const heightConstrainedWidth = maxHeight * videoAspectRatio;
+    const widthConstrainedHeight = maxWidth / videoAspectRatio;
+    
+    // Use whichever constraint gives the largest video that fits within bounds
+    if (heightConstrainedWidth <= maxWidth) {
+      // Height is the limiting constraint - use full height
+      return {
+        width: `${heightConstrainedWidth}px`,
+        height: `${maxHeight}px`
       };
     } else {
-      // Landscape and square: limit width and let height adjust
+      // Width is the limiting constraint - use full width (ultra-wide case)
       return {
-        maxWidth: '80vw',
-        maxHeight: `calc(80vw / ${ratio})`,
-        aspectRatio: `${videoAspectRatio.width} / ${videoAspectRatio.height}`
+        width: `${maxWidth}px`,
+        height: `${widthConstrainedHeight}px`
       };
     }
   };
 
-  // Detect video aspect ratio like VideoPreviewModal
+  // Detect video aspect ratio to prevent black bars
   const handleVideoLoadedMetadata = (e: React.SyntheticEvent<HTMLVideoElement>) => {
     const video = e.currentTarget;
     const width = video.videoWidth;
     const height = video.videoHeight;
     
-    
     if (width && height) {
       const ratio = width / height;
-      let orientation: 'landscape' | 'portrait' | 'square';
-      
-      if (ratio > 1.1) {
-        orientation = 'landscape';
-      } else if (ratio < 0.9) {
-        orientation = 'portrait';
-      } else {
-        orientation = 'square';
-      }
-      
-      setVideoAspectRatio({ width, height, aspectRatio: ratio, orientation });
-      setIsVideoLoading(false); // Hide loading state when video is ready
-    } else {
-      // Fallback: hide loading after 2 seconds if no metadata
-      setTimeout(() => setIsVideoLoading(false), 2000);
+      setVideoAspectRatio(ratio);
     }
+    
+    setIsVideoLoading(false); // Hide loading state when video is ready
   };
 
   // Add additional event handlers for video loading
@@ -260,32 +323,39 @@ export default function ReelPage() {
               ) : (
                 /* Show video player when not showing director bio */
                 currentVideo && (
-                  <div className="w-full flex items-center justify-center" style={{ minHeight: '60vh' }}>
+                  <div className="w-full flex items-center justify-center">
+                    {/* Fixed outer container - NEVER changes height */}
                     <div 
-                      className="relative bg-black" 
-                      style={getVideoContainerStyle()}
+                      className="relative flex items-center justify-center" 
+                      style={getFixedContainerStyle()}
                     >
-                      <video
-                        key={currentVideo.id}
-                        src={currentVideo.streamUrl}
-                        className={`w-full h-full object-contain transition-opacity duration-150 ${isVideoLoading ? 'opacity-0' : 'opacity-100'}`}
-                        controls
-                        onEnded={handleNext}
-                        onLoadedMetadata={handleVideoLoadedMetadata}
-                        onCanPlay={handleVideoCanPlay}
-                        onError={handleVideoError}
-                        crossOrigin="anonymous"
-                        playsInline
-                      />
-                      
-                      {/* Clean loading overlay */}
-                      {isVideoLoading && (
-                        <div className="absolute inset-0 bg-black flex items-center justify-center">
-                          <div className="text-white text-sm font-mono uppercase tracking-wider">
-                            LOADING...
+                      {/* Inner video container - exact aspect ratio */}
+                      <div 
+                        className="relative bg-black" 
+                        style={getVideoContainerStyle()}
+                      >
+                        <video
+                          key={currentVideo.id}
+                          src={currentVideo.streamUrl}
+                          className={`w-full h-full object-contain transition-opacity duration-150 ${isVideoLoading ? 'opacity-0' : 'opacity-100'}`}
+                          controls
+                          onEnded={handleNext}
+                          onLoadedMetadata={handleVideoLoadedMetadata}
+                          onCanPlay={handleVideoCanPlay}
+                          onError={handleVideoError}
+                          crossOrigin="anonymous"
+                          playsInline
+                        />
+                        
+                        {/* Clean loading overlay */}
+                        {isVideoLoading && (
+                          <div className="absolute inset-0 bg-black flex items-center justify-center">
+                            <div className="text-white text-sm font-mono uppercase tracking-wider">
+                              LOADING...
+                            </div>
                           </div>
-                        </div>
-                      )}
+                        )}
+                      </div>
                     </div>
                   </div>
                 )
