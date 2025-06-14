@@ -579,3 +579,349 @@ function getProcessedUrl(url: string | undefined): string {
 This approach ensures every video—from vertical phone recordings to ultra-wide cinematic shots—displays perfectly without black bars or cropping, matching the quality of professional video platforms.
 
 ---
+
+## Recent Feature Enhancements (Current Session 2025)
+
+### Title Management System
+**Implemented comprehensive title functionality with size support and persistence:**
+
+#### Title Size Mapping
+- **Button Display**: Maps size IDs to appropriate CSS classes for consistent UI
+- **Reel Page Headers**: Uses larger header classes for proper visual hierarchy
+- **Editor Preview**: Shows actual size selection in modal
+
+```typescript
+// Button size mapping (for buttons/UI)
+const getTitleSizeClass = (size: string) => {
+  switch (size) {
+    case 'small': return 'text-xs';
+    case 'medium': return 'text-sm';
+    case 'large': return 'text-base';
+    case 'extra-large': return 'text-lg';
+    case 'huge': return 'text-xl';
+    default: return 'text-base';
+  }
+};
+
+// Header size mapping (for page titles)
+const getTitleHeaderSize = (size: string) => {
+  switch (size) {
+    case 'small': return 'text-lg';     // h4 equivalent
+    case 'medium': return 'text-xl';    // h3 equivalent
+    case 'large': return 'text-2xl';    // h2 equivalent
+    case 'extra-large': return 'text-3xl'; // h1 equivalent
+    case 'huge': return 'text-4xl';     // Large h1 equivalent
+    default: return 'text-2xl';
+  }
+};
+```
+
+#### Title Persistence Architecture
+- **Database Storage**: Titles saved in `editState.titles` with full metadata
+- **Cross-Session Persistence**: Titles restored when editing reels
+- **Size Preservation**: Both text and size settings maintained
+- **Update vs Create**: Smart detection for edit vs new title scenarios
+
+#### Dynamic Button Behavior
+- **Context-Aware Text**: "ADD TITLE" vs "UPDATE TITLE" based on state
+- **Visual Indicators**: Green background for existing titles, pink accent for updates
+- **Size Display**: Title buttons show actual title text with appropriate sizing
+
+### Reel Management Enhancements
+
+#### Create vs Update Intelligence
+```typescript
+const handleMakeReel = async () => {
+  const isEditing = editingReelId !== null;
+  const method = isEditing ? 'PUT' : 'POST';
+  const url = isEditing ? `/api/reels?id=${editingReelId}` : '/api/reels';
+  
+  // Dynamic request body with proper ID handling
+  const requestBody = {
+    videos: videoState.selects,
+    title: titles.length > 0 ? titles[0].text : `Reel ${new Date().toLocaleDateString()}`,
+    editState: {
+      // Complete state preservation
+      folderPath,
+      allOriginalVideos: loadedVideos,
+      selectedVideos: videoState.selects,
+      currentYourVideos: videoState.yourVideos,
+      currentSelects: videoState.selects,
+      titles: titles // Title persistence
+    },
+    ...(isEditing && { id: editingReelId })
+  };
+};
+```
+
+#### Reel Title Display
+- **Dynamic Page Headers**: Reel pages show actual title instead of "DROPREEL"
+- **Size-Aware Display**: Respects title size settings from editor
+- **Fallback Handling**: Graceful degradation for legacy reels
+
+### Navigation Arrow Improvements
+- **Better Positioning**: Moved arrows further from video content for cleaner UI
+- **Responsive Spacing**: Maintains proper distance across screen sizes
+- **Visual Balance**: Improved overall page composition
+
+### Theme System Overhaul
+
+#### Persistent Theme State
+**Implemented site-wide theme persistence using localStorage:**
+
+```typescript
+// src/lib/theme.ts - Centralized theme management
+export const initializeTheme = (): boolean => {
+  const savedTheme = getStoredTheme();
+  applyTheme(savedTheme);
+  return savedTheme;
+};
+
+export const toggleTheme = (currentTheme: boolean): boolean => {
+  const newTheme = !currentTheme;
+  setStoredTheme(newTheme);
+  applyTheme(newTheme);
+  return newTheme;
+};
+```
+
+#### Cross-Page Theme Consistency
+- **Main Page**: Theme toggle with localStorage persistence
+- **Reel View Page**: Automatic theme restoration on load
+- **Reels List Page**: Consistent theme across navigation
+- **Modal Components**: Theme-aware styling
+
+#### MATRIX Theme Refinements
+- **Green Accents**: Updated border colors to use CSS variables
+- **Dark Mode Polish**: Proper green borders and UI elements
+- **Light/Dark Switching**: Seamless transitions between themes
+
+### Modal & Interaction Enhancements
+
+#### Universal ESC Key Support
+**Added ESC key handling to all modal components:**
+
+- **TitleEditor**: ESC triggers `handleCancel()` with proper cleanup
+- **VideoPreviewModal**: Already had ESC support (was working correctly)
+- **FolderBrowser**: Added ESC handler for modal dismissal
+- **PopoutVideoOverlay**: Already had comprehensive ESC handling
+
+```typescript
+// Standard ESC handler pattern
+useEffect(() => {
+  const handleEscKey = (event: KeyboardEvent) => {
+    if (event.key === 'Escape' && isOpen) {
+      onClose();
+    }
+  };
+
+  if (isOpen) {
+    document.addEventListener('keydown', handleEscKey);
+  }
+
+  return () => {
+    document.removeEventListener('keydown', handleEscKey);
+  };
+}, [isOpen, onClose]);
+```
+
+#### Title Editor Improvements
+- **Dynamic Button Styling**: Pink accent colors for update mode
+- **Sample Text Colors**: Consistent pink accent across size previews
+- **Pre-population**: Existing titles load into editor for seamless editing
+- **Hover States**: All size buttons turn black on hover
+
+### Video State Management
+**Comprehensive video panel state preservation:**
+
+#### Complete State Saving
+```typescript
+editState: {
+  folderPath,                    // Dropbox folder context
+  allOriginalVideos: loadedVideos,  // All loaded videos
+  selectedVideos: videoState.selects, // Reel content
+  currentYourVideos: videoState.yourVideos, // Panel state
+  currentSelects: videoState.selects,       // Panel state backup
+  titles: titles                 // Title information
+}
+```
+
+#### Restoration Strategy
+1. **Primary**: Use `currentYourVideos` and `currentSelects` for exact panel states
+2. **Fallback**: Reconstruct from `allOriginalVideos` and `selectedVideos`
+3. **Legacy**: Handle older reels without full edit state
+
+### Complete Reel State Management Flow
+
+#### Cross-Session State Persistence
+**The app implements a sophisticated multi-layer state management system:**
+
+#### 1. Database Persistence (Primary Storage)
+```typescript
+// When creating/updating reels via handleMakeReel()
+const requestBody = {
+  videos: videoState.selects,
+  title: titles.length > 0 ? titles[0].text : `Reel ${new Date().toLocaleDateString()}`,
+  description: `Created with ${videoState.selects.length} videos`,
+  editState: {
+    folderPath,                           // Dropbox folder context
+    allOriginalVideos: loadedVideos,      // Complete video library
+    selectedVideos: videoState.selects,   // Final reel content
+    currentYourVideos: videoState.yourVideos,  // Left panel state
+    currentSelects: videoState.selects,   // Right panel state
+    titles: titles                        // Title configuration
+  },
+  ...(isEditing && { id: editingReelId })
+};
+```
+
+#### 2. Browser Navigation State (localStorage)
+```typescript
+// Stored when navigating TO reel view (for back button support)
+localStorage.setItem('lastReelEditState', JSON.stringify({
+  reelId: reelId,
+  editState: {
+    folderPath,
+    allOriginalVideos: loadedVideos,
+    selectedVideos: videoState.selects,
+    currentYourVideos: videoState.yourVideos,
+    currentSelects: videoState.selects
+  }
+}));
+
+// Retrieved when navigating BACK to edit page
+const lastReelEditState = localStorage.getItem('lastReelEditState');
+if (lastReelEditState && !editReelId) {
+  const stored = JSON.parse(lastReelEditState);
+  // Restore complete edit context
+}
+```
+
+#### 3. URL Parameter State (Edit Mode Detection)
+```typescript
+// URL-based edit mode: /?edit={reelId}
+const urlParams = new URLSearchParams(window.location.search);
+const editReelId = urlParams.get('edit');
+
+if (editReelId && editReelId !== editingReelId) {
+  setEditingReelId(editReelId);
+  loadReelForEditing(editReelId);
+}
+```
+
+#### State Flow Scenarios
+
+#### Scenario 1: Create New Reel
+1. User organizes videos in panels
+2. User adds title and configures settings
+3. User clicks "MAKE REEL"
+4. Complete state saved to database via POST
+5. Navigation to reel view with localStorage backup
+6. User can return to edit with full context
+
+#### Scenario 2: Edit Existing Reel
+1. User clicks "EDIT REEL" from reel view
+2. Navigation to `/?edit={reelId}` 
+3. `loadReelForEditing()` fetches complete `editState`
+4. All panels, videos, and settings restored
+5. User makes changes
+6. User clicks "UPDATE REEL"
+7. Updated state saved to database via PUT
+
+#### Scenario 3: Browser Back Navigation
+1. User navigates from edit page to reel view
+2. `lastReelEditState` stored in localStorage
+3. User presses browser back button
+4. App detects main page without edit parameter
+5. localStorage checked for recent edit state
+6. Complete context restored from localStorage
+7. URL updated to include edit parameter
+
+#### Data Recovery Hierarchy
+```typescript
+// Primary: Use saved panel states (most accurate)
+if (currentYourVideos && currentSelects) {
+  setVideoState({
+    yourVideos: currentYourVideos,
+    selects: currentSelects
+  });
+}
+// Fallback: Reconstruct from video relationships
+else if (allOriginalVideos && selectedVideos) {
+  const selectedVideoIds = new Set(selectedVideos.map(v => v.id));
+  const unselectedVideos = allOriginalVideos.filter(v => !selectedVideoIds.has(v.id));
+  setVideoState({
+    yourVideos: unselectedVideos,
+    selects: selectedVideos
+  });
+}
+// Legacy: Handle old reels without editState
+else if (data.videos) {
+  setVideoState({
+    yourVideos: [],
+    selects: data.videos
+  });
+}
+```
+
+#### State Consistency Guarantees
+- **Complete Context**: Every edit session preserves full video library
+- **Panel Integrity**: Exact panel organization maintained across sessions
+- **Title Persistence**: Custom titles with sizing survive navigation
+- **Folder Context**: Dropbox folder path preserved for adding more videos
+- **Seamless Transitions**: No data loss between create, edit, and view modes
+
+#### Technical Implementation Notes
+- **localStorage Cleanup**: Temporary navigation state cleared after use
+- **URL Synchronization**: Browser history properly reflects edit state
+- **Memory Management**: Large video arrays efficiently stored and retrieved
+- **Error Recovery**: Multiple fallback strategies prevent data loss
+- **Compatibility**: Handles both new reels and legacy reel formats
+
+### Architecture & Code Quality
+
+#### Refactoring Plan Documentation
+**Created comprehensive refactoring strategy in `refactoring.md`:**
+
+- **Problem Analysis**: Identified 1087-line monolithic component issues
+- **5-Phase Approach**: Hooks → Components → Services → State → Structure
+- **Detailed Implementation**: Specific code examples for each extraction
+- **Migration Strategy**: Low-risk incremental approach
+
+#### Key Refactoring Opportunities
+1. **Custom Hooks**: Extract auth, video management, drag & drop logic
+2. **Component Breakdown**: Smaller, focused UI components  
+3. **Service Layer**: Centralized API and business logic
+4. **State Management**: Context/reducer for complex state
+5. **Testing Strategy**: Unit testable isolated logic
+
+### Performance & UX Improvements
+
+#### Smart Button States
+- **Context Awareness**: Buttons show appropriate text based on state
+- **Visual Feedback**: Color coding for different action types
+- **Loading States**: Proper feedback during async operations
+
+#### Seamless Navigation
+- **Theme Persistence**: No flash of wrong theme on page load
+- **State Restoration**: Complete edit context preserved across navigation
+- **Error Handling**: Graceful degradation and user feedback
+
+### Development Guidelines
+
+#### Theme Implementation
+- **CSS Variables**: Use `var(--accent-bg)` for consistent theming
+- **localStorage**: Persist user preferences across sessions
+- **SSR Safety**: Handle server-side rendering edge cases
+
+#### Modal Development
+- **ESC Support**: Always include ESC key handling for dismissal
+- **Focus Management**: Proper keyboard navigation and accessibility
+- **Cleanup**: Remove event listeners on component unmount
+
+#### State Management
+- **Persistence**: Save complete edit state for seamless editing
+- **Restoration**: Multiple fallback strategies for data recovery
+- **Consistency**: Maintain UI state across navigation and refreshes
+
+This session focused on polish, user experience improvements, and architectural planning for future development. All changes maintain backward compatibility while significantly improving the overall user experience.
