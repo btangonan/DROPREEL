@@ -1,7 +1,8 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { extractDropboxPath } from '@/lib/utils/dropboxUtils';
+import { Search, X } from 'lucide-react';
 
 interface FolderItem {
   name: string;
@@ -25,6 +26,10 @@ export default function FolderBrowser({ onFolderSelect, onClose, initialPath = '
   const [error, setError] = useState('');
   const [breadcrumbs, setBreadcrumbs] = useState<{ name: string; path: string }[]>([]);
   const [selectedPath, setSelectedPath] = useState('');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchResults, setSearchResults] = useState<FolderItem[]>([]);
+  const [isSearching, setIsSearching] = useState(false);
+  const [searchError, setSearchError] = useState('');
 
   // Load the folder contents on component mount and when path changes
   useEffect(() => {
@@ -120,6 +125,89 @@ export default function FolderBrowser({ onFolderSelect, onClose, initialPath = '
     
     setBreadcrumbs(crumbs);
   };
+
+  // Perform search using Dropbox API
+  const performSearch = async (query: string) => {
+    if (!query.trim() || query.trim().length < 2) {
+      setSearchResults([]);
+      setIsSearching(false);
+      setSearchError('');
+      return;
+    }
+
+    setIsSearching(true);
+    setSearchError('');
+    
+    try {
+      const url = new URL('/api/dropbox', window.location.origin);
+      url.searchParams.append('action', 'search');
+      url.searchParams.append('query', query.trim());
+      url.searchParams.append('searchPath', currentPath);
+
+      const response = await fetch(url.toString());
+      
+      if (!response.ok) {
+        if (response.status === 401) {
+          if (onAuthError) onAuthError();
+          throw new Error('Authentication required');
+        }
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || 'Search failed');
+      }
+
+      const data = await response.json();
+      
+      // Convert search results to FolderItem format
+      const formattedResults: FolderItem[] = data.results.map((result: any) => ({
+        name: result.name,
+        path: result.path,
+        type: result.type,
+        isVideo: result.isVideo,
+        // Add parent path info for context
+        parentPath: result.parentPath
+      }));
+      
+      setSearchResults(formattedResults);
+      console.log(`Found ${formattedResults.length} search results for "${query}"`);
+      
+    } catch (error: any) {
+      console.error('Search error:', error);
+      setSearchError(error.message || 'Search failed');
+      setSearchResults([]);
+    } finally {
+      setIsSearching(false);
+    }
+  };
+
+  // Debounced search effect
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      if (searchQuery.trim()) {
+        performSearch(searchQuery);
+      } else {
+        setSearchResults([]);
+        setIsSearching(false);
+        setSearchError('');
+      }
+    }, 300); // 300ms debounce
+
+    return () => clearTimeout(timeoutId);
+  }, [searchQuery, currentPath]);
+
+  // Determine what content to show
+  const displayedContents = useMemo(() => {
+    if (searchQuery.trim()) {
+      return searchResults;
+    }
+    return contents;
+  }, [searchQuery, searchResults, contents]);
+
+  // Clear search when navigating to different folder
+  useEffect(() => {
+    setSearchQuery('');
+    setSearchResults([]);
+    setSearchError('');
+  }, [currentPath]);
   
   // Handle clicking on a folder to navigate into it
   const handleFolderClick = (folder: FolderItem) => {
@@ -211,6 +299,8 @@ export default function FolderBrowser({ onFolderSelect, onClose, initialPath = '
   const renderItem = (item: FolderItem) => {
     const isFolder = item.type === 'folder';
     const isSelectedFolder = selectedPath === item.path;
+    const isSearchResult = searchQuery.trim().length > 0;
+    const parentPath = (item as any).parentPath;
     
     return (
       <div 
@@ -223,10 +313,23 @@ export default function FolderBrowser({ onFolderSelect, onClose, initialPath = '
         }}
         onClick={() => {
           if (isFolder) {
+            // For search results, clear search first then navigate
+            if (isSearchResult) {
+              setSearchQuery('');
+              setSearchResults([]);
+            }
             handleFolderClick(item);
           } else {
-            // If it's a file, just select this folder
-            setSelectedPath(currentPath);
+            // If it's a file in search results, navigate to its parent folder
+            if (isSearchResult && parentPath) {
+              setSearchQuery('');
+              setSearchResults([]);
+              // Navigate to parent folder
+              const folderToNavigate = { ...item, path: parentPath, type: 'folder' };
+              handleFolderClick(folderToNavigate);
+            } else {
+              setSelectedPath(currentPath);
+            }
           }
         }}
       >
@@ -275,8 +378,13 @@ export default function FolderBrowser({ onFolderSelect, onClose, initialPath = '
         </div>
         
         {/* File/folder name */}
-        <div className="flex-1 truncate font-mono uppercase tracking-wide">
-          {item.name}
+        <div className="flex-1 truncate font-mono tracking-wide">
+          <div className="uppercase font-bold">{item.name}</div>
+          {isSearchResult && parentPath && (
+            <div className="text-xs mt-1 opacity-70 lowercase">
+              📁 {parentPath === '/' ? 'Root' : parentPath}
+            </div>
+          )}
         </div>
         
         {/* Arrow indicator for folders */}
@@ -324,31 +432,78 @@ export default function FolderBrowser({ onFolderSelect, onClose, initialPath = '
           </div>
         </div>
         
+        {/* Search Bar */}
+        <div className="p-3 border-b" style={{ borderColor: 'var(--panel-border)', background: 'var(--background)' }}>
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4" style={{ color: 'var(--muted-foreground)' }} />
+            <input
+              type="text"
+              placeholder="SEARCH FOLDERS AND FILES..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full pl-10 pr-10 py-2 border font-mono text-sm uppercase tracking-wide focus:outline-none"
+              style={{ 
+                borderColor: 'var(--panel-border)',
+                background: 'var(--input-background)',
+                color: 'var(--foreground)'
+              }}
+            />
+            {searchQuery && (
+              <button
+                onClick={() => setSearchQuery('')}
+                className="absolute right-3 top-1/2 transform -translate-y-1/2 w-4 h-4 hover:opacity-70 transition-opacity"
+                style={{ color: 'var(--muted-foreground)' }}
+              >
+                <X className="w-4 h-4" />
+              </button>
+            )}
+          </div>
+          {searchQuery && (
+            <div className="mt-2 text-xs font-mono uppercase tracking-wide" style={{ color: 'var(--muted-foreground)' }}>
+              {isSearching ? 'SEARCHING...' : `${displayedContents.length} RESULT${displayedContents.length !== 1 ? 'S' : ''} FOUND`}
+            </div>
+          )}
+        </div>
+        
         {/* Content */}
         <div className="modal-body">
-          {isLoading ? (
+          {(isLoading && !searchQuery) ? (
             <div className="flex justify-center items-center h-full">
               <div className="text-center">
                 <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 mx-auto mb-4" style={{ borderColor: 'var(--foreground)' }}></div>
                 <div className="font-mono text-sm uppercase tracking-wide" style={{ color: 'var(--foreground)' }}>LOADING FOLDERS...</div>
               </div>
             </div>
-          ) : error ? (
+          ) : isSearching ? (
+            <div className="flex justify-center items-center h-full">
+              <div className="text-center">
+                <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 mx-auto mb-4" style={{ borderColor: 'var(--foreground)' }}></div>
+                <div className="font-mono text-sm uppercase tracking-wide" style={{ color: 'var(--foreground)' }}>SEARCHING...</div>
+              </div>
+            </div>
+          ) : (error || searchError) ? (
             <div className="text-center p-8">
               <div className="p-4 border" style={{ background: 'var(--panel-bg)', borderColor: 'var(--panel-border)', color: 'var(--foreground)' }}>
                 <div className="font-mono text-lg uppercase mb-2">ERROR!</div>
-                <div className="font-mono text-sm">{error}</div>
+                <div className="font-mono text-sm">{error || searchError}</div>
               </div>
             </div>
-          ) : contents.length === 0 ? (
+          ) : (!searchQuery && contents.length === 0) ? (
             <div className="text-center p-8">
               <div className="p-4 border" style={{ background: 'var(--panel-bg)', borderColor: 'var(--panel-border)', color: 'var(--foreground)' }}>
                 <div className="font-mono text-lg uppercase">FOLDER IS EMPTY</div>
               </div>
             </div>
+          ) : (searchQuery && displayedContents.length === 0) ? (
+            <div className="text-center p-8">
+              <div className="p-4 border" style={{ background: 'var(--panel-bg)', borderColor: 'var(--panel-border)', color: 'var(--foreground)' }}>
+                <div className="font-mono text-lg uppercase mb-2">NO RESULTS FOUND</div>
+                <div className="font-mono text-sm">TRY A DIFFERENT SEARCH TERM</div>
+              </div>
+            </div>
           ) : (
             <div className="p-0">
-              {contents.map(item => renderItem(item))}
+              {displayedContents.map(item => renderItem(item))}
             </div>
           )}
         </div>

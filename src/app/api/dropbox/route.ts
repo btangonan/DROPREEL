@@ -78,6 +78,71 @@ export async function GET(request: NextRequest) {
         return NextResponse.json({ error: error?.message || 'Failed to list folders', details: error }, { status: error?.status || 500 });
       }
     }
+
+    // Search for files and folders recursively
+    if (action === 'search') {
+      try {
+        const query = searchParams.get('query');
+        const searchPath = searchParams.get('searchPath') || '';
+        
+        if (!query || query.trim().length < 2) {
+          return NextResponse.json(
+            { error: 'Search query must be at least 2 characters long' },
+            { status: 400 }
+          );
+        }
+
+        console.log(`Searching for "${query}" in path: "${searchPath}"`);
+        
+        const dropboxModule = await import('@/lib/dropboxFetch');
+        const client = dropboxModule.getDropboxClient(freshToken);
+        
+        // Format the search path
+        const formattedPath = dropboxModule.convertDropboxUrlToPath(searchPath);
+        const path = !formattedPath || formattedPath === '/' ? '' : formattedPath;
+        
+        // Use Dropbox search API
+        const searchResponse = await client.filesSearchV2({
+          query: query,
+          options: {
+            path: path,
+            max_results: 100,
+            file_status: 'active',
+            filename_only: true
+          }
+        });
+        
+        // Process search results
+        const results = searchResponse.result.matches.map((match: any) => {
+          const metadata = match.metadata.metadata;
+          return {
+            name: metadata.name,
+            path: metadata.path_display,
+            type: metadata['.tag'],
+            isVideo: metadata['.tag'] === 'file' && metadata.name.match(/\.(mp4|mov|m4v|avi|mkv|webm)$/i) ? true : false,
+            size: metadata.size || 0,
+            // Add folder path for context
+            parentPath: metadata.path_display.substring(0, metadata.path_display.lastIndexOf('/')) || '/'
+          };
+        });
+        
+        console.log(`Found ${results.length} search results`);
+        
+        return NextResponse.json({
+          results: results,
+          query: query,
+          searchPath: path,
+          total: results.length
+        });
+        
+      } catch (error: any) {
+        console.error('Search error:', error);
+        return NextResponse.json(
+          { error: error?.message || 'Search failed', details: error },
+          { status: error?.status || 500 }
+        );
+      }
+    }
     
     // Special debug action to list root folders (keeping for backward compatibility)
     if (action === 'listRoot') {

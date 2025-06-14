@@ -180,7 +180,7 @@ function VideoGridItem({
               </div>
             ) : (
               /* Play overlay - very translucent to see video clearly underneath */
-              <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex items-center justify-center" style={{ background: 'rgba(0, 255, 0, 0.1)' }}>
+              <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex items-center justify-center" style={{ background: 'rgba(0, 0, 0, 0.3)' }}>
                 <button
                   type="button"
                   onClick={e => {
