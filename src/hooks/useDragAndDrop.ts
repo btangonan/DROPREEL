@@ -104,11 +104,9 @@ export function useDragAndDrop(
     setActiveId(null);
     const { active, over } = e;
     if (!active || !over) {
-      console.log('[handleDragEnd] No active or over, cancelling drag');
       return;
     }
 
-    console.log('[handleDragEnd] Drag ended:', { activeId: active.id, overId: over.id });
 
     // Find the video being dragged to check compatibility
     const activeIdStr = String(active.id);
@@ -125,7 +123,6 @@ export function useDragAndDrop(
       const isMovingToSelects = destContainer === 'selects' || destContainer.startsWith('selects-');
       
       if (isMovingToSelects) {
-        console.log('[handleDragEnd] Preventing incompatible video from being added to selects:', sourceVideo.name);
         setError(`Cannot add "${sourceVideo.name}" to reel: ${sourceVideo.compatibilityError || 'Video format not supported'}`);
         return;
       }
@@ -155,7 +152,6 @@ export function useDragAndDrop(
       }
 
       if (!sourceVideo) {
-        console.log('[handleDragEnd] Source video not found');
         return newState;
       }
 
@@ -167,7 +163,6 @@ export function useDragAndDrop(
         // Dropped on container - append to end
         destContainer = over.id as 'yourVideos' | 'selects';
         destIndex = newState[destContainer].length;
-        console.log('[handleDragEnd] Dropped on container:', destContainer);
       } else {
         // Dropped on an item - find which container it belongs to
         const overIdStr = String(over.id);
@@ -177,17 +172,14 @@ export function useDragAndDrop(
         if (foundInYourVideos) {
           destContainer = 'yourVideos';
           destIndex = newState.yourVideos.findIndex(v => `yourVideos-${v.id}` === overIdStr || v.id === overIdStr);
-          console.log('[handleDragEnd] Dropped on item in yourVideos at index:', destIndex);
         } else if (foundInSelects) {
           destContainer = 'selects';
           destIndex = newState.selects.findIndex(v => `selects-${v.id}` === overIdStr || v.id === overIdStr);
-          console.log('[handleDragEnd] Dropped on item in selects at index:', destIndex);
         }
       }
 
       // Guard: only proceed if destContainer is valid
       if (!destContainer || destIndex === -1) {
-        console.log('[handleDragEnd] No valid destination found');
         return newState;
       }
 
@@ -199,7 +191,6 @@ export function useDragAndDrop(
         } else {
           newState.selects = reordered;
         }
-        console.log('[handleDragEnd] Reordered within container:', sourceContainer);
       } else {
         // Move between containers
         const sourceArr = [...newState[sourceContainer]];
@@ -214,13 +205,8 @@ export function useDragAndDrop(
           newState.selects = sourceArr;
           newState.yourVideos = destArr;
         }
-        console.log('[handleDragEnd] Moved between containers:', { from: sourceContainer, to: destContainer });
       }
 
-      console.log('[handleDragEnd] Final state:', {
-        yourVideosIds: newState.yourVideos.map(v => v.id),
-        selectsIds: newState.selects.map(v => v.id)
-      });
       
       return newState;
     });

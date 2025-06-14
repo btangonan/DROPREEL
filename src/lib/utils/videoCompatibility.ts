@@ -51,8 +51,6 @@ export function checkVideoCompatibility(videoUrl: string): Promise<VideoCompatib
 
     // Handle successful metadata loading
     video.addEventListener('loadedmetadata', () => {
-      console.log('[VideoCompatibility] Metadata loaded for:', videoUrl);
-      console.log('[VideoCompatibility] Dimensions:', video.videoWidth, 'x', video.videoHeight);
       
       // Only reject if completely no video dimensions (true audio-only files)
       if (video.videoWidth === 0 || video.videoHeight === 0) {
@@ -73,7 +71,6 @@ export function checkVideoCompatibility(videoUrl: string): Promise<VideoCompatib
 
     // Handle video errors
     video.addEventListener('error', (e) => {
-      console.log('[VideoCompatibility] Video error:', video.error);
       let errorMessage = 'Video format not supported';
       
       if (video.error) {
@@ -143,7 +140,6 @@ export function checkVideoCompatibilityFromMetadata(video: { name: string; media
     const videoMeta = video.mediaInfo.metadata.video;
     const codec = videoMeta.codec?.toLowerCase() || '';
     
-    console.log('[VideoCompatibility] Checking metadata for:', video.name, { codec, videoMeta });
     
     // Check for known incompatible codecs
     if (incompatibleFormats.some(format => codec.includes(format))) {
@@ -219,13 +215,6 @@ export async function checkAllVideosCompatibility(videos: Array<{ id: string; st
   const compatibleCount = finalResults.filter(v => v.isCompatible).length;
   const incompatibleCount = finalResults.filter(v => !v.isCompatible).length;
 
-  console.log('[VideoCompatibility] Results:', {
-    total: finalResults.length,
-    compatible: compatibleCount,
-    incompatible: incompatibleCount,
-    metadataChecked: finalResults.filter(v => !v.checkedWithBrowser).length,
-    browserChecked: finalResults.filter(v => v.checkedWithBrowser).length
-  });
 
   return { 
     videos: finalResults, 

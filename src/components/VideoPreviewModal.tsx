@@ -53,7 +53,6 @@ export default function VideoPreviewModal({ isOpen, onClose, videoSrc, title, is
       }
       
       setAspectRatio({ width, height, aspectRatio: ratio, orientation });
-      console.log(`[VideoPlayer] Detected aspect ratio: ${width}x${height} (${ratio.toFixed(2)}) - ${orientation}`);
     }
   };
 
@@ -111,7 +110,6 @@ export default function VideoPreviewModal({ isOpen, onClose, videoSrc, title, is
 
   // Handle when video element starts playing (simplified)
   const handlePlay = () => {
-    console.log('[VideoPlayer] Video started playing');
     setIsPlaying(true);
     resetControlsTimer();
   };
@@ -124,7 +122,6 @@ export default function VideoPreviewModal({ isOpen, onClose, videoSrc, title, is
       setIsLoading(false);
       setIsVideoReady(true);
       setVideoError(null);
-      console.log('[VideoPlayer] Video metadata loaded, ready to show');
     }
   };
 
@@ -181,12 +178,10 @@ export default function VideoPreviewModal({ isOpen, onClose, videoSrc, title, is
   };
 
   const handleCanPlay = () => {
-    console.log('[VideoPlayer] Video can play');
     setVideoError(null);
   };
 
   const handleWaiting = () => {
-    console.log('[VideoPlayer] Video is waiting for data');
   };
 
   const retryVideo = async () => {
@@ -306,13 +301,10 @@ export default function VideoPreviewModal({ isOpen, onClose, videoSrc, title, is
         setVideoError(compatibilityError);
         setIsLoading(false);
         setIsVideoReady(false);
-        console.log('[VideoPlayer] Video marked as incompatible:', compatibilityError);
       } else {
         setVideoError(null);
-        console.log('[VideoPlayer] Video is compatible, will load normally');
       }
       
-      console.log('[VideoPlayer] Modal opened, resetting state');
     }
   }, [isOpen, videoSrc, isCompatible, compatibilityError]);
 

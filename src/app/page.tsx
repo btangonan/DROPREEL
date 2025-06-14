@@ -72,7 +72,7 @@ export default function Home() {
             videos.setVideoState(videoState);
             videos.setFolderPath(folderPath);
           })
-          .catch(console.error);
+          .catch(() => {});
       } else if (editInfo.type === 'back-navigation') {
         const { storedState } = editInfo;
         if (storedState.editState) {
@@ -107,8 +107,6 @@ export default function Home() {
   };
 
   const handleVideoClick = (video: VideoFile, action?: VideoClickAction) => {
-    console.log('[handleVideoClick] Video clicked:', video.name, 'Action:', action);
-    
     // Always use the VideoPreviewModal for both play and preview
     setPreviewVideo(video);
     

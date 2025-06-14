@@ -103,27 +103,22 @@ export function useVideoManagement() {
           const existingPaths = new Set(loadedVideos.map(v => v.path));
           const newVideos = videosWithDefaults.filter(v => !existingPaths.has(v.path));
           setLoadedVideos(prev => [...prev, ...newVideos]);
-          console.log(`[fetchVideos] Added ${newVideos.length} new videos instantly`);
         } else {
           setLoadedVideos(videosWithDefaults);
-          console.log(`[fetchVideos] Loaded ${videosWithDefaults.length} videos instantly`);
         }
         
         // Check compatibility in the background and update as needed
         setTimeout(async () => {
-          console.log(`[fetchVideos] Starting background compatibility check for ${videosWithDefaults.length} videos...`);
           
           const { videos: videosWithCompatibility } = await checkAllVideosCompatibility(videosWithDefaults);
           
           const compatibleCount = videosWithCompatibility.filter(v => v.isCompatible).length;
           const incompatibleCount = videosWithCompatibility.filter(v => !v.isCompatible).length;
           
-          console.log(`[fetchVideos] Background compatibility results: ${compatibleCount} compatible, ${incompatibleCount} incompatible`);
           
           let compatibilityError = '';
           if (incompatibleCount > 0) {
             const incompatibleVideos = videosWithCompatibility.filter(v => !v.isCompatible);
-            console.log('[fetchVideos] Incompatible videos:', incompatibleVideos.map(v => ({ name: v.name, error: v.compatibilityError })));
             compatibilityError = `${incompatibleCount} video(s) have incompatible format. ${compatibleCount} videos are playable.`;
           }
           
@@ -132,10 +127,8 @@ export function useVideoManagement() {
             videosWithCompatibility.map(async (video) => {
               try {
                 const duration = await getVideoDuration(video.streamUrl);
-                console.log(`[fetchVideos] Got duration for ${video.name}: ${duration}`);
                 return { ...video, duration };
               } catch (error) {
-                console.warn(`[fetchVideos] Failed to get duration for ${video.name}:`, error);
                 return { ...video, duration: video.isCompatible ? '0:00' : 'N/A' };
               }
             })
@@ -182,7 +175,6 @@ export function useVideoManagement() {
   }, []);
 
   const deleteVideo = useCallback((video: VideoFile, panel: 'yourVideos' | 'selects') => {
-    console.log('[deleteVideo] Deleting video:', video.name, 'from:', panel);
     
     setVideoState(prev => {
       const newState = { ...prev };
@@ -193,10 +185,6 @@ export function useVideoManagement() {
         newState.selects = prev.selects.filter(v => v.id !== video.id);
       }
       
-      console.log('[deleteVideo] Updated state:', {
-        yourVideosCount: newState.yourVideos.length,
-        selectsCount: newState.selects.length
-      });
       
       return newState;
     });

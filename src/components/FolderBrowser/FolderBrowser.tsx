@@ -40,7 +40,6 @@ export default function FolderBrowser({ onFolderSelect, onClose, initialPath = '
       try {
         // Convert the path if it's a URL
         const formattedPath = extractDropboxPath(path);
-        console.log(`Browsing folder: "${formattedPath}"`);
         
         // Better URI encoding for paths with special characters
         const url = new URL('/api/dropbox', window.location.origin);
@@ -168,7 +167,6 @@ export default function FolderBrowser({ onFolderSelect, onClose, initialPath = '
       }));
       
       setSearchResults(formattedResults);
-      console.log(`Found ${formattedResults.length} search results for "${query}"`);
       
     } catch (error: any) {
       console.error('Search error:', error);

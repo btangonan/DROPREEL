@@ -2,10 +2,6 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getValidAccessToken } from '@/lib/auth/dropboxAuth';
 
 // Log environment variables for debugging
-console.log('ENV VARS:', {
-  has_token: !!process.env.DROPBOX_ACCESS_TOKEN,
-  token_length: process.env.DROPBOX_ACCESS_TOKEN?.length || 0,
-});
 
 export async function GET(request: NextRequest) {
   try {

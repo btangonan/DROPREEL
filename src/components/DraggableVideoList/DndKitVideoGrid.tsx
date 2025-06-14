@@ -1,7 +1,8 @@
 import React, { useRef, useEffect, type CSSProperties } from 'react';
 import { useDroppable } from '@dnd-kit/core';
-import { useSortable } from '@dnd-kit/sortable';
+import { useSortable, type SyntheticListenerMap } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
+import { type DraggableAttributes } from '@dnd-kit/core';
 import { Play, MousePointer2, X } from 'lucide-react';
 import { ImageWithFallback } from '@/components/figma/ImageWithFallback';
 import { VideoFile } from '@/types';
@@ -9,8 +10,8 @@ import './popout-animation.css';
 
 interface VideoGridItemProps {
   video: VideoFile;
-  listeners: any; // TODO: Replace with proper type from dnd-kit
-  attributes: any; // TODO: Replace with proper type from dnd-kit
+  listeners: SyntheticListenerMap | undefined;
+  attributes: DraggableAttributes;
   isDragging: boolean;
   onClick?: (video: VideoFile, action?: { play?: boolean; rect?: DOMRect }) => void;
   onDelete?: (video: VideoFile) => void;
@@ -66,7 +67,6 @@ function VideoGridItem({
       e.stopPropagation();
       e.preventDefault();
       // Show tooltip or error message
-      console.log('[VideoGridItem] Incompatible video clicked:', video.name, video.compatibilityError);
       return false;
     }
   };
@@ -119,7 +119,6 @@ function VideoGridItem({
           e.stopPropagation();
           e.preventDefault();
           if (typeof onClick === 'function' && video) {
-            console.log('[VideoGridItem] Thumbnail clicked:', video.name);
             onClick(video, { play: true });
           }
         }}
@@ -281,8 +280,6 @@ function SortableVideoGridItem({
 export default function DndKitVideoGrid({ videos, gridId, onVideoClick, onVideoDelete, emptyMessage, inlinePreviewVideoId, onCloseInlinePreview, customEmptyContent }: DndKitVideoGridProps) {
   const { setNodeRef, isOver } = useDroppable({ id: gridId });
   // Debug output for gridId, video count, and IDs
-  const itemIds = videos.map(v => `${gridId}-${v.id}`);
-  console.log(`[DndKitVideoGrid] gridId: ${gridId}, video count: ${videos.length}, IDs:`, itemIds, 'isOver:', isOver);
 
   return (
     <div 

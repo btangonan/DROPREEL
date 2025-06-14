@@ -86,8 +86,15 @@
     color: var(--accent);
   }
 
-  /* Brutalist Button Styles */
-  .control-button {
+  .matrix-header {
+    padding: 1.5rem;
+    background: var(--background);
+    color: var(--foreground);
+  }
+
+  /* Consolidated Button Styles */
+  .control-button,
+  .brutal-button {
     font-family: var(--font-mono);
     font-weight: 700;
     text-transform: uppercase;
@@ -104,17 +111,19 @@
     gap: 0.5rem;
   }
 
-  .control-button:hover {
+  .control-button:hover,
+  .brutal-button:hover {
     background: var(--button-text);
     color: var(--button-bg);
   }
 
-  .control-button:disabled {
+  .control-button:disabled,
+  .brutal-button:disabled {
     opacity: 0.5;
     pointer-events: none;
   }
 
-  /* Control button variant for dark backgrounds */
+  /* Button variant for dark backgrounds */
   .control-button-dark {
     font-family: var(--font-mono);
     font-weight: 700;
@@ -143,29 +152,7 @@
     pointer-events: none;
   }
 
-  .brutal-button {
-    border: 2px solid var(--button-border);
-    background: var(--button-bg);
-    color: var(--button-text);
-    text-transform: uppercase;
-    font-family: var(--font-mono);
-    font-weight: 700;
-    letter-spacing: 0.05em;
-    padding: 0.75rem 1.5rem;
-    cursor: pointer;
-    transition: none;
-  }
-
-  .brutal-button:hover {
-    background: var(--button-text);
-    color: var(--button-bg);
-  }
-
-  .brutal-button:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-  }
-
+  /* Accent button variant */
   .brutal-button-accent {
     border: 2px solid var(--button-border);
     background: var(--accent-bg);
@@ -189,8 +176,9 @@
     cursor: not-allowed;
   }
 
-  /* Panel Styles - Matrix Theme */
-  .matrix-panel {
+  /* Panel Styles */
+  .matrix-panel,
+  .panel {
     border: 2px solid var(--panel-border);
     background: var(--panel-bg);
     display: flex;
@@ -198,7 +186,8 @@
     height: 500px;
   }
 
-  .matrix-panel-header {
+  .matrix-panel-header,
+  .panel-header {
     background: var(--video-header-bg);
     color: var(--video-header-text);
     padding: 1rem 1.5rem;
@@ -220,8 +209,29 @@
     background: var(--panel-bg);
   }
 
-  /* Video Grid - Matrix Theme */
-  .matrix-video-grid {
+  .panel-content {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    background: var(--panel-bg);
+    min-height: 0;
+  }
+
+  .panel-scroll {
+    flex: 1;
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding: 1rem;
+    min-height: 0;
+    box-sizing: border-box;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  /* Video Grid Styles */
+  .matrix-video-grid,
+  .video-grid {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
     gap: 0.75rem;
@@ -229,7 +239,8 @@
     overflow-y: auto;
   }
 
-  .matrix-video-card {
+  .matrix-video-card,
+  .video-card {
     border: 2px solid var(--video-border);
     background: var(--video-bg);
     cursor: pointer;
@@ -237,13 +248,19 @@
     display: flex;
     flex-direction: column;
     aspect-ratio: 16/10;
+    width: 100%;
+    min-width: 0;
+    overflow: hidden;
+    box-sizing: border-box;
   }
 
-  .matrix-video-card:hover {
+  .matrix-video-card:hover,
+  .video-card:hover {
     border-color: var(--accent);
   }
 
-  .matrix-video-header {
+  .matrix-video-header,
+  .video-header {
     background: var(--video-header-bg);
     color: var(--video-header-text);
     padding: 0.5rem;
@@ -273,8 +290,9 @@
     font-weight: 700;
   }
 
-  /* Empty State - Matrix Theme */
-  .matrix-empty-state {
+  /* Empty State Styles */
+  .matrix-empty-state,
+  .empty-state {
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -288,123 +306,15 @@
     text-align: center;
   }
 
-  .matrix-empty-icon {
+  .matrix-empty-icon,
+  .empty-icon {
     font-size: 4rem;
     margin-bottom: 1rem;
     opacity: 0.5;
     color: var(--foreground);
   }
 
-  .matrix-empty-title {
-    font-weight: 700;
-    font-size: 1.125rem;
-    margin-bottom: 0.5rem;
-    color: var(--foreground);
-  }
-
-  .matrix-empty-subtitle {
-    color: var(--accent);
-    font-weight: 500;
-  }
-
-  /* Legacy Panel Styles for compatibility */
-  .panel {
-    border: 2px solid var(--panel-border);
-    background: var(--panel-bg);
-    display: flex;
-    flex-direction: column;
-    height: 500px;
-  }
-
-  .panel-header {
-    background: var(--video-header-bg);
-    color: var(--video-header-text);
-    padding: 1rem 1.5rem;
-    font-family: var(--font-mono);
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    flex-shrink: 0;
-  }
-
-  .panel-content {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    background: var(--panel-bg);
-    min-height: 0; /* Allow flex children to shrink */
-  }
-
-  .panel-scroll {
-    flex: 1;
-    overflow-y: auto;
-    overflow-x: hidden; /* Prevent horizontal overflow */
-    padding: 1rem;
-    min-height: 0; /* Allow flex children to shrink */
-    box-sizing: border-box; /* Include padding in width calculation */
-    display: flex;
-    align-items: center; /* Center content vertically */
-    justify-content: center; /* Center content horizontally */
-  }
-
-  /* Video Grid */
-  .video-grid {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 0.75rem;
-  }
-
-  .video-card {
-    border: 2px solid var(--video-border);
-    background: var(--video-bg);
-    cursor: pointer;
-    transition: none;
-    width: 100%;
-    min-width: 0;
-    overflow: hidden;
-    box-sizing: border-box;
-  }
-
-  .video-card:hover {
-    border-color: var(--accent);
-  }
-
-  .video-header {
-    background: var(--video-header-bg);
-    color: var(--video-header-text);
-    padding: 0.5rem;
-    font-family: var(--font-mono);
-    font-weight: 700;
-    text-transform: uppercase;
-    font-size: 0.75rem;
-    letter-spacing: 0.05em;
-  }
-
-  /* Empty State */
-  .empty-state {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    height: 16rem;
-    width: 100%;
-    font-family: var(--font-mono);
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-    color: var(--foreground);
-    text-align: center;
-  }
-
-  .empty-icon {
-    font-size: 4rem;
-    margin-bottom: 1rem;
-    opacity: 0.3;
-    color: var(--foreground);
-  }
-
+  .matrix-empty-title,
   .empty-title {
     font-weight: 700;
     font-size: 1.125rem;
@@ -412,12 +322,13 @@
     color: var(--foreground);
   }
 
+  .matrix-empty-subtitle,
   .empty-subtitle {
     color: var(--accent);
     font-weight: 500;
   }
 
-  /* Divider */
+  /* Dividers */
   .vertical-divider {
     width: 2px;
     background: var(--border);

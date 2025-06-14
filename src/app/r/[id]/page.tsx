@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from 'react';
 import { VideoFile, VideoReel } from '@/types';
-import VideoPlayer from '@/components/VideoPlayer/VideoPlayer';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { initializeTheme } from '@/lib/theme';
@@ -150,7 +149,6 @@ export default function ReelPage() {
     const width = video.videoWidth;
     const height = video.videoHeight;
     
-    console.log('Video metadata loaded:', width, height);
     
     if (width && height) {
       const ratio = width / height;
@@ -174,7 +172,6 @@ export default function ReelPage() {
 
   // Add additional event handlers for video loading
   const handleVideoCanPlay = () => {
-    console.log('Video can play');
     setIsVideoLoading(false);
   };
 

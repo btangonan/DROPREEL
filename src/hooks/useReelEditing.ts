@@ -25,7 +25,6 @@ export function useReelEditing() {
     return fetch(`/api/reels?id=${reelId}`)
       .then(response => response.json())
       .then(data => {
-        console.log('Loading reel for editing:', data);
         
         let loadedVideos: VideoFile[] = [];
         let videoState: VideoState = { yourVideos: [], selects: [] };
@@ -35,23 +34,15 @@ export function useReelEditing() {
         if (data.editState) {
           const { allOriginalVideos, selectedVideos, folderPath: savedFolderPath, currentYourVideos, currentSelects } = data.editState;
           
-          console.log('EditState found:', {
-            allOriginalVideos: allOriginalVideos?.length,
-            selectedVideos: selectedVideos?.length,
-            currentYourVideos: currentYourVideos?.length,
-            currentSelects: currentSelects?.length
-          });
           
           // Try to use the saved current panel state first (most accurate)
           if (currentYourVideos && currentSelects) {
-            console.log('Using saved panel state');
             loadedVideos = [...currentYourVideos, ...currentSelects];
             videoState = {
               yourVideos: currentYourVideos,
               selects: currentSelects
             };
           } else if (allOriginalVideos && selectedVideos) {
-            console.log('Using reconstructed state from original videos');
             // Reconstruct the exact state: 
             // YOUR VIDEOS = all original videos MINUS the ones that were selected
             const selectedVideoIds = new Set(selectedVideos.map((v: VideoFile) => v.id));
@@ -68,7 +59,6 @@ export function useReelEditing() {
             folderPath = savedFolderPath;
           }
         } else if (data.videos) {
-          console.log('Fallback: using videos only');
           // Fallback for older reels without editState
           videoState = {
             yourVideos: [],
@@ -105,19 +95,6 @@ export function useReelEditing() {
     const isEditing = editingReelId !== null;
     const actionText = isEditing ? 'Updating' : 'Creating';
     
-    console.log(`${actionText} reel with state:`, {
-      reelId: editingReelId,
-      folderPath,
-      loadedVideos: loadedVideos.length,
-      videoState,
-      editStateToSave: {
-        folderPath,
-        allOriginalVideos: loadedVideos,
-        selectedVideos: videoState.selects,
-        currentYourVideos: videoState.yourVideos,
-        currentSelects: videoState.selects
-      }
-    });
 
     try {
       const method = isEditing ? 'PUT' : 'POST';
@@ -207,24 +184,14 @@ export function useReelEditing() {
       }
     }
     
-    console.log('Navigation detection:', {
-      editReelId,
-      currentURL: window.location.href,
-      editingReelId,
-      shouldRestoreFromBack,
-      backReelId,
-      hasStoredState: !!lastReelEditState
-    });
     
     if (editReelId && editReelId !== editingReelId) {
       // Edit via URL parameter (from EDIT REEL button)
       setEditingReelId(editReelId);
-      console.log('Loading reel for editing via URL parameter:', editReelId);
       // Return the loading promise so caller can handle the state updates
       return { type: 'url-edit', reelId: editReelId };
     } else if (shouldRestoreFromBack && backReelId) {
       // Browser back navigation - restore from localStorage
-      console.log('Detected browser back navigation, restoring reel:', backReelId);
       
       setEditingReelId(backReelId);
       

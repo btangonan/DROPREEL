@@ -13,11 +13,9 @@ export function useDropboxAuth() {
 
   useEffect(() => {
     latestAuthState.current = isAuthenticated;
-    console.log('[useDropboxAuth] isAuthenticated:', isAuthenticated);
   }, [isAuthenticated]);
 
   useEffect(() => {
-    console.log('[useDropboxAuth] isLoading:', isLoading);
   }, [isLoading]);
 
   const checkAuth = async (): Promise<boolean> => {
@@ -35,7 +33,6 @@ export function useDropboxAuth() {
       if (!isAuth && data.suggestedAction) {
         setAuthError(data.suggestedAction);
       }
-      console.log('[useDropboxAuth] Auth status:', isAuth, data.status, data.errorCode, data.suggestedAction);
       return isAuth;
     } catch (err) {
       console.error('[useDropboxAuth] Error:', err);
@@ -58,7 +55,6 @@ export function useDropboxAuth() {
   // Periodic auth check
   useEffect(() => {
     const periodicCheck = () => {
-      console.log('Periodic auth check');
       checkAuth();
     };
     periodicCheck(); // Check immediately

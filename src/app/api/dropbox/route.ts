@@ -4,11 +4,6 @@ import { nanoid } from 'nanoid';
 import { getValidAccessToken } from '@/lib/auth/dropboxAuth';
 
 // Environment variables (should be set in .env.local)
-console.log('ENV VARS:', {
-  has_token: !!process.env.DROPBOX_ACCESS_TOKEN,
-  token_length: process.env.DROPBOX_ACCESS_TOKEN?.length || 0,
-  folder_path: process.env.DROPBOX_FOLDER_PATH
-});
 
 export async function GET(request: NextRequest) {
   try {
@@ -20,7 +15,6 @@ export async function GET(request: NextRequest) {
         { status: 401 }
       );
     }
-    console.log('Using refreshed Dropbox token');
     const { searchParams } = new URL(request.url);
     const action = searchParams.get('action');
     const path = searchParams.get('path');
@@ -30,7 +24,6 @@ export async function GET(request: NextRequest) {
     if (action === 'listFolders') {
       try {
         const folderPathToList = searchParams.get('folderPath') || '';
-        console.log(`Listing folders at path: "${folderPathToList}"`);
         
         const dropboxModule = await import('@/lib/dropboxFetch');
         const client = dropboxModule.getDropboxClient(freshToken);
@@ -92,7 +85,6 @@ export async function GET(request: NextRequest) {
           );
         }
 
-        console.log(`Searching for "${query}" in path: "${searchPath}"`);
         
         const dropboxModule = await import('@/lib/dropboxFetch');
         const client = dropboxModule.getDropboxClient(freshToken);
@@ -126,7 +118,6 @@ export async function GET(request: NextRequest) {
           };
         });
         
-        console.log(`Found ${results.length} search results`);
         
         return NextResponse.json({
           results: results,
@@ -147,7 +138,6 @@ export async function GET(request: NextRequest) {
     // Special debug action to list root folders (keeping for backward compatibility)
     if (action === 'listRoot') {
       try {
-        console.log('Attempting to list root folders...');
         const dropboxModule = await import('@/lib/dropboxFetch');
         
         // Get client from our utility function
@@ -155,11 +145,6 @@ export async function GET(request: NextRequest) {
         const response = await client.filesListFolder({ path: '' });
         
         // Add proper type annotation
-        console.log('Root folder contents:', response.result.entries.map((entry: any) => ({ 
-          name: entry.name, 
-          path: entry.path_display, 
-          type: entry['.tag'] 
-        })));
         
         return NextResponse.json({ 
           folders: response.result.entries.map((entry: any) => ({ 
@@ -176,16 +161,13 @@ export async function GET(request: NextRequest) {
     
     if (action === 'listVideos') {
       try {
-        console.log(`API Request: listVideos with folder path: "${folderPath}"`);
         
         // Use dynamic import to avoid server-side issues with Dropbox SDK
         const { listVideosFromDropbox, getThumbnailLink } = await import('@/lib/dropboxFetch');
         
         // Verify token format (not showing full token for security)
-        console.log(`Token length: ${freshToken.length}, first 10 chars: ${freshToken.substring(0, 10)}...`);
         
         const videoEntries = await listVideosFromDropbox(freshToken, folderPath);
-        console.log(`Successfully fetched ${videoEntries.length} video entries from Dropbox`);
         
         // Convert Dropbox entries to our VideoFile format
         const videos: VideoFile[] = videoEntries.map(entry => {
@@ -204,7 +186,6 @@ export async function GET(request: NextRequest) {
           };
         });
         
-        console.log(`Returning ${videos.length} videos to client with thumbnails`);
         return NextResponse.json({ videos });
       } catch (error: any) {
         console.error('Error in listVideos:', error);
@@ -212,7 +193,6 @@ export async function GET(request: NextRequest) {
         
         // Check for specific Dropbox error types
         if (error.status === 409) {
-          console.error('Path lookup error - folder might not exist');
           return NextResponse.json(
             { error: `Folder not found: ${folderPath}. Please check that the path exists in your Dropbox account.` },
             { status: 400 }

@@ -7,7 +7,6 @@ export class DropboxClient {
   private folderPath: string;
 
   constructor(accessToken: string, folderPath: string) {
-    console.log(`Initializing Dropbox client with folder path: "${folderPath}"`);
     if (!accessToken) {
       console.error('No access token provided');
       throw new Error('Dropbox access token is required');
@@ -30,18 +29,15 @@ export class DropboxClient {
 
   async listVideos(): Promise<VideoFile[]> {
     try {
-      console.log(`Listing videos from folder: "${this.folderPath}"`);
       
       // Handle empty path or root as ""
       const path = this.folderPath === '/' ? '' : this.folderPath;
       
-      console.log(`Making API request with path: "${path}"`);
       const response = await this.client.filesListFolder({
         path,
         include_media_info: true
       });
 
-      console.log(`Got ${response.result.entries.length} entries from Dropbox`);
       
       const videoFiles = response.result.entries
         .filter(entry => {
@@ -57,7 +53,6 @@ export class DropboxClient {
           thumbnailUrl: ''
         }));
 
-      console.log(`Found ${videoFiles.length} video files`);
       return videoFiles;
     } catch (error: any) {
       console.error('Error listing videos:', error);
