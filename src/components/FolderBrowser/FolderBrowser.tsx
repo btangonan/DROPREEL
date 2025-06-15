@@ -3,6 +3,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { extractDropboxPath } from '@/lib/utils/dropboxUtils';
 import { Search, X } from 'lucide-react';
+import VideoPreviewModal from '@/components/VideoPreviewModal';
 
 interface FolderItem {
   name: string;
@@ -33,6 +34,9 @@ export default function FolderBrowser({ onFolderSelect, onVideoSelect, onClose, 
   const [searchError, setSearchError] = useState('');
   const [selectedVideos, setSelectedVideos] = useState<Set<string>>(new Set());
   const [lastSelectedVideo, setLastSelectedVideo] = useState<string | null>(null);
+  const [previewVideo, setPreviewVideo] = useState<FolderItem | null>(null);
+  const [focusedVideoIndex, setFocusedVideoIndex] = useState<number>(-1);
+  const [previewVideoSrc, setPreviewVideoSrc] = useState<string>('');
 
   // Load the folder contents on component mount and when path changes
   useEffect(() => {
@@ -88,20 +92,6 @@ export default function FolderBrowser({ onFolderSelect, onVideoSelect, onClose, 
     fetchFolderContents(initialPath || '');
   }, [initialPath]);
 
-  // Handle ESC key to close modal
-  useEffect(() => {
-    const handleEscKey = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') {
-        onClose();
-      }
-    };
-
-    document.addEventListener('keydown', handleEscKey);
-
-    return () => {
-      document.removeEventListener('keydown', handleEscKey);
-    };
-  }, [onClose]);
   
   // Update breadcrumbs whenever the path changes
   const updateBreadcrumbs = (path: string) => {
@@ -202,6 +192,97 @@ export default function FolderBrowser({ onFolderSelect, onVideoSelect, onClose, 
     }
     return contents;
   }, [searchQuery, searchResults, contents]);
+
+  // Get list of videos for keyboard navigation
+  const videoList = useMemo(() => {
+    return displayedContents.filter(item => item.isVideo);
+  }, [displayedContents]);
+
+  // Handle video preview
+  const handleVideoPreview = async (video: FolderItem) => {
+    if (!video.isVideo) return;
+    
+    try {
+      // Get stream URL for the video
+      const response = await fetch(`/api/dropbox?action=getStreamUrl&path=${encodeURIComponent(video.path)}`);
+      
+      if (!response.ok) {
+        throw new Error('Failed to get video stream URL');
+      }
+      
+      const data = await response.json();
+      setPreviewVideoSrc(data.url);
+      setPreviewVideo(video);
+    } catch (error) {
+      console.error('Error getting video preview:', error);
+      alert('Failed to load video preview');
+    }
+  };
+
+  // Handle video navigation
+  const handleVideoNavigation = async (newIndex: number) => {
+    const videoToPreview = videoList[newIndex];
+    if (videoToPreview) {
+      await handleVideoPreview(videoToPreview);
+    }
+  };
+
+  // Handle keyboard events (ESC, Arrow keys, Space)
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      // Don't handle if user is typing in search
+      if ((event.target as HTMLElement)?.tagName === 'INPUT') {
+        return;
+      }
+
+      switch (event.key) {
+        case 'Escape':
+          if (previewVideo) {
+            setPreviewVideo(null);
+            setPreviewVideoSrc('');
+          } else {
+            onClose();
+          }
+          break;
+        
+        case 'ArrowDown':
+          event.preventDefault();
+          if (videoList.length > 0) {
+            const newIndex = focusedVideoIndex < videoList.length - 1 ? focusedVideoIndex + 1 : 0;
+            setFocusedVideoIndex(newIndex);
+            if (previewVideo) {
+              handleVideoNavigation(newIndex);
+            }
+          }
+          break;
+        
+        case 'ArrowUp':
+          event.preventDefault();
+          if (videoList.length > 0) {
+            const newIndex = focusedVideoIndex > 0 ? focusedVideoIndex - 1 : videoList.length - 1;
+            setFocusedVideoIndex(newIndex);
+            if (previewVideo) {
+              handleVideoNavigation(newIndex);
+            }
+          }
+          break;
+        
+        case ' ':
+          event.preventDefault();
+          if (focusedVideoIndex >= 0 && focusedVideoIndex < videoList.length) {
+            const videoToPreview = videoList[focusedVideoIndex];
+            handleVideoPreview(videoToPreview);
+          }
+          break;
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [onClose, previewVideo, focusedVideoIndex, videoList]);
 
   // Clear search and selected videos when navigating to different folder
   useEffect(() => {
@@ -359,12 +440,13 @@ export default function FolderBrowser({ onFolderSelect, onVideoSelect, onClose, 
   };
   
   // Render a single folder/file item
-  const renderItem = (item: FolderItem) => {
+  const renderItem = (item: FolderItem, index: number) => {
     const isFolder = item.type === 'folder';
     const isSelectedFolder = selectedPath === item.path;
     const isSearchResult = searchQuery.trim().length > 0;
     const parentPath = (item as any).parentPath;
     const isVideoSelected = item.isVideo && selectedVideos.has(item.path);
+    const isFocused = item.isVideo && videoList.findIndex(v => v.path === item.path) === focusedVideoIndex;
     
     return (
       <div 
@@ -372,8 +454,9 @@ export default function FolderBrowser({ onFolderSelect, onVideoSelect, onClose, 
         className="p-3 border-b flex items-center transition-all hover:opacity-80 cursor-pointer"
         style={{ 
           borderColor: 'var(--panel-border)',
-          background: isSelectedFolder ? 'var(--video-header-bg)' : isVideoSelected ? 'var(--accent)' : 'var(--panel-bg)',
-          color: isSelectedFolder ? 'var(--video-header-text)' : isVideoSelected ? 'var(--accent-text)' : 'var(--foreground)'
+          background: isFocused ? 'var(--accent-bg)' : isSelectedFolder ? 'var(--video-header-bg)' : isVideoSelected ? 'var(--accent)' : 'var(--panel-bg)',
+          color: isFocused ? 'var(--accent-text)' : isSelectedFolder ? 'var(--video-header-text)' : isVideoSelected ? 'var(--accent-text)' : 'var(--foreground)',
+          outline: isFocused ? '2px solid var(--accent)' : 'none'
         }}
         onClick={(event) => {
           if (isFolder) {
@@ -384,6 +467,9 @@ export default function FolderBrowser({ onFolderSelect, onVideoSelect, onClose, 
             }
             handleFolderClick(item);
           } else if (item.isVideo && onVideoSelect) {
+            // Set focus to this video when clicked
+            const videoIndex = videoList.findIndex(v => v.path === item.path);
+            setFocusedVideoIndex(videoIndex);
             // For videos, toggle selection with modifier support
             handleVideoToggle(item, event);
           } else {
@@ -452,6 +538,11 @@ export default function FolderBrowser({ onFolderSelect, onVideoSelect, onClose, 
               📁 {parentPath === '/' ? 'Root' : parentPath}
             </div>
           )}
+          {item.isVideo && isFocused && (
+            <div className="text-xs mt-1 opacity-70 uppercase">
+              PRESS SPACEBAR TO PREVIEW
+            </div>
+          )}
         </div>
         
         {/* Arrow indicator for folders */}
@@ -466,7 +557,7 @@ export default function FolderBrowser({ onFolderSelect, onVideoSelect, onClose, 
   
   return (
     <div className="modal-overlay">
-      <div className="modal-content" style={{ width: '600px', height: '500px', borderColor: 'var(--accent)' }}>
+      <div className="modal-content" style={{ width: '800px', height: '600px', borderColor: 'var(--accent)' }}>
         {/* Header */}
         <div className="modal-header" style={{ padding: '0.75rem 1.5rem' }}>
           <h2 className="text-lg font-mono font-bold uppercase tracking-wider">
@@ -571,7 +662,7 @@ export default function FolderBrowser({ onFolderSelect, onVideoSelect, onClose, 
             </div>
           ) : (
             <div className="p-0">
-              {displayedContents.map(item => renderItem(item))}
+              {displayedContents.map((item, index) => renderItem(item, index))}
             </div>
           )}
         </div>
@@ -601,6 +692,21 @@ export default function FolderBrowser({ onFolderSelect, onVideoSelect, onClose, 
           </button>
         </div>
       </div>
+
+      {/* Video Preview Modal */}
+      {previewVideo && previewVideoSrc && (
+        <VideoPreviewModal
+          isOpen={true}
+          onClose={() => {
+            setPreviewVideo(null);
+            setPreviewVideoSrc('');
+          }}
+          videoSrc={previewVideoSrc}
+          title={previewVideo.name}
+          isCompatible={true}
+          compatibilityError={undefined}
+        />
+      )}
     </div>
   );
 }
