@@ -9,6 +9,7 @@ import {
 } from '@dnd-kit/core';
 import { arrayMove } from '@dnd-kit/sortable';
 import { VideoFile } from '@/types';
+import { checkVideoCompatibilityInstant } from '@/lib/utils/videoCompatibility';
 
 interface VideoState {
   yourVideos: VideoFile[];
@@ -118,13 +119,20 @@ export function useDragAndDrop(
     );
 
     // Prevent dragging incompatible videos to the selects panel
-    if (sourceVideo && sourceVideo.isCompatible === false) {
+    if (sourceVideo) {
       const destContainer = String(over.id);
       const isMovingToSelects = destContainer === 'selects' || destContainer.startsWith('selects-');
       
       if (isMovingToSelects) {
-        setError(`Cannot add "${sourceVideo.name}" to reel: ${sourceVideo.compatibilityError || 'Video format not supported'}`);
-        return;
+        // Double-check compatibility with instant check (for speed)
+        const instantCheck = checkVideoCompatibilityInstant(sourceVideo);
+        const isIncompatible = sourceVideo.isCompatible === false || !instantCheck.isCompatible;
+        
+        if (isIncompatible) {
+          const errorMsg = sourceVideo.compatibilityError || instantCheck.error || 'Video format not supported';
+          setError(`Cannot add "${sourceVideo.name}" to reel: ${errorMsg}`);
+          return;
+        }
       }
     }
 

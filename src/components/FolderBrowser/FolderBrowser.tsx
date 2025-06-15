@@ -10,6 +10,7 @@ interface FolderItem {
   path: string;
   type: string;
   isVideo: boolean;
+  mediaInfo?: any; // Include mediaInfo for duration extraction
 }
 
 interface FolderBrowserProps {

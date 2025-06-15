@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { VideoFile } from '@/types';
+import { checkVideoCompatibilityInstant } from '@/lib/utils/videoCompatibility';
 
 interface TitleElement {
   id: string;
@@ -92,6 +93,32 @@ export function useReelEditing() {
   ) => {
     if (videoState.selects.length === 0) return;
 
+    // Filter out incompatible videos before creating reel
+    const compatibleVideos = videoState.selects.filter(video => {
+      // Check both existing compatibility flag and instant check
+      const instantCheck = checkVideoCompatibilityInstant(video);
+      const isCompatible = video.isCompatible !== false && instantCheck.isCompatible;
+      
+      if (!isCompatible) {
+        console.warn('Filtering out incompatible video from reel:', video.name, {
+          reason: video.compatibilityError || instantCheck.error
+        });
+      }
+      
+      return isCompatible;
+    });
+
+    // If no compatible videos left, throw error
+    if (compatibleVideos.length === 0) {
+      throw new Error('Cannot create reel: No compatible videos selected');
+    }
+
+    // Warn if some videos were filtered out
+    if (compatibleVideos.length < videoState.selects.length) {
+      const removedCount = videoState.selects.length - compatibleVideos.length;
+      console.warn(`Removed ${removedCount} incompatible video(s) from reel`);
+    }
+
     const isEditing = editingReelId !== null;
     const actionText = isEditing ? 'Updating' : 'Creating';
     
@@ -99,9 +126,9 @@ export function useReelEditing() {
     try {
       const method = isEditing ? 'PUT' : 'POST';
       const requestBody = {
-        videos: videoState.selects,
+        videos: compatibleVideos, // Use filtered compatible videos
         title: titles.length > 0 ? titles[0].text : `Reel ${new Date().toLocaleDateString()}`,
-        description: `Created with ${videoState.selects.length} videos`,
+        description: `Created with ${compatibleVideos.length} videos`,
         // Save the complete state for editing
         editState: {
           folderPath,

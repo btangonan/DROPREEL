@@ -246,7 +246,7 @@ function SortableVideoGridItem({
     isDragging,
     isOver,
   } = useSortable({ 
-    id: video.id,
+    id: video.id, // Use the video ID directly
     disabled: video.isCompatible === false // Disable dragging for incompatible videos
   });
 

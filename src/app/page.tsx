@@ -17,6 +17,7 @@ import { useDropboxAuth } from '@/hooks/useDropboxAuth';
 import { useVideoManagement } from '@/hooks/useVideoManagement';
 import { useReelEditing } from '@/hooks/useReelEditing';
 import { useDragAndDrop } from '@/hooks/useDragAndDrop';
+import { checkVideoCompatibilityInstant } from '@/lib/utils/videoCompatibility';
 
 // Import components
 import { ReelMakerHeader } from '@/components/ReelMaker/ReelMakerHeader';
@@ -135,8 +136,35 @@ export default function Home() {
     }
   };
 
+  // Helper function to extract duration from Dropbox metadata
+  const getDurationFromMetadata = (mediaInfo: any): string => {
+    try {
+      // Check for video metadata with duration
+      if (mediaInfo?.metadata?.video?.duration) {
+        const durationMs = mediaInfo.metadata.video.duration;
+        const totalSeconds = Math.floor(durationMs / 1000);
+        const minutes = Math.floor(totalSeconds / 60);
+        const seconds = totalSeconds % 60;
+        return `${minutes}:${seconds.toString().padStart(2, '0')}`;
+      }
+      
+      // Check alternative structure
+      if (mediaInfo?.dimensions?.duration) {
+        const durationMs = mediaInfo.dimensions.duration;
+        const totalSeconds = Math.floor(durationMs / 1000);
+        const minutes = Math.floor(totalSeconds / 60);
+        const seconds = totalSeconds % 60;
+        return `${minutes}:${seconds.toString().padStart(2, '0')}`;
+      }
+    } catch (error) {
+      console.warn('Error extracting duration from metadata:', error);
+    }
+    
+    return '0:00'; // Fallback
+  };
+
   // Handle individual video selection from FolderBrowser
-  const handleVideoSelect = async (selectedVideos: Array<{ name: string; path: string; type: string; isVideo: boolean }>) => {
+  const handleVideoSelect = async (selectedVideos: Array<{ name: string; path: string; type: string; isVideo: boolean; mediaInfo?: any }>) => {
     try {
       setShowFolderBrowser(false);
       
@@ -145,14 +173,31 @@ export default function Home() {
         // Get stream URL for each video
         const response = await fetch(`/api/dropbox?action=getStreamUrl&path=${encodeURIComponent(item.path)}`);
         const streamData = await response.json();
+        const streamUrl = streamData.url || '';
+        
+        // Get real duration from browser metadata immediately
+        let realDuration = '0:00';
+        if (streamUrl) {
+          try {
+            realDuration = await videos.getVideoDuration(streamUrl);
+          } catch (error) {
+            console.warn('Failed to get duration for', item.name, error);
+          }
+        }
+        
+        // Check compatibility instantly
+        const instantCheck = checkVideoCompatibilityInstant(item);
         
         const videoFile: VideoFile = {
           id: nanoid(),
           name: item.name,
           path: item.path,
-          streamUrl: streamData.url || '',
+          streamUrl: streamUrl,
           thumbnailUrl: `/api/dropbox/thumbnail?path=${encodeURIComponent(item.path)}`,
-          isCompatible: true, // Will be checked later
+          duration: realDuration,
+          mediaInfo: item.mediaInfo,
+          isCompatible: instantCheck.isCompatible,
+          compatibilityError: instantCheck.error || null,
           checkedWithBrowser: false
         };
         
@@ -161,12 +206,23 @@ export default function Home() {
       
       const newVideos = await Promise.all(videoPromises);
       
-      // Check compatibility for the new videos
-      const compatibilityResult = await videos.checkCompatibility(newVideos);
-      const compatibleVideos = compatibilityResult.videos;
+      // Filter out incompatible videos and duplicates
+      const shouldAppend = videos.loadedVideos.length > 0;
+      const existingPaths = shouldAppend ? new Set(videos.loadedVideos.map(v => v.path)) : new Set();
+      const compatibleVideos = newVideos.filter(video => 
+        video.isCompatible !== false && !existingPaths.has(video.path)
+      );
+      
+      // Count skipped videos for user feedback
+      const totalAttempted = newVideos.length;
+      const incompatibleSkipped = newVideos.filter(v => v.isCompatible === false).length;
+      const duplicatesSkipped = newVideos.filter(v => existingPaths.has(v.path)).length;
+      
+      if (incompatibleSkipped > 0) {
+        setError(`Skipped ${incompatibleSkipped} incompatible video(s). ${compatibleVideos.length} videos added.`);
+      }
       
       // Add to existing videos or replace based on context
-      const shouldAppend = videos.loadedVideos.length > 0;
       if (shouldAppend) {
         videos.setLoadedVideos(prev => [...prev, ...compatibleVideos]);
         videos.setVideoState(prev => ({
@@ -180,6 +236,7 @@ export default function Home() {
           selects: []
         });
       }
+      
       
     } catch (error) {
       setError(error instanceof Error ? error.message : 'Failed to add selected videos');

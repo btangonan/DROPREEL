@@ -1,7 +1,35 @@
 import { useState, useEffect, useCallback } from 'react';
 import { VideoFile } from '@/types';
 import { extractDropboxPath } from '@/lib/utils/dropboxUtils';
-import { checkAllVideosCompatibility } from '@/lib/utils/videoCompatibility';
+import { checkAllVideosCompatibility, checkVideoCompatibilityInstant } from '@/lib/utils/videoCompatibility';
+
+// Helper function to extract duration from Dropbox metadata
+// Note: Dropbox mediaInfo often doesn't contain duration, so we rely on browser metadata
+const getDurationFromMetadata = (mediaInfo: any): string => {
+  try {
+    // Check for video metadata with duration
+    if (mediaInfo?.metadata?.video?.duration) {
+      const durationMs = mediaInfo.metadata.video.duration;
+      const totalSeconds = Math.floor(durationMs / 1000);
+      const minutes = Math.floor(totalSeconds / 60);
+      const seconds = totalSeconds % 60;
+      return `${minutes}:${seconds.toString().padStart(2, '0')}`;
+    }
+    
+    // Check alternative structure
+    if (mediaInfo?.dimensions?.duration) {
+      const durationMs = mediaInfo.dimensions.duration;
+      const totalSeconds = Math.floor(durationMs / 1000);
+      const minutes = Math.floor(totalSeconds / 60);
+      const seconds = totalSeconds % 60;
+      return `${minutes}:${seconds.toString().padStart(2, '0')}`;
+    }
+  } catch (error) {
+    console.warn('Error extracting duration from metadata:', error);
+  }
+  
+  return '0:00'; // Fallback - will be updated by browser metadata
+};
 
 interface VideoState {
   yourVideos: VideoFile[];
@@ -88,11 +116,23 @@ export function useVideoManagement() {
               const streamResponse = await fetch(`/api/dropbox?action=getStreamUrl&path=${encodeURIComponent(video.path)}`);
               const streamData = await streamResponse.json();
               const thumbnailUrl = `/api/dropbox/thumbnail?path=${encodeURIComponent(video.path)}`;
+              const streamUrl = streamData.streamUrl || streamData.url || '';
+              
+              // Get real duration from browser metadata immediately
+              let realDuration = '0:00';
+              if (streamUrl) {
+                try {
+                  realDuration = await getVideoDuration(streamUrl);
+                } catch (error) {
+                  console.warn('Failed to get duration for', video.name, error);
+                }
+              }
+              
               return {
                 ...video,
-                streamUrl: streamData.streamUrl || streamData.url || '', // Check both possible property names
+                streamUrl,
                 thumbnailUrl,
-                duration: '0:00' // Will be updated asynchronously
+                duration: realDuration // Use real duration from browser metadata
               };
             } catch (error) {
               console.error('Failed to get stream URL for video:', video.name, error);
@@ -106,68 +146,56 @@ export function useVideoManagement() {
           })
         );
         
-        // Add videos to UI immediately with default compatibility (assume compatible)
-        const videosWithDefaults = videosWithUrls.map(video => ({
-          ...video,
-          isCompatible: true, // Default to compatible
-          compatibilityError: null,
-          dimensions: null
-        }));
+        // Do instant compatibility check before adding to UI (preserve all existing data including duration)
+        const videosWithInstantCheck = videosWithUrls.map(video => {
+          const instantCheck = checkVideoCompatibilityInstant(video);
+          return {
+            ...video, // This includes the duration that was already set
+            isCompatible: instantCheck.isCompatible,
+            compatibilityError: instantCheck.error || null,
+            dimensions: null
+          };
+        });
         
         if (appendToExisting) {
-          // Filter out duplicates based on video path
+          // Filter out duplicates based on video path AND don't add incompatible videos
           const existingPaths = new Set(loadedVideos.map(v => v.path));
-          const newVideos = videosWithDefaults.filter(v => !existingPaths.has(v.path));
+          const newVideos = videosWithInstantCheck.filter(v => 
+            !existingPaths.has(v.path) && v.isCompatible !== false
+          );
           setLoadedVideos(prev => [...prev, ...newVideos]);
         } else {
-          setLoadedVideos(videosWithDefaults);
+          // Only add compatible videos
+          const compatibleVideos = videosWithInstantCheck.filter(v => v.isCompatible !== false);
+          setLoadedVideos(compatibleVideos);
         }
         
-        // Check compatibility in the background and update as needed
+        // Count the videos we actually added vs total attempted
+        const totalAttempted = videosWithUrls.length;
+        const compatibleAdded = appendToExisting ? 
+          videosWithInstantCheck.filter(v => !new Set(loadedVideos.map(v => v.path)).has(v.path) && v.isCompatible !== false).length :
+          videosWithInstantCheck.filter(v => v.isCompatible !== false).length;
+        const incompatibleSkipped = totalAttempted - compatibleAdded;
+        
+        // Show message if we skipped incompatible videos
+        if (incompatibleSkipped > 0) {
+          console.warn(`Skipped ${incompatibleSkipped} incompatible video(s). ${compatibleAdded} compatible videos added.`);
+        }
+        
+        // Optional: Run deeper compatibility check in background for added videos only
         setTimeout(async () => {
-          
-          const { videos: videosWithCompatibility } = await checkAllVideosCompatibility(videosWithDefaults);
-          
-          const compatibleCount = videosWithCompatibility.filter(v => v.isCompatible).length;
-          const incompatibleCount = videosWithCompatibility.filter(v => !v.isCompatible).length;
-          
-          
-          let compatibilityError = '';
-          if (incompatibleCount > 0) {
-            const incompatibleVideos = videosWithCompatibility.filter(v => !v.isCompatible);
-            compatibilityError = `${incompatibleCount} video(s) have incompatible format. ${compatibleCount} videos are playable.`;
+          // Get current loaded videos for deeper checking
+          const currentVideos = appendToExisting ? 
+            loadedVideos.concat(videosWithInstantCheck.filter(v => 
+              !new Set(loadedVideos.map(v => v.path)).has(v.path) && v.isCompatible !== false
+            )) :
+            videosWithInstantCheck.filter(v => v.isCompatible !== false);
+            
+          if (currentVideos.length > 0) {
+            const { videos: videosWithDeepCheck } = await checkAllVideosCompatibility(currentVideos);
+            setLoadedVideos(videosWithDeepCheck);
           }
-          
-          // Update videos with compatibility info and durations
-          const videosWithDurations = await Promise.all(
-            videosWithCompatibility.map(async (video) => {
-              try {
-                const duration = await getVideoDuration(video.streamUrl);
-                return { ...video, duration };
-              } catch (error) {
-                return { ...video, duration: video.isCompatible ? '0:00' : 'N/A' };
-              }
-            })
-          );
-          
-          // Update the loaded videos with compatibility and durations
-          if (appendToExisting) {
-            setLoadedVideos(prev => {
-              const existingPaths = new Set(prev.map(v => v.path));
-              const newVideosWithDurations = videosWithDurations.filter(v => !existingPaths.has(v.path));
-              // Replace any videos that already exist with updated versions
-              const updatedExisting = prev.map(existingVideo => {
-                const updated = videosWithDurations.find(v => v.path === existingVideo.path);
-                return updated || existingVideo;
-              });
-              return [...updatedExisting, ...newVideosWithDurations];
-            });
-          } else {
-            setLoadedVideos(videosWithDurations);
-          }
-          
-          return { error: compatibilityError || undefined };
-        }, 100); // Start background check after UI update
+        }, 100);
       } else {
         if (!appendToExisting) {
           setLoadedVideos([]);
@@ -238,6 +266,7 @@ export function useVideoManagement() {
     fetchVideos,
     checkCompatibility,
     deleteVideo,
-    setLoadedVideos
+    setLoadedVideos,
+    getVideoDuration
   };
 }

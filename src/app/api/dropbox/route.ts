@@ -33,14 +33,19 @@ export async function GET(request: NextRequest) {
         // For root folder, use empty string as required by Dropbox API
         const path = !formattedPath || formattedPath === '/' ? '' : formattedPath;
         
-        const response = await client.filesListFolder({ path });
+        const response = await client.filesListFolder({ 
+          path,
+          include_media_info: true // Include media info for video files
+        });
         
         // Extract folders and organize contents into folders and files
         const contents = response.result.entries.map((entry: any) => ({
           name: entry.name,
           path: entry.path_display,
           type: entry['.tag'],
-          isVideo: entry['.tag'] === 'file' && entry.name.match(/\.(mp4|mov|m4v|avi|mkv|webm)$/i) ? true : false
+          isVideo: entry['.tag'] === 'file' && entry.name.match(/\.(mp4|mov|m4v|avi|mkv|webm)$/i) ? true : false,
+          // Include media_info if it exists (for videos)
+          mediaInfo: (entry as any).media_info ? (entry as any).media_info : undefined
         }));
         
         // Sort folders first, then files
@@ -172,8 +177,12 @@ export async function GET(request: NextRequest) {
         // Convert Dropbox entries to our VideoFile format
         const videos: VideoFile[] = videoEntries.map(entry => {
           const videoPath = entry.path_display || '';
+          // Create a more unique ID using both nanoid and path hash
+          const pathHash = Buffer.from(videoPath).toString('base64').slice(0, 8);
+          const uniqueId = `${nanoid(8)}-${pathHash}`;
+          
           return {
-            id: nanoid(),
+            id: uniqueId,
             name: entry.name,
             path: videoPath,
             // Only include size for file entries (not folders)
