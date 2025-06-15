@@ -37,6 +37,7 @@ export default function FolderBrowser({ onFolderSelect, onVideoSelect, onClose, 
   const [previewVideo, setPreviewVideo] = useState<FolderItem | null>(null);
   const [focusedVideoIndex, setFocusedVideoIndex] = useState<number>(-1);
   const [previewVideoSrc, setPreviewVideoSrc] = useState<string>('');
+  const [isVideoPlaying, setIsVideoPlaying] = useState<boolean>(false);
 
   // Load the folder contents on component mount and when path changes
   useEffect(() => {
@@ -219,11 +220,35 @@ export default function FolderBrowser({ onFolderSelect, onVideoSelect, onClose, 
     }
   };
 
-  // Handle video navigation
+  // Handle video navigation with auto-play
   const handleVideoNavigation = async (newIndex: number) => {
     const videoToPreview = videoList[newIndex];
     if (videoToPreview) {
-      await handleVideoPreview(videoToPreview);
+      // If video is currently playing, start playing the new video
+      const shouldAutoPlay = isVideoPlaying;
+      await handleVideoPreviewWithPlay(videoToPreview, shouldAutoPlay);
+    }
+  };
+
+  // Handle video preview with optional auto-play
+  const handleVideoPreviewWithPlay = async (video: FolderItem, autoPlay: boolean = false) => {
+    if (!video.isVideo) return;
+    
+    try {
+      // Get stream URL for the video
+      const response = await fetch(`/api/dropbox?action=getStreamUrl&path=${encodeURIComponent(video.path)}`);
+      
+      if (!response.ok) {
+        throw new Error('Failed to get video stream URL');
+      }
+      
+      const data = await response.json();
+      setPreviewVideoSrc(data.url);
+      setPreviewVideo(video);
+      setIsVideoPlaying(autoPlay);
+    } catch (error) {
+      console.error('Error getting video preview:', error);
+      alert('Failed to load video preview');
     }
   };
 
@@ -250,6 +275,12 @@ export default function FolderBrowser({ onFolderSelect, onVideoSelect, onClose, 
           if (videoList.length > 0) {
             const newIndex = focusedVideoIndex < videoList.length - 1 ? focusedVideoIndex + 1 : 0;
             setFocusedVideoIndex(newIndex);
+            
+            // Clear previous video selection and select current one
+            const currentVideo = videoList[newIndex];
+            setSelectedVideos(new Set([currentVideo.path]));
+            setLastSelectedVideo(currentVideo.path);
+            
             if (previewVideo) {
               handleVideoNavigation(newIndex);
             }
@@ -261,6 +292,12 @@ export default function FolderBrowser({ onFolderSelect, onVideoSelect, onClose, 
           if (videoList.length > 0) {
             const newIndex = focusedVideoIndex > 0 ? focusedVideoIndex - 1 : videoList.length - 1;
             setFocusedVideoIndex(newIndex);
+            
+            // Clear previous video selection and select current one
+            const currentVideo = videoList[newIndex];
+            setSelectedVideos(new Set([currentVideo.path]));
+            setLastSelectedVideo(currentVideo.path);
+            
             if (previewVideo) {
               handleVideoNavigation(newIndex);
             }
@@ -269,9 +306,13 @@ export default function FolderBrowser({ onFolderSelect, onVideoSelect, onClose, 
         
         case ' ':
           event.preventDefault();
-          if (focusedVideoIndex >= 0 && focusedVideoIndex < videoList.length) {
+          if (previewVideo) {
+            // If preview is open, toggle play/pause
+            setIsVideoPlaying(prev => !prev);
+          } else if (focusedVideoIndex >= 0 && focusedVideoIndex < videoList.length) {
+            // If no preview is open, start playing the focused video
             const videoToPreview = videoList[focusedVideoIndex];
-            handleVideoPreview(videoToPreview);
+            handleVideoPreviewWithPlay(videoToPreview, true);
           }
           break;
       }
@@ -282,7 +323,7 @@ export default function FolderBrowser({ onFolderSelect, onVideoSelect, onClose, 
     return () => {
       document.removeEventListener('keydown', handleKeyDown);
     };
-  }, [onClose, previewVideo, focusedVideoIndex, videoList]);
+  }, [onClose, previewVideo, focusedVideoIndex, videoList, isVideoPlaying]);
 
   // Clear search and selected videos when navigating to different folder
   useEffect(() => {
@@ -556,8 +597,8 @@ export default function FolderBrowser({ onFolderSelect, onVideoSelect, onClose, 
   };
   
   return (
-    <div className="modal-overlay">
-      <div className="modal-content" style={{ width: '800px', height: '600px', borderColor: 'var(--accent)' }}>
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="modal-content" style={{ width: '500px', height: '700px', borderColor: 'var(--accent)' }} onClick={(e) => e.stopPropagation()}>
         {/* Header */}
         <div className="modal-header" style={{ padding: '0.75rem 1.5rem' }}>
           <h2 className="text-lg font-mono font-bold uppercase tracking-wider">
@@ -700,9 +741,12 @@ export default function FolderBrowser({ onFolderSelect, onVideoSelect, onClose, 
           onClose={() => {
             setPreviewVideo(null);
             setPreviewVideoSrc('');
+            setIsVideoPlaying(false);
           }}
           videoSrc={previewVideoSrc}
           title={previewVideo.name}
+          shouldPlay={isVideoPlaying}
+          onPlayStateChange={setIsVideoPlaying}
           isCompatible={true}
           compatibilityError={undefined}
         />

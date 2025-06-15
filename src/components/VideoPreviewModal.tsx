@@ -8,6 +8,8 @@ interface VideoPreviewModalProps {
   title: string;
   isCompatible?: boolean;
   compatibilityError?: string;
+  shouldPlay?: boolean;
+  onPlayStateChange?: (isPlaying: boolean) => void;
 }
 
 interface VideoAspectRatio {
@@ -17,7 +19,7 @@ interface VideoAspectRatio {
   orientation: 'landscape' | 'portrait' | 'square';
 }
 
-export default function VideoPreviewModal({ isOpen, onClose, videoSrc, title, isCompatible = true, compatibilityError }: VideoPreviewModalProps) {
+export default function VideoPreviewModal({ isOpen, onClose, videoSrc, title, isCompatible = true, compatibilityError, shouldPlay, onPlayStateChange }: VideoPreviewModalProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
@@ -92,6 +94,23 @@ export default function VideoPreviewModal({ isOpen, onClose, videoSrc, title, is
     };
   }, [isOpen, onClose, resetControlsTimer]);
 
+  // Handle external play/pause control
+  useEffect(() => {
+    if (!videoRef.current || !isVideoReady) return;
+
+    const video = videoRef.current;
+    
+    if (shouldPlay && !isPlaying) {
+      video.play().then(() => {
+        setIsPlaying(true);
+        onPlayStateChange?.(true);
+      }).catch(console.error);
+    } else if (!shouldPlay && isPlaying) {
+      video.pause();
+      setIsPlaying(false);
+      onPlayStateChange?.(false);
+    }
+  }, [shouldPlay, isVideoReady, isPlaying, onPlayStateChange]);
 
   const handlePause = () => {
     setIsPlaying(false);
