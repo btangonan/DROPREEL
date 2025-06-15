@@ -211,7 +211,7 @@ export async function GET(request: NextRequest) {
         // Use dynamic import to avoid server-side issues with Dropbox SDK
         const { getTemporaryLink } = await import('@/lib/dropboxFetch');
         const url = await getTemporaryLink(freshToken, path);
-        return NextResponse.json({ url });
+        return NextResponse.json({ streamUrl: url });
       } catch (error: any) {
         console.error('Error getting stream URL:', error);
         return NextResponse.json(
@@ -227,6 +227,74 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ 
         thumbnailUrl: `/api/dropbox/thumbnail?path=${encodeURIComponent(path)}` 
       });
+    }
+
+    if (action === 'downloadFile' && path) {
+      try {
+        console.log('=== DOWNLOAD DEBUG START ===');
+        console.log('Download requested for path:', path);
+        console.log('Time:', new Date().toISOString());
+        
+        // Use dynamic import to avoid server-side issues with Dropbox SDK
+        const dropboxModule = await import('@/lib/dropboxFetch');
+        const client = dropboxModule.getDropboxClient(freshToken);
+        
+        console.log('Dropbox client created, starting download...');
+        const startTime = Date.now();
+        
+        // Download the file directly from Dropbox
+        const response = await client.filesDownload({ path });
+        const downloadTime = Date.now() - startTime;
+        console.log(`Dropbox download completed in ${downloadTime}ms`);
+        
+        // Get the file blob from the response
+        const fileBlob = (response.result as any).fileBlob;
+        console.log('fileBlob type:', typeof fileBlob);
+        console.log('fileBlob size:', fileBlob?.size);
+        
+        if (!fileBlob) {
+          console.error('No file blob received from Dropbox');
+          return NextResponse.json(
+            { error: 'No file data received from Dropbox' },
+            { status: 500 }
+          );
+        }
+        
+        // Get filename from path
+        const filename = path.split('/').pop() || 'video.mp4';
+        console.log('Filename:', filename);
+        
+        // Convert Blob to ArrayBuffer, then to Buffer
+        const bufferStartTime = Date.now();
+        const arrayBuffer = await fileBlob.arrayBuffer();
+        const buffer = Buffer.from(arrayBuffer);
+        const bufferTime = Date.now() - bufferStartTime;
+        console.log(`Buffer creation took ${bufferTime}ms, buffer size: ${buffer.length} bytes`);
+        
+        console.log('=== DOWNLOAD DEBUG END ===');
+        
+        // Return the file as a download
+        return new NextResponse(buffer, {
+          headers: {
+            'Content-Type': 'video/mp4', // Use proper video MIME type
+            'Content-Disposition': `attachment; filename="${filename}"`,
+            'Content-Length': buffer.length.toString(),
+            'Cache-Control': 'no-cache, no-store, must-revalidate',
+            'Pragma': 'no-cache',
+            'Expires': '0'
+          },
+        });
+      } catch (error: any) {
+        console.error('=== DOWNLOAD ERROR ===');
+        console.error('Error downloading file:', error);
+        console.error('Error message:', error.message);
+        console.error('Error status:', error.status);
+        console.error('Error details:', JSON.stringify(error, null, 2));
+        return NextResponse.json(
+          { error: error.message || 'Failed to download file' },
+          { status: 500 }
+        );
+      }
     }
 
     return NextResponse.json(

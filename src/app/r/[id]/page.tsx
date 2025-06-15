@@ -245,37 +245,42 @@ export default function ReelPage() {
     if (!currentVideo || isDownloading) return;
 
     setIsDownloading(true);
-    try {
-      console.log('Starting download for current video:', currentVideo.name);
-      
-      // Get fresh stream URL for the current video
-      const response = await fetch(`/api/dropbox?action=getStreamUrl&path=${encodeURIComponent(currentVideo.path)}`);
-      
-      if (!response.ok) {
-        throw new Error('Failed to get video stream URL');
-      }
-      
-      const data = await response.json();
-      const streamUrl = data.streamUrl;
-      
-      console.log('Got stream URL, starting download...');
-      
-      // Create a direct download link
+    
+    // Function to trigger download with URL
+    const triggerDownload = (url: string) => {
+      const downloadUrl = url.replace('?raw=1', '?dl=1').replace('&raw=1', '&dl=1');
       const link = document.createElement('a');
-      link.href = streamUrl;
+      link.href = downloadUrl;
       link.download = currentVideo.name;
       link.style.display = 'none';
       document.body.appendChild(link);
-      
-      // Force download
       link.click();
+      setTimeout(() => document.body.removeChild(link), 100);
+    };
+
+    try {
+      console.log('Starting instant download for:', currentVideo.name);
       
-      // Cleanup
-      setTimeout(() => {
-        document.body.removeChild(link);
-      }, 100);
+      // Try using existing streamUrl first (instant if valid)
+      if (currentVideo.streamUrl) {
+        console.log('Using existing streamUrl for instant download');
+        triggerDownload(currentVideo.streamUrl);
+        setIsDownloading(false);
+        return;
+      }
       
-      console.log('Download initiated successfully for:', currentVideo.name);
+      // If no existing URL, fetch a fresh one
+      console.log('Fetching fresh download URL...');
+      const response = await fetch(`/api/dropbox?action=getStreamUrl&path=${encodeURIComponent(currentVideo.path)}`);
+      
+      if (!response.ok) {
+        throw new Error('Failed to get download URL');
+      }
+      
+      const data = await response.json();
+      triggerDownload(data.streamUrl);
+      
+      console.log('Download triggered successfully');
       
     } catch (error) {
       console.error('Download error:', error);
