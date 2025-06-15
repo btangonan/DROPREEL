@@ -212,7 +212,7 @@ export default function FolderBrowser({ onFolderSelect, onVideoSelect, onClose, 
       }
       
       const data = await response.json();
-      setPreviewVideoSrc(data.url);
+      setPreviewVideoSrc(data.streamUrl || data.url);
       setPreviewVideo(video);
     } catch (error) {
       console.error('Error getting video preview:', error);
@@ -234,18 +234,28 @@ export default function FolderBrowser({ onFolderSelect, onVideoSelect, onClose, 
   const handleVideoPreviewWithPlay = async (video: FolderItem, autoPlay: boolean = false) => {
     if (!video.isVideo) return;
     
+    console.log('handleVideoPreviewWithPlay called with:', video.name, 'autoPlay:', autoPlay);
+    
     try {
       // Get stream URL for the video
+      console.log('Fetching stream URL for:', video.path);
       const response = await fetch(`/api/dropbox?action=getStreamUrl&path=${encodeURIComponent(video.path)}`);
       
       if (!response.ok) {
+        console.error('Failed to get stream URL, response status:', response.status);
         throw new Error('Failed to get video stream URL');
       }
       
       const data = await response.json();
-      setPreviewVideoSrc(data.url);
+      console.log('Stream URL response:', data);
+      const streamUrl = data.streamUrl || data.url;
+      console.log('Using stream URL:', streamUrl);
+      
+      setPreviewVideoSrc(streamUrl);
       setPreviewVideo(video);
       setIsVideoPlaying(autoPlay);
+      
+      console.log('Set preview state - video:', video.name, 'src:', streamUrl, 'playing:', autoPlay);
     } catch (error) {
       console.error('Error getting video preview:', error);
       alert('Failed to load video preview');
@@ -254,9 +264,9 @@ export default function FolderBrowser({ onFolderSelect, onVideoSelect, onClose, 
 
   // Handle keyboard events (ESC, Arrow keys, Space)
   useEffect(() => {
-    const handleKeyDown = (event: KeyboardEvent) => {
-      // Don't handle if user is typing in search
-      if ((event.target as HTMLElement)?.tagName === 'INPUT') {
+    const handleKeyDown = async (event: KeyboardEvent) => {
+      // Don't handle if user is typing in search, EXCEPT for spacebar and escape
+      if ((event.target as HTMLElement)?.tagName === 'INPUT' && event.key !== ' ' && event.key !== 'Escape') {
         return;
       }
 
@@ -306,13 +316,39 @@ export default function FolderBrowser({ onFolderSelect, onVideoSelect, onClose, 
         
         case ' ':
           event.preventDefault();
+          console.log('Spacebar pressed!', { previewVideo: !!previewVideo, focusedVideoIndex, videoListLength: videoList.length });
+          
           if (previewVideo) {
-            // If preview is open, toggle play/pause
-            setIsVideoPlaying(prev => !prev);
-          } else if (focusedVideoIndex >= 0 && focusedVideoIndex < videoList.length) {
-            // If no preview is open, start playing the focused video
-            const videoToPreview = videoList[focusedVideoIndex];
-            handleVideoPreviewWithPlay(videoToPreview, true);
+            // If preview is open, close it (like ESC key)
+            console.log('Closing video preview with spacebar');
+            setPreviewVideo(null);
+            setPreviewVideoSrc('');
+            setIsVideoPlaying(false);
+          } else {
+            console.log('No preview open, trying to start video preview');
+            
+            // If no preview is open, start playing the focused video or first video
+            let targetIndex = focusedVideoIndex;
+            
+            // If no video is focused yet, focus on the first video
+            if (targetIndex < 0 && videoList.length > 0) {
+              console.log('No video focused, focusing on first video');
+              targetIndex = 0;
+              setFocusedVideoIndex(0);
+              // Also select the first video
+              setSelectedVideos(new Set([videoList[0].path]));
+              setLastSelectedVideo(videoList[0].path);
+            }
+            
+            if (targetIndex >= 0 && targetIndex < videoList.length) {
+              const videoToPreview = videoList[targetIndex];
+              console.log('Starting preview for video:', videoToPreview.name);
+              console.log('Video to preview:', videoToPreview);
+              await handleVideoPreviewWithPlay(videoToPreview, true);
+              console.log('Preview should be open now. previewVideo:', !!previewVideo, 'previewVideoSrc:', !!previewVideoSrc);
+            } else {
+              console.log('No valid video to preview', { targetIndex, videoListLength: videoList.length });
+            }
           }
           break;
       }

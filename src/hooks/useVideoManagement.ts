@@ -17,6 +17,12 @@ export function useVideoManagement() {
   // Helper function to get video duration
   const getVideoDuration = useCallback((videoUrl: string): Promise<string> => {
     return new Promise((resolve) => {
+      // Handle empty or invalid URLs
+      if (!videoUrl || typeof videoUrl !== 'string' || videoUrl.trim() === '') {
+        resolve('0:00');
+        return;
+      }
+
       const video = document.createElement('video');
       video.crossOrigin = 'anonymous';
       video.preload = 'metadata';
@@ -78,15 +84,25 @@ export function useVideoManagement() {
       if (data.videos && data.videos.length > 0) {
         const videosWithUrls = await Promise.all(
           data.videos.map(async (video: VideoFile) => {
-            const streamResponse = await fetch(`/api/dropbox?action=getStreamUrl&path=${encodeURIComponent(video.path)}`);
-            const streamData = await streamResponse.json();
-            const thumbnailUrl = `/api/dropbox/thumbnail?path=${encodeURIComponent(video.path)}`;
-            return {
-              ...video,
-              streamUrl: streamData.url,
-              thumbnailUrl,
-              duration: '0:00' // Will be updated asynchronously
-            };
+            try {
+              const streamResponse = await fetch(`/api/dropbox?action=getStreamUrl&path=${encodeURIComponent(video.path)}`);
+              const streamData = await streamResponse.json();
+              const thumbnailUrl = `/api/dropbox/thumbnail?path=${encodeURIComponent(video.path)}`;
+              return {
+                ...video,
+                streamUrl: streamData.streamUrl || streamData.url || '', // Check both possible property names
+                thumbnailUrl,
+                duration: '0:00' // Will be updated asynchronously
+              };
+            } catch (error) {
+              console.error('Failed to get stream URL for video:', video.name, error);
+              return {
+                ...video,
+                streamUrl: '', // Empty string as fallback
+                thumbnailUrl: `/api/dropbox/thumbnail?path=${encodeURIComponent(video.path)}`,
+                duration: '0:00'
+              };
+            }
           })
         );
         

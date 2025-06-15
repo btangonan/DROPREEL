@@ -22,6 +22,8 @@ interface VideoAspectRatio {
 export default function VideoPreviewModal({ isOpen, onClose, videoSrc, title, isCompatible = true, compatibilityError, shouldPlay, onPlayStateChange }: VideoPreviewModalProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const [isPlaying, setIsPlaying] = useState(false);
+  
+  console.log('VideoPreviewModal: Render with props', { shouldPlay, isPlaying, isOpen });
   const [isMuted, setIsMuted] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
@@ -96,24 +98,49 @@ export default function VideoPreviewModal({ isOpen, onClose, videoSrc, title, is
 
   // Handle external play/pause control
   useEffect(() => {
-    if (!videoRef.current || !isVideoReady) return;
+    console.log('VideoPreviewModal: External control effect triggered', { 
+      hasVideoRef: !!videoRef.current, 
+      isVideoReady, 
+      shouldPlay, 
+      isPlaying 
+    });
+    
+    if (!videoRef.current) {
+      console.log('VideoPreviewModal: No video ref yet');
+      return;
+    }
+    
+    if (!isVideoReady) {
+      console.log('VideoPreviewModal: Video not ready yet');
+      return;
+    }
 
     const video = videoRef.current;
+    console.log('VideoPreviewModal: External control processing', { shouldPlay, isPlaying });
     
-    if (shouldPlay && !isPlaying) {
-      video.play().then(() => {
-        setIsPlaying(true);
-        onPlayStateChange?.(true);
-      }).catch(console.error);
-    } else if (!shouldPlay && isPlaying) {
-      video.pause();
-      setIsPlaying(false);
-      onPlayStateChange?.(false);
+    if (shouldPlay !== undefined) {
+      if (shouldPlay && !isPlaying) {
+        console.log('VideoPreviewModal: Attempting to play video');
+        video.play().then(() => {
+          console.log('VideoPreviewModal: Video play succeeded');
+          setIsPlaying(true);
+          onPlayStateChange?.(true);
+        }).catch((error) => {
+          console.error('VideoPreviewModal: Video play failed', error);
+        });
+      } else if (!shouldPlay && isPlaying) {
+        console.log('VideoPreviewModal: Attempting to pause video');
+        video.pause();
+        console.log('VideoPreviewModal: Video pause succeeded');
+        setIsPlaying(false);
+        onPlayStateChange?.(false);
+      }
     }
-  }, [shouldPlay, isVideoReady, isPlaying, onPlayStateChange]);
+  }, [shouldPlay, isVideoReady, isPlaying]);
 
   const handlePause = () => {
     setIsPlaying(false);
+    onPlayStateChange?.(false);
     setShowControls(true);
     if (controlsTimeoutRef.current) {
       clearTimeout(controlsTimeoutRef.current);
@@ -130,6 +157,7 @@ export default function VideoPreviewModal({ isOpen, onClose, videoSrc, title, is
   // Handle when video element starts playing (simplified)
   const handlePlay = () => {
     setIsPlaying(true);
+    onPlayStateChange?.(true);
     resetControlsTimer();
   };
 
