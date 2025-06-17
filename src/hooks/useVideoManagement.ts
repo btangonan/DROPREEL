@@ -156,39 +156,38 @@ export function useVideoManagement() {
         });
         
         if (appendToExisting) {
-          // Filter out duplicates based on video path AND don't add incompatible videos
+          // Filter out duplicates based on video path but INCLUDE incompatible videos for display
           const existingPaths = new Set(loadedVideos.map(v => v.path));
           const newVideos = videosWithInstantCheck.filter(v => 
-            !existingPaths.has(v.path) && v.isCompatible !== false
+            !existingPaths.has(v.path)
           );
           setLoadedVideos(prev => [...prev, ...newVideos]);
         } else {
-          // Only add compatible videos
-          const compatibleVideos = videosWithInstantCheck.filter(v => v.isCompatible !== false);
-          setLoadedVideos(compatibleVideos);
+          // Add ALL videos including incompatible ones for proper display with labels
+          setLoadedVideos(videosWithInstantCheck);
         }
         
         // Count the videos we actually added vs total attempted
         const totalAttempted = videosWithPreloadedThumbnails.length;
-        const compatibleAdded = appendToExisting ? 
-          videosWithInstantCheck.filter(v => !new Set(loadedVideos.map(v => v.path)).has(v.path) && v.isCompatible !== false).length :
-          videosWithInstantCheck.filter(v => v.isCompatible !== false).length;
-        const incompatibleSkipped = totalAttempted - compatibleAdded;
+        const compatibleCount = videosWithInstantCheck.filter(v => v.isCompatible !== false).length;
+        const incompatibleCount = videosWithInstantCheck.filter(v => v.isCompatible === false).length;
         
-        // Show message if we skipped incompatible videos
-        if (incompatibleSkipped > 0) {
-          console.warn(`Skipped ${incompatibleSkipped} incompatible video(s). ${compatibleAdded} compatible videos added.`);
+        // Show summary of what was loaded
+        if (incompatibleCount > 0) {
+          console.warn(`Loaded ${totalAttempted} videos: ${compatibleCount} compatible, ${incompatibleCount} incompatible (will show with warning labels)`);
+        } else {
+          console.log(`Loaded ${compatibleCount} compatible videos`);
         }
         
         // Run background processing for stream URLs, real durations and compatibility
         setTimeout(async () => {
-          console.log('🟡 [FOLDER BACKGROUND] Starting background processing for folder videos...', videosWithInstantCheck.filter(v => v.isCompatible !== false).map(v => v.name));
+          console.log('🟡 [FOLDER BACKGROUND] Starting background processing for ALL videos (including potentially incompatible)...', videosWithInstantCheck.map(v => v.name));
           try {
-            // Get only the compatible videos that were actually added to UI
-            const videosToProcess = videosWithInstantCheck.filter(v => v.isCompatible !== false);
+            // Process ALL videos - we need to test incompatible ones too to confirm they're really incompatible
+            const videosToProcess = videosWithInstantCheck;
             
             if (videosToProcess.length === 0) {
-              console.log('🟡 [FOLDER BACKGROUND] No compatible videos to process');
+              console.log('🟡 [FOLDER BACKGROUND] No videos to process');
               return;
             }
             
