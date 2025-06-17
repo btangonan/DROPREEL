@@ -165,6 +165,9 @@ export default function Home() {
 
   // Handle individual video selection from FolderBrowser
   const handleVideoSelect = async (selectedVideos: Array<{ name: string; path: string; type: string; isVideo: boolean; mediaInfo?: any }>) => {
+    console.log('🚨 FUNCTION CALLED - handleVideoSelect with', selectedVideos.length, 'videos');
+    console.log('🚨 Videos:', selectedVideos.map(v => v.name));
+    
     const startTime = performance.now();
     console.log('🟢 [PERF] handleVideoSelect START:', selectedVideos.length, 'videos at', startTime);
     
@@ -176,10 +179,10 @@ export default function Home() {
       const step2 = performance.now();
       console.log('🟡 [PERF] Step 2 - Starting video processing:', (step2 - startTime).toFixed(2), 'ms');
       
-      // Convert FolderItems to VideoFiles format - Parallel stream URL fetching
-      const videoPromises = selectedVideos.map(async (item, index) => {
+      // Convert FolderItems to VideoFiles format - INSTANT (no stream URL fetching)
+      const newVideos = selectedVideos.map((item, index) => {
         const itemStart = performance.now();
-        console.log(`🔵 [PERF] Video ${index + 1}/${selectedVideos.length} (${item.name}) - START processing`);
+        console.log(`🔵 [PERF] Video ${index + 1}/${selectedVideos.length} (${item.name}) - START processing (INSTANT)`);
         
         // Use instant compatibility check for immediate feedback
         const compatStart = performance.now();
@@ -187,31 +190,15 @@ export default function Home() {
         const compatEnd = performance.now();
         console.log(`🔵 [PERF] Video ${index + 1} - Compatibility check: ${(compatEnd - compatStart).toFixed(2)}ms`);
         
-        // Fetch stream URL in parallel with others
-        let streamUrl = '';
-        const fetchStart = performance.now();
-        try {
-          console.log(`🔵 [PERF] Video ${index + 1} - Starting stream URL fetch`);
-          const response = await fetch(`/api/dropbox?action=getStreamUrl&path=${encodeURIComponent(item.path)}`);
-          const fetchEnd = performance.now();
-          console.log(`🔵 [PERF] Video ${index + 1} - Stream URL fetch response: ${(fetchEnd - fetchStart).toFixed(2)}ms`);
-          
-          const parseStart = performance.now();
-          const streamData = await response.json();
-          streamUrl = streamData.streamUrl || streamData.url || '';
-          const parseEnd = performance.now();
-          console.log(`🔵 [PERF] Video ${index + 1} - JSON parse: ${(parseEnd - parseStart).toFixed(2)}ms`);
-        } catch (error) {
-          const fetchEnd = performance.now();
-          console.warn(`🔴 [PERF] Video ${index + 1} - Failed to get stream URL after ${(fetchEnd - fetchStart).toFixed(2)}ms:`, error);
-        }
+        // Skip stream URL fetching - will be done on-demand when video is played
+        console.log(`🔵 [PERF] Video ${index + 1} - Skipping stream URL fetch for instant display`);
         
         const createStart = performance.now();
         const videoFile: VideoFile = {
           id: nanoid(),
           name: item.name,
           path: item.path,
-          streamUrl: streamUrl,
+          streamUrl: '', // Will be fetched when user tries to play video
           thumbnailUrl: `/api/dropbox/thumbnail?path=${encodeURIComponent(item.path)}`,
           duration: '0:00', // Will be updated in background
           mediaInfo: item.mediaInfo,
@@ -227,11 +214,8 @@ export default function Home() {
         return videoFile;
       });
       
-      const promiseStart = performance.now();
-      console.log('🟡 [PERF] Step 3 - Waiting for all video promises...');
-      const newVideos = await Promise.all(videoPromises);
-      const promiseEnd = performance.now();
-      console.log('🟡 [PERF] Step 3 - All video promises resolved:', (promiseEnd - promiseStart).toFixed(2), 'ms');
+      const step3 = performance.now();
+      console.log('🟡 [PERF] Step 3 - Video processing complete (INSTANT):', (step3 - step2).toFixed(2), 'ms');
       const step4 = performance.now();
       console.log('🟡 [PERF] Step 4 - Starting duplicate filtering:', (step4 - startTime).toFixed(2), 'ms');
       
@@ -278,12 +262,37 @@ export default function Home() {
       console.log('🟢 [PERF] Step 7 - State updated (VIDEOS SHOULD NOW BE VISIBLE):', (stateEnd - startTime).toFixed(2), 'ms');
       console.log('🟢 [PERF] TOTAL TIME FROM BUTTON PRESS TO UI UPDATE:', (stateEnd - startTime).toFixed(2), 'ms');
       
-      // Run background processing for real durations and compatibility
+      // Run background processing for stream URLs, real durations and compatibility
       setTimeout(async () => {
-        console.log('Running background processing for individually selected videos...', videosToAdd.map(v => v.name));
+        console.log('🟡 [BACKGROUND] Starting background processing for individually selected videos...', videosToAdd.map(v => v.name));
         try {
+          // First, fetch stream URLs for videos that don't have them
+          const backgroundStart = performance.now();
+          console.log('🟡 [BACKGROUND] Fetching stream URLs...');
+          const videosWithStreamUrls = await Promise.all(
+            videosToAdd.map(async (video) => {
+              if (!video.streamUrl || video.streamUrl.trim() === '') {
+                try {
+                  const response = await fetch(`/api/dropbox?action=getStreamUrl&path=${encodeURIComponent(video.path)}`);
+                  const streamData = await response.json();
+                  const streamUrl = streamData.streamUrl || streamData.url || '';
+                  console.log('🟡 [BACKGROUND] Fetched stream URL for', video.name);
+                  return { ...video, streamUrl };
+                } catch (error) {
+                  console.warn('🟡 [BACKGROUND] Failed to fetch stream URL for', video.name, error);
+                  return video; // Keep original video if fetch fails
+                }
+              }
+              return video; // Already has stream URL
+            })
+          );
+          const urlsEnd = performance.now();
+          console.log('🟡 [BACKGROUND] Stream URLs fetched in', (urlsEnd - backgroundStart).toFixed(2), 'ms');
+          
+          // Then run compatibility check with stream URLs
+          console.log('🟡 [BACKGROUND] Running compatibility checks...');
           const { checkAllVideosCompatibility } = await import('@/lib/utils/videoCompatibility');
-          const { videos: videosWithRealData } = await checkAllVideosCompatibility(videosToAdd);
+          const { videos: videosWithRealData } = await checkAllVideosCompatibility(videosWithStreamUrls);
           
           // Extract durations and update compatibility
           const videosWithRealDurations = videosWithRealData.map(video => {
