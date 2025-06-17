@@ -63,7 +63,9 @@ function VideoGridItem({
 
   // Handle clicks on incompatible videos
   const handleIncompatibleClick = (e: React.MouseEvent) => {
+    console.log('VideoGridItem click for', video.name, '- isCompatible:', video.isCompatible, 'compatibilityError:', video.compatibilityError);
     if (video.isCompatible === false) {
+      console.log('Blocking click for incompatible video:', video.name);
       e.stopPropagation();
       e.preventDefault();
       // Show tooltip or error message

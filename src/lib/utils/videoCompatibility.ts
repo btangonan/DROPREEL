@@ -138,11 +138,34 @@ export function checkVideoCompatibility(videoUrl: string, videoPath?: string): P
         return;
       }
 
-      // For speed, just validate dimensions - skip frame rendering test
-      // The metadata loading itself proves the file is readable
-      resolveResult({
-        isCompatible: true,
-        dimensions: { width: video.videoWidth, height: video.videoHeight }
+      // Don't resolve yet - we need to test if frames can actually be rendered
+      // Try to seek to a frame to verify video content can be decoded
+      console.log('[VideoCompatibility] Metadata loaded, now testing frame rendering...');
+      
+      // First try to load and play briefly to test codec compatibility
+      const playPromise = video.play();
+      
+      // Set a timeout for the play operation
+      const playTimeout = setTimeout(() => {
+        console.log('[VideoCompatibility] Play operation timed out - marking incompatible');
+        resolveResult({
+          isCompatible: false,
+          error: 'Video playback timed out - likely incompatible codec'
+        });
+      }, 2000); // 2 second timeout for play
+      
+      playPromise.then(() => {
+        clearTimeout(playTimeout);
+        console.log('[VideoCompatibility] Video started playing, pausing and seeking...');
+        video.pause();
+        video.currentTime = Math.min(1.0, video.duration * 0.1); // Seek to 10% or 1 second, whichever is smaller
+      }).catch((playError) => {
+        clearTimeout(playTimeout);
+        console.log('[VideoCompatibility] Failed to play video - codec incompatible:', playError);
+        resolveResult({
+          isCompatible: false,
+          error: 'Video codec not supported by browser'
+        });
       });
     });
 
@@ -157,9 +180,20 @@ export function checkVideoCompatibility(videoUrl: string, videoPath?: string): P
 
     // Handle when video can start playing (first frame ready)
     video.addEventListener('canplay', () => {
-      console.log('[VideoCompatibility] Video can play, marking as compatible');
-      // If we haven't resolved yet and video can play, it's compatible
+      console.log('[VideoCompatibility] Video can play, checking if has video dimensions...');
+      // Double-check dimensions when video can play
+      if (video.videoWidth === 0 || video.videoHeight === 0) {
+        console.log('[VideoCompatibility] Video can play but no video dimensions - audio only file');
+        resolveResult({
+          isCompatible: false,
+          error: 'Audio-only file - no video content'
+        });
+        return;
+      }
+      
+      // If we haven't resolved yet and video can play with valid dimensions, it's compatible
       if (!hasResolved) {
+        console.log('[VideoCompatibility] Video can play with valid dimensions, marking as compatible');
         resolveResult({
           isCompatible: true,
           dimensions: { width: video.videoWidth, height: video.videoHeight }

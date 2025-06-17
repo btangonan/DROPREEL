@@ -168,24 +168,14 @@ export default function Home() {
     try {
       setShowFolderBrowser(false);
       
-      // Convert FolderItems to VideoFiles format
+      // Convert FolderItems to VideoFiles format - FAST version for immediate UI response
       const videoPromises = selectedVideos.map(async (item) => {
-        // Get stream URL for each video
+        // Get stream URL for each video (still needed for thumbnails and basic setup)
         const response = await fetch(`/api/dropbox?action=getStreamUrl&path=${encodeURIComponent(item.path)}`);
         const streamData = await response.json();
-        const streamUrl = streamData.url || '';
+        const streamUrl = streamData.streamUrl || streamData.url || '';
         
-        // Get real duration from browser metadata immediately
-        let realDuration = '0:00';
-        if (streamUrl) {
-          try {
-            realDuration = await videos.getVideoDuration(streamUrl);
-          } catch (error) {
-            console.warn('Failed to get duration for', item.name, error);
-          }
-        }
-        
-        // Check compatibility instantly
+        // Use instant compatibility check for immediate feedback
         const instantCheck = checkVideoCompatibilityInstant(item);
         
         const videoFile: VideoFile = {
@@ -194,49 +184,91 @@ export default function Home() {
           path: item.path,
           streamUrl: streamUrl,
           thumbnailUrl: `/api/dropbox/thumbnail?path=${encodeURIComponent(item.path)}`,
-          duration: realDuration,
+          duration: '0:00', // Will be updated in background
           mediaInfo: item.mediaInfo,
           isCompatible: instantCheck.isCompatible,
           compatibilityError: instantCheck.error || null,
-          checkedWithBrowser: false
+          checkedWithBrowser: false // Will be updated in background
         };
         
         return videoFile;
       });
       
       const newVideos = await Promise.all(videoPromises);
+      console.log('All new videos processed:', newVideos.map(v => ({ name: v.name, isCompatible: v.isCompatible, error: v.compatibilityError })));
       
-      // Filter out incompatible videos and duplicates
+      // Filter out duplicates but INCLUDE incompatible videos (they should show with warning labels)
       const shouldAppend = videos.loadedVideos.length > 0;
       const existingPaths = shouldAppend ? new Set(videos.loadedVideos.map(v => v.path)) : new Set();
-      const compatibleVideos = newVideos.filter(video => 
-        video.isCompatible !== false && !existingPaths.has(video.path)
-      );
+      const videosToAdd = newVideos.filter(video => !existingPaths.has(video.path));
+      console.log('Videos to add after duplicate filter:', videosToAdd.map(v => ({ name: v.name, isCompatible: v.isCompatible })));
       
-      // Count skipped videos for user feedback
+      // Count skipped duplicates for user feedback
       const totalAttempted = newVideos.length;
-      const incompatibleSkipped = newVideos.filter(v => v.isCompatible === false).length;
       const duplicatesSkipped = newVideos.filter(v => existingPaths.has(v.path)).length;
+      const incompatibleCount = videosToAdd.filter(v => v.isCompatible === false).length;
+      console.log('Incompatible count:', incompatibleCount, 'Total to add:', videosToAdd.length);
       
-      if (incompatibleSkipped > 0) {
-        setError(`Skipped ${incompatibleSkipped} incompatible video(s). ${compatibleVideos.length} videos added.`);
+      if (duplicatesSkipped > 0) {
+        setError(`Skipped ${duplicatesSkipped} duplicate video(s). ${videosToAdd.length} videos added.`);
+      } else if (incompatibleCount > 0) {
+        setError(`${videosToAdd.length} videos added (${incompatibleCount} incompatible - will show warning labels).`);
       }
       
       // Add to existing videos or replace based on context
       if (shouldAppend) {
-        videos.setLoadedVideos(prev => [...prev, ...compatibleVideos]);
+        videos.setLoadedVideos(prev => [...prev, ...videosToAdd]);
         videos.setVideoState(prev => ({
           ...prev,
-          yourVideos: [...prev.yourVideos, ...compatibleVideos]
+          yourVideos: [...prev.yourVideos, ...videosToAdd]
         }));
       } else {
-        videos.setLoadedVideos(compatibleVideos);
+        videos.setLoadedVideos(videosToAdd);
         videos.setVideoState({
-          yourVideos: compatibleVideos,
+          yourVideos: videosToAdd,
           selects: []
         });
       }
       
+      // Run background processing for real durations and compatibility
+      setTimeout(async () => {
+        console.log('Running background processing for individually selected videos...', videosToAdd.map(v => v.name));
+        try {
+          const { checkAllVideosCompatibility } = await import('@/lib/utils/videoCompatibility');
+          const { videos: videosWithRealData } = await checkAllVideosCompatibility(videosToAdd);
+          
+          // Extract durations and update compatibility
+          const videosWithRealDurations = videosWithRealData.map(video => {
+            let finalDuration = '0:00';
+            if (video.dimensions?.duration && video.dimensions.duration > 0) {
+              const totalSeconds = Math.floor(video.dimensions.duration);
+              const minutes = Math.floor(totalSeconds / 60);
+              const seconds = totalSeconds % 60;
+              finalDuration = `${minutes}:${seconds.toString().padStart(2, '0')}`;
+            }
+            
+            return {
+              ...video,
+              duration: finalDuration,
+              checkedWithBrowser: true
+            };
+          });
+          
+          // Update the videos in state with real data
+          if (shouldAppend) {
+            videos.setLoadedVideos(prev => {
+              const existingVideos = prev.filter(v => !videosToAdd.some(newV => newV.path === v.path));
+              return [...existingVideos, ...videosWithRealDurations];
+            });
+          } else {
+            videos.setLoadedVideos(videosWithRealDurations);
+          }
+          
+          console.log('Background processing complete - videos updated with real durations and compatibility');
+        } catch (error) {
+          console.warn('Background processing failed:', error);
+        }
+      }, 100);
       
     } catch (error) {
       setError(error instanceof Error ? error.message : 'Failed to add selected videos');
