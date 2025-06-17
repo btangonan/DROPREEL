@@ -165,19 +165,48 @@ export default function Home() {
 
   // Handle individual video selection from FolderBrowser
   const handleVideoSelect = async (selectedVideos: Array<{ name: string; path: string; type: string; isVideo: boolean; mediaInfo?: any }>) => {
+    const startTime = performance.now();
+    console.log('🟢 [PERF] handleVideoSelect START:', selectedVideos.length, 'videos at', startTime);
+    
     try {
+      const step1 = performance.now();
       setShowFolderBrowser(false);
+      console.log('🟡 [PERF] Step 1 - Close folder browser:', (step1 - startTime).toFixed(2), 'ms');
       
-      // Convert FolderItems to VideoFiles format - FAST version for immediate UI response
-      const videoPromises = selectedVideos.map(async (item) => {
-        // Get stream URL for each video (still needed for thumbnails and basic setup)
-        const response = await fetch(`/api/dropbox?action=getStreamUrl&path=${encodeURIComponent(item.path)}`);
-        const streamData = await response.json();
-        const streamUrl = streamData.streamUrl || streamData.url || '';
+      const step2 = performance.now();
+      console.log('🟡 [PERF] Step 2 - Starting video processing:', (step2 - startTime).toFixed(2), 'ms');
+      
+      // Convert FolderItems to VideoFiles format - Parallel stream URL fetching
+      const videoPromises = selectedVideos.map(async (item, index) => {
+        const itemStart = performance.now();
+        console.log(`🔵 [PERF] Video ${index + 1}/${selectedVideos.length} (${item.name}) - START processing`);
         
         // Use instant compatibility check for immediate feedback
+        const compatStart = performance.now();
         const instantCheck = checkVideoCompatibilityInstant(item);
+        const compatEnd = performance.now();
+        console.log(`🔵 [PERF] Video ${index + 1} - Compatibility check: ${(compatEnd - compatStart).toFixed(2)}ms`);
         
+        // Fetch stream URL in parallel with others
+        let streamUrl = '';
+        const fetchStart = performance.now();
+        try {
+          console.log(`🔵 [PERF] Video ${index + 1} - Starting stream URL fetch`);
+          const response = await fetch(`/api/dropbox?action=getStreamUrl&path=${encodeURIComponent(item.path)}`);
+          const fetchEnd = performance.now();
+          console.log(`🔵 [PERF] Video ${index + 1} - Stream URL fetch response: ${(fetchEnd - fetchStart).toFixed(2)}ms`);
+          
+          const parseStart = performance.now();
+          const streamData = await response.json();
+          streamUrl = streamData.streamUrl || streamData.url || '';
+          const parseEnd = performance.now();
+          console.log(`🔵 [PERF] Video ${index + 1} - JSON parse: ${(parseEnd - parseStart).toFixed(2)}ms`);
+        } catch (error) {
+          const fetchEnd = performance.now();
+          console.warn(`🔴 [PERF] Video ${index + 1} - Failed to get stream URL after ${(fetchEnd - fetchStart).toFixed(2)}ms:`, error);
+        }
+        
+        const createStart = performance.now();
         const videoFile: VideoFile = {
           id: nanoid(),
           name: item.name,
@@ -190,32 +219,48 @@ export default function Home() {
           compatibilityError: instantCheck.error || null,
           checkedWithBrowser: false // Will be updated in background
         };
+        const createEnd = performance.now();
+        
+        const itemEnd = performance.now();
+        console.log(`🔵 [PERF] Video ${index + 1} (${item.name}) - COMPLETE: ${(itemEnd - itemStart).toFixed(2)}ms total (object creation: ${(createEnd - createStart).toFixed(2)}ms)`);
         
         return videoFile;
       });
       
+      const promiseStart = performance.now();
+      console.log('🟡 [PERF] Step 3 - Waiting for all video promises...');
       const newVideos = await Promise.all(videoPromises);
-      console.log('All new videos processed:', newVideos.map(v => ({ name: v.name, isCompatible: v.isCompatible, error: v.compatibilityError })));
+      const promiseEnd = performance.now();
+      console.log('🟡 [PERF] Step 3 - All video promises resolved:', (promiseEnd - promiseStart).toFixed(2), 'ms');
+      const step4 = performance.now();
+      console.log('🟡 [PERF] Step 4 - Starting duplicate filtering:', (step4 - startTime).toFixed(2), 'ms');
       
       // Filter out duplicates but INCLUDE incompatible videos (they should show with warning labels)
       const shouldAppend = videos.loadedVideos.length > 0;
       const existingPaths = shouldAppend ? new Set(videos.loadedVideos.map(v => v.path)) : new Set();
       const videosToAdd = newVideos.filter(video => !existingPaths.has(video.path));
+      
+      const step5 = performance.now();
+      console.log('🟡 [PERF] Step 5 - Duplicate filtering complete:', (step5 - startTime).toFixed(2), 'ms');
       console.log('Videos to add after duplicate filter:', videosToAdd.map(v => ({ name: v.name, isCompatible: v.isCompatible })));
       
       // Count skipped duplicates for user feedback
       const totalAttempted = newVideos.length;
       const duplicatesSkipped = newVideos.filter(v => existingPaths.has(v.path)).length;
       const incompatibleCount = videosToAdd.filter(v => v.isCompatible === false).length;
-      console.log('Incompatible count:', incompatibleCount, 'Total to add:', videosToAdd.length);
+      console.log('🟡 [PERF] Incompatible count:', incompatibleCount, 'Total to add:', videosToAdd.length);
       
+      const errorStart = performance.now();
       if (duplicatesSkipped > 0) {
         setError(`Skipped ${duplicatesSkipped} duplicate video(s). ${videosToAdd.length} videos added.`);
       } else if (incompatibleCount > 0) {
         setError(`${videosToAdd.length} videos added (${incompatibleCount} incompatible - will show warning labels).`);
       }
+      const errorEnd = performance.now();
+      console.log('🟡 [PERF] Step 6 - Error message set:', (errorEnd - startTime).toFixed(2), 'ms');
       
       // Add to existing videos or replace based on context
+      const stateStart = performance.now();
       if (shouldAppend) {
         videos.setLoadedVideos(prev => [...prev, ...videosToAdd]);
         videos.setVideoState(prev => ({
@@ -229,6 +274,9 @@ export default function Home() {
           selects: []
         });
       }
+      const stateEnd = performance.now();
+      console.log('🟢 [PERF] Step 7 - State updated (VIDEOS SHOULD NOW BE VISIBLE):', (stateEnd - startTime).toFixed(2), 'ms');
+      console.log('🟢 [PERF] TOTAL TIME FROM BUTTON PRESS TO UI UPDATE:', (stateEnd - startTime).toFixed(2), 'ms');
       
       // Run background processing for real durations and compatibility
       setTimeout(async () => {
