@@ -2,34 +2,9 @@ import { useState, useEffect, useCallback } from 'react';
 import { VideoFile } from '@/types';
 import { extractDropboxPath } from '@/lib/utils/dropboxUtils';
 import { checkAllVideosCompatibility, checkVideoCompatibilityInstant } from '@/lib/utils/videoCompatibility';
+import { extractDropboxDuration, extractDropboxDurationFast, extractMultipleDurations, debugMediaInfo, testDurationExtraction } from '@/lib/utils/durationUtils';
 
-// Helper function to extract duration from Dropbox metadata
-// Note: Dropbox mediaInfo often doesn't contain duration, so we rely on browser metadata
-const getDurationFromMetadata = (mediaInfo: any): string => {
-  try {
-    // Check for video metadata with duration
-    if (mediaInfo?.metadata?.video?.duration) {
-      const durationMs = mediaInfo.metadata.video.duration;
-      const totalSeconds = Math.floor(durationMs / 1000);
-      const minutes = Math.floor(totalSeconds / 60);
-      const seconds = totalSeconds % 60;
-      return `${minutes}:${seconds.toString().padStart(2, '0')}`;
-    }
-    
-    // Check alternative structure
-    if (mediaInfo?.dimensions?.duration) {
-      const durationMs = mediaInfo.dimensions.duration;
-      const totalSeconds = Math.floor(durationMs / 1000);
-      const minutes = Math.floor(totalSeconds / 60);
-      const seconds = totalSeconds % 60;
-      return `${minutes}:${seconds.toString().padStart(2, '0')}`;
-    }
-  } catch (error) {
-    console.warn('Error extracting duration from metadata:', error);
-  }
-  
-  return '0:00'; // Fallback - will be updated by browser metadata
-};
+// Note: Duration extraction is now handled by dedicated utilities
 
 interface VideoState {
   yourVideos: VideoFile[];
@@ -113,7 +88,7 @@ export function useVideoManagement() {
         console.log('🟢 [FOLDER PERF] Processing', data.videos.length, 'videos - PRELOAD THUMBNAILS MODE');
         const folderStart = performance.now();
         
-        // PRELOAD: Create videos and preload thumbnails before displaying
+        // PRELOAD: Create videos with fast duration extraction and preload thumbnails before displaying
         const preloadStart = performance.now();
         const videosWithPreloadedThumbnails = await Promise.all(
           data.videos.map(async (video: VideoFile) => {
@@ -132,17 +107,24 @@ export function useVideoManagement() {
               console.warn('🟡 [FOLDER PERF] Thumbnail preload failed for:', video.name);
             }
             
+            // Ultra-fast duration check for immediate UI display
+            const quickDuration = extractDropboxDurationFast(video.mediaInfo);
+            
             return {
               ...video,
               streamUrl: '', // Will be fetched in background
               thumbnailUrl,
-              duration: '0:00' // Will be extracted in background
+              duration: quickDuration // Quick check only, full extraction in background
             };
           })
         );
         
         const preloadEnd = performance.now();
-        console.log('🟢 [FOLDER PERF] Thumbnail preloading took:', (preloadEnd - preloadStart).toFixed(2), 'ms');
+        console.log('🟢 [FOLDER PERF] Thumbnail preloading + fast duration extraction took:', (preloadEnd - preloadStart).toFixed(2), 'ms');
+        
+        // Count how many got immediate duration vs need background extraction
+        const immediateCount = videosWithPreloadedThumbnails.filter(v => v.duration !== '0:00').length;
+        console.log('🟢 [FOLDER PERF] Duration stats: immediate =', immediateCount, ', need background =', (videosWithPreloadedThumbnails.length - immediateCount));
         
         // Do instant compatibility check before adding to UI (preserve all existing data including duration)
         const videosWithInstantCheck = videosWithPreloadedThumbnails.map(video => {
@@ -218,31 +200,39 @@ export function useVideoManagement() {
             console.log('🟡 [FOLDER BACKGROUND] Running compatibility checks...');
             const { videos: videosWithRealData } = await checkAllVideosCompatibility(videosWithStreamUrls);
             
-            // Extract durations and update compatibility
-            const videosWithRealDurations = videosWithRealData.map(video => {
-              let finalDuration = '0:00';
-              if (video.dimensions?.duration && video.dimensions.duration > 0) {
-                const totalSeconds = Math.floor(video.dimensions.duration);
-                const minutes = Math.floor(totalSeconds / 60);
-                const seconds = totalSeconds % 60;
-                finalDuration = `${minutes}:${seconds.toString().padStart(2, '0')}`;
-              }
+            // Extract durations using the new efficient system (background only)
+            console.log('🟡 [FOLDER BACKGROUND] Extracting durations for videos...');
+            
+            // Debug mediaInfo structure for first few videos (only if needed for debugging)
+            if (process.env.NODE_ENV === 'development') {
+              videosWithRealData.slice(0, 2).forEach(video => {
+                if (video.mediaInfo) {
+                  debugMediaInfo(video.mediaInfo, video.name);
+                }
+              });
               
-              return {
-                ...video,
-                duration: finalDuration,
-                checkedWithBrowser: true
-              };
-            });
+              // Test duration extraction on the first video for debugging
+              if (videosWithRealData.length > 0) {
+                await testDurationExtraction(videosWithRealData[0]);
+              }
+            }
+            
+            const videosWithRealDurations = await extractMultipleDurations(videosWithRealData, 5); // Increased batch size since it's background
+            
+            // Mark all as browser-checked
+            const finalVideos = videosWithRealDurations.map(video => ({
+              ...video,
+              checkedWithBrowser: true
+            }));
             
             // Update the videos in state with real data
             if (appendToExisting) {
               setLoadedVideos(prev => {
                 const existingVideos = prev.filter(v => !videosToProcess.some(newV => newV.path === v.path));
-                return [...existingVideos, ...videosWithRealDurations];
+                return [...existingVideos, ...finalVideos];
               });
             } else {
-              setLoadedVideos(videosWithRealDurations);
+              setLoadedVideos(finalVideos);
             }
             
             console.log('🟡 [FOLDER BACKGROUND] Background processing complete - videos updated with real durations and compatibility');

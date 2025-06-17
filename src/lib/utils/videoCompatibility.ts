@@ -6,7 +6,7 @@
 export interface VideoCompatibilityResult {
   isCompatible: boolean;
   error?: string;
-  dimensions?: { width: number; height: number };
+  dimensions?: { width: number; height: number; duration?: number };
 }
 
 /**
@@ -114,7 +114,8 @@ export function checkVideoCompatibility(videoUrl: string, videoPath?: string): P
       console.log('🔍 [COMPATIBILITY] Metadata loaded for', videoPath || 'unknown', {
         videoWidth: video.videoWidth,
         videoHeight: video.videoHeight,
-        duration: video.duration
+        duration: video.duration,
+        durationFormatted: !isNaN(video.duration) ? `${Math.floor(video.duration / 60)}:${(Math.floor(video.duration % 60)).toString().padStart(2, '0')}` : 'N/A'
       });
       
       // Reject if no video dimensions (audio-only files or corrupted video)
@@ -171,10 +172,14 @@ export function checkVideoCompatibility(videoUrl: string, videoPath?: string): P
 
     // Handle successful seek - means we can render frames
     video.addEventListener('seeked', () => {
-      console.log('[VideoCompatibility] Successfully seeked, video can render frames');
+      console.log('✅ [COMPATIBILITY] Successfully seeked, video can render frames:', videoPath);
       resolveResult({
         isCompatible: true,
-        dimensions: { width: video.videoWidth, height: video.videoHeight }
+        dimensions: { 
+          width: video.videoWidth, 
+          height: video.videoHeight,
+          duration: !isNaN(video.duration) ? video.duration : undefined
+        }
       });
     });
 
@@ -200,7 +205,11 @@ export function checkVideoCompatibility(videoUrl: string, videoPath?: string): P
         console.log('✅ [COMPATIBILITY] Video can play with valid dimensions, marking compatible:', videoPath);
         resolveResult({
           isCompatible: true,
-          dimensions: { width: video.videoWidth, height: video.videoHeight }
+          dimensions: { 
+            width: video.videoWidth, 
+            height: video.videoHeight,
+            duration: !isNaN(video.duration) ? video.duration : undefined
+          }
         });
       }
     });

@@ -89,10 +89,12 @@ function VideoGridItem({
     >
       {/* GLOBAL OVERLAY - positioned relative to video-card, not aspect-video */}
       <div className="absolute inset-0 pointer-events-none z-50">
-        {/* Duration label - positioned relative to entire card */}
-        <div className="absolute bottom-6 right-2 bg-black bg-opacity-80 text-white px-2 py-1 text-xs font-bold border border-white font-mono pointer-events-none">
-          {video.duration || '0:00'}
-        </div>
+        {/* Duration label - only show on hover and only if we have real duration data */}
+        {video.duration && video.duration !== '0:00' && (
+          <div className="absolute bottom-6 right-2 bg-black bg-opacity-80 text-white px-2 py-1 text-xs font-bold border border-white font-mono pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+            {video.duration}
+          </div>
+        )}
         
         {/* Incompatible warning - positioned relative to entire card */}
         {video.isCompatible === false && (
