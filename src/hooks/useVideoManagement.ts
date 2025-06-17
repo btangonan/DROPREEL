@@ -126,47 +126,37 @@ export function useVideoManagement() {
         const immediateCount = videosWithPreloadedThumbnails.filter(v => v.duration !== '0:00').length;
         console.log('🟢 [FOLDER PERF] Duration stats: immediate =', immediateCount, ', need background =', (videosWithPreloadedThumbnails.length - immediateCount));
         
-        // Do instant compatibility check before adding to UI (preserve all existing data including duration)
-        const videosWithInstantCheck = videosWithPreloadedThumbnails.map(video => {
-          const instantCheck = checkVideoCompatibilityInstant(video);
-          return {
-            ...video, // This includes the duration that was already set
-            isCompatible: instantCheck.isCompatible,
-            compatibilityError: instantCheck.error || null,
-            dimensions: null
-          };
-        });
+        // Skip instant compatibility check - only use accurate deep checking in background
+        // This prevents confusing user experience where videos flash from incompatible to compatible
+        const videosWithoutInstantCheck = videosWithPreloadedThumbnails.map(video => ({
+          ...video,
+          isCompatible: undefined, // Will be determined by deep check in background
+          compatibilityError: null,
+          dimensions: null
+        }));
         
         if (appendToExisting) {
-          // Filter out duplicates based on video path but INCLUDE incompatible videos for display
+          // Filter out duplicates based on video path
           const existingPaths = new Set(loadedVideos.map(v => v.path));
-          const newVideos = videosWithInstantCheck.filter(v => 
+          const newVideos = videosWithoutInstantCheck.filter(v => 
             !existingPaths.has(v.path)
           );
           setLoadedVideos(prev => [...prev, ...newVideos]);
         } else {
-          // Add ALL videos including incompatible ones for proper display with labels
-          setLoadedVideos(videosWithInstantCheck);
+          // Add ALL videos - compatibility will be determined in background
+          setLoadedVideos(videosWithoutInstantCheck);
         }
         
-        // Count the videos we actually added vs total attempted
+        // Show simple loading summary
         const totalAttempted = videosWithPreloadedThumbnails.length;
-        const compatibleCount = videosWithInstantCheck.filter(v => v.isCompatible !== false).length;
-        const incompatibleCount = videosWithInstantCheck.filter(v => v.isCompatible === false).length;
-        
-        // Show summary of what was loaded
-        if (incompatibleCount > 0) {
-          console.warn(`Loaded ${totalAttempted} videos: ${compatibleCount} compatible, ${incompatibleCount} incompatible (will show with warning labels)`);
-        } else {
-          console.log(`Loaded ${compatibleCount} compatible videos`);
-        }
+        console.log(`Loaded ${totalAttempted} videos - compatibility checking in background...`);
         
         // Run background processing for stream URLs, real durations and compatibility
         setTimeout(async () => {
-          console.log('🟡 [FOLDER BACKGROUND] Starting background processing for ALL videos (including potentially incompatible)...', videosWithInstantCheck.map(v => v.name));
+          console.log('🟡 [FOLDER BACKGROUND] Starting background processing for ALL videos...', videosWithoutInstantCheck.map(v => v.name));
           try {
-            // Process ALL videos - we need to test incompatible ones too to confirm they're really incompatible
-            const videosToProcess = videosWithInstantCheck;
+            // Process ALL videos - compatibility will be determined accurately  
+            const videosToProcess = videosWithoutInstantCheck;
             
             if (videosToProcess.length === 0) {
               console.log('🟡 [FOLDER BACKGROUND] No videos to process');

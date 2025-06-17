@@ -61,7 +61,7 @@ function VideoGridItem({
   }, [isInlinePreview]);
   const popOutClass = isInlinePreview ? 'animate-popout shadow-2xl z-50' : '';
 
-  // Handle clicks on incompatible videos
+  // Handle clicks on incompatible videos (only block if definitively incompatible)
   const handleIncompatibleClick = (e: React.MouseEvent) => {
     console.log('VideoGridItem click for', video.name, '- isCompatible:', video.isCompatible, 'compatibilityError:', video.compatibilityError);
     if (video.isCompatible === false) {
@@ -71,6 +71,7 @@ function VideoGridItem({
       // Show tooltip or error message
       return false;
     }
+    // Allow clicks for undefined (checking) or true (compatible) states
   };
 
   return (
@@ -89,16 +90,41 @@ function VideoGridItem({
     >
       {/* GLOBAL OVERLAY - positioned relative to video-card, not aspect-video */}
       <div className="absolute inset-0 pointer-events-none z-50">
-        {/* Duration label - only show on hover and only if we have real duration data */}
+        {/* Play button overlay - positioned relative to entire card, only show on hover for compatible videos */}
+        {video.isCompatible !== false && (
+          <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none z-10" style={{ background: 'rgba(0, 0, 0, 0.3)' }}>
+            <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-center pointer-events-auto">
+              <button
+                type="button"
+                onClick={e => {
+                  e.stopPropagation();
+                  e.preventDefault();
+                  if (typeof onClick === 'function' && video) {
+                    // Get bounding rect of the thumbnail
+                    const rect = thumbnailRef.current?.getBoundingClientRect();
+                    onClick(video, { play: true, rect });
+                  }
+                }}
+                className="drop-shadow-lg focus:outline-none"
+                style={{ color: 'var(--video-header-text)' }}
+              >
+                <Play className="w-8 h-8 mb-2" fill="currentColor" />
+                <div className="text-xs text-white font-mono uppercase tracking-wider">PLAY</div>
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Duration label - positioned above play overlay, only show on hover with real duration data */}
         {video.duration && video.duration !== '0:00' && (
-          <div className="absolute bottom-6 right-2 bg-black bg-opacity-80 text-white px-2 py-1 text-xs font-bold border border-white font-mono pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+          <div className="absolute bottom-3 right-2 bg-black bg-opacity-80 text-white px-2 py-1 text-xs font-bold font-mono pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-200 z-20">
             {video.duration}
           </div>
         )}
-        
+
         {/* Incompatible warning - positioned relative to entire card */}
         {video.isCompatible === false && (
-          <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 pointer-events-none" style={{ marginTop: '1rem' }}>
+          <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 pointer-events-none z-30" style={{ marginTop: '1rem' }}>
             <div className="text-center drop-shadow-lg" style={{ color: 'var(--video-header-text)' }}>
               <div className="text-red-500 text-4xl mx-auto mb-2">⚠</div>
               <div className="text-xs text-white font-mono uppercase tracking-wider font-bold">INCOMPATIBLE</div>
@@ -181,31 +207,6 @@ function VideoGridItem({
               alt={video.name}
               className="w-full h-full object-cover transition-all duration-200"
             />
-            
-            {/* Play overlay - only for compatible videos */}
-            {video.isCompatible !== false && (
-              <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-200" style={{ background: 'rgba(0, 0, 0, 0.3)' }}>
-                <div className="matrix-video-overlay-content">
-                  <button
-                    type="button"
-                    onClick={e => {
-                      e.stopPropagation();
-                      e.preventDefault();
-                      if (typeof onClick === 'function' && video) {
-                        // Get bounding rect of the thumbnail
-                        const rect = thumbnailRef.current?.getBoundingClientRect();
-                        onClick(video, { play: true, rect });
-                      }
-                    }}
-                    className="drop-shadow-lg focus:outline-none"
-                    style={{ color: 'var(--video-header-text)' }}
-                  >
-                    <Play className="w-8 h-8 mb-2" fill="currentColor" />
-                    <div className="text-xs text-white font-mono uppercase tracking-wider">PLAY</div>
-                  </button>
-                </div>
-              </div>
-            )}
           </>
         ) : (
           <div className="flex items-center justify-center h-full w-full">
@@ -254,7 +255,7 @@ function SortableVideoGridItem({
     isOver,
   } = useSortable({ 
     id: video.id, // Use the video ID directly
-    disabled: video.isCompatible === false // Disable dragging for incompatible videos
+    disabled: video.isCompatible === false // Only disable dragging for definitively incompatible videos
   });
 
   const style: CSSProperties = {
