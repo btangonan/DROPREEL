@@ -88,47 +88,60 @@ export function useVideoManagement() {
         console.log('🟢 [FOLDER PERF] Processing', data.videos.length, 'videos - PRELOAD THUMBNAILS MODE');
         const folderStart = performance.now();
         
-        // PRELOAD: Create videos with fast duration extraction and preload thumbnails before displaying
+        // IMMEDIATE PLAYABILITY: Fetch stream URLs immediately so videos are playable when they appear
         const preloadStart = performance.now();
-        const videosWithPreloadedThumbnails = await Promise.all(
+        const videosWithImmediatePlayability = await Promise.all(
           data.videos.map(async (video: VideoFile) => {
             const thumbnailUrl = `/api/dropbox/thumbnail?path=${encodeURIComponent(video.path)}`;
             
-            // Preload thumbnail to avoid piecemeal loading
+            // Fetch stream URL immediately for instant playability
+            let streamUrl = '';
             try {
-              await new Promise<void>((resolve, reject) => {
-                const img = new Image();
-                img.onload = () => resolve();
-                img.onerror = () => resolve(); // Continue even if thumbnail fails
-                setTimeout(() => resolve(), 1000); // Timeout after 1 second
-                img.src = thumbnailUrl;
-              });
+              const streamResponse = await fetch(`/api/dropbox?action=getStreamUrl&path=${encodeURIComponent(video.path)}`);
+              if (streamResponse.ok) {
+                const streamData = await streamResponse.json();
+                streamUrl = streamData.streamUrl || streamData.url || '';
+                console.log('🚀 [IMMEDIATE PLAY] Fetched stream URL for:', video.name);
+              }
             } catch (error) {
-              console.warn('🟡 [FOLDER PERF] Thumbnail preload failed for:', video.name);
+              console.warn('🟡 [IMMEDIATE PLAY] Failed to fetch stream URL for:', video.name, error);
             }
+            
+            // Preload thumbnail in parallel (don't block on this)
+            const thumbnailPromise = new Promise<void>((resolve) => {
+              const img = new Image();
+              img.onload = () => resolve();
+              img.onerror = () => resolve(); // Continue even if thumbnail fails
+              setTimeout(() => resolve(), 1000); // Timeout after 1 second
+              img.src = thumbnailUrl;
+            }).catch(() => {}); // Ignore thumbnail errors
             
             // Ultra-fast duration check for immediate UI display
             const quickDuration = extractDropboxDurationFast(video.mediaInfo);
             
+            // Don't wait for thumbnail, just start the preload
+            thumbnailPromise;
+            
             return {
               ...video,
-              streamUrl: '', // Will be fetched in background
+              streamUrl, // Now has actual stream URL for immediate playability!
               thumbnailUrl,
-              duration: quickDuration // Quick check only, full extraction in background
+              duration: quickDuration
             };
           })
         );
         
         const preloadEnd = performance.now();
-        console.log('🟢 [FOLDER PERF] Thumbnail preloading + fast duration extraction took:', (preloadEnd - preloadStart).toFixed(2), 'ms');
+        console.log('🟢 [FOLDER PERF] Stream URL fetching + setup took:', (preloadEnd - preloadStart).toFixed(2), 'ms');
         
         // Count how many got immediate duration vs need background extraction
-        const immediateCount = videosWithPreloadedThumbnails.filter(v => v.duration !== '0:00').length;
-        console.log('🟢 [FOLDER PERF] Duration stats: immediate =', immediateCount, ', need background =', (videosWithPreloadedThumbnails.length - immediateCount));
+        const immediateCount = videosWithImmediatePlayability.filter(v => v.duration !== '0:00').length;
+        const playableCount = videosWithImmediatePlayability.filter(v => v.streamUrl !== '').length;
+        console.log('🟢 [FOLDER PERF] Duration stats: immediate =', immediateCount, ', need background =', (videosWithImmediatePlayability.length - immediateCount));
+        console.log('🚀 [IMMEDIATE PLAY] Playability stats:', playableCount, 'of', videosWithImmediatePlayability.length, 'videos immediately playable');
         
-        // Skip instant compatibility check - only use accurate deep checking in background
-        // This prevents confusing user experience where videos flash from incompatible to compatible
-        const videosWithoutInstantCheck = videosWithPreloadedThumbnails.map(video => ({
+        // Videos are now immediately playable! Set compatibility as undefined for background checking
+        const videosReadyToDisplay = videosWithImmediatePlayability.map(video => ({
           ...video,
           isCompatible: undefined, // Will be determined by deep check in background
           compatibilityError: null,
@@ -138,53 +151,35 @@ export function useVideoManagement() {
         if (appendToExisting) {
           // Filter out duplicates based on video path
           const existingPaths = new Set(loadedVideos.map(v => v.path));
-          const newVideos = videosWithoutInstantCheck.filter(v => 
+          const newVideos = videosReadyToDisplay.filter(v => 
             !existingPaths.has(v.path)
           );
           setLoadedVideos(prev => [...prev, ...newVideos]);
         } else {
-          // Add ALL videos - compatibility will be determined in background
-          setLoadedVideos(videosWithoutInstantCheck);
+          // Add ALL videos - now immediately playable!
+          setLoadedVideos(videosReadyToDisplay);
         }
         
         // Show simple loading summary
-        const totalAttempted = videosWithPreloadedThumbnails.length;
-        console.log(`Loaded ${totalAttempted} videos - compatibility checking in background...`);
+        const totalAttempted = videosWithImmediatePlayability.length;
+        console.log(`Loaded ${totalAttempted} videos - immediately playable, compatibility checking in background...`);
         
-        // Run background processing for stream URLs, real durations and compatibility
+        // Run background processing for compatibility and enhanced durations
         setTimeout(async () => {
-          console.log('🟡 [FOLDER BACKGROUND] Starting background processing for ALL videos...', videosWithoutInstantCheck.map(v => v.name));
+          console.log('🟡 [FOLDER BACKGROUND] Starting background processing for ALL videos...', videosReadyToDisplay.map(v => v.name));
           try {
             // Process ALL videos - compatibility will be determined accurately  
-            const videosToProcess = videosWithoutInstantCheck;
+            const videosToProcess = videosReadyToDisplay;
             
             if (videosToProcess.length === 0) {
               console.log('🟡 [FOLDER BACKGROUND] No videos to process');
               return;
             }
             
-            // First, fetch stream URLs for videos that don't have them
+            // Videos already have stream URLs from immediate fetching, skip this step
             const backgroundStart = performance.now();
-            console.log('🟡 [FOLDER BACKGROUND] Fetching stream URLs for', videosToProcess.length, 'videos...');
-            const videosWithStreamUrls = await Promise.all(
-              videosToProcess.map(async (video) => {
-                if (!video.streamUrl || video.streamUrl.trim() === '') {
-                  try {
-                    const response = await fetch(`/api/dropbox?action=getStreamUrl&path=${encodeURIComponent(video.path)}`);
-                    const streamData = await response.json();
-                    const streamUrl = streamData.streamUrl || streamData.url || '';
-                    console.log('🟡 [FOLDER BACKGROUND] Fetched stream URL for', video.name);
-                    return { ...video, streamUrl };
-                  } catch (error) {
-                    console.warn('🟡 [FOLDER BACKGROUND] Failed to fetch stream URL for', video.name, error);
-                    return video; // Keep original video if fetch fails
-                  }
-                }
-                return video; // Already has stream URL
-              })
-            );
-            const urlsEnd = performance.now();
-            console.log('🟡 [FOLDER BACKGROUND] Stream URLs fetched in', (urlsEnd - backgroundStart).toFixed(2), 'ms');
+            console.log('🟡 [FOLDER BACKGROUND] Videos already have stream URLs, proceeding to compatibility checks...');
+            const videosWithStreamUrls = videosToProcess; // No need to fetch again
             
             // Then run compatibility check with stream URLs
             console.log('🟡 [FOLDER BACKGROUND] Running compatibility checks...');

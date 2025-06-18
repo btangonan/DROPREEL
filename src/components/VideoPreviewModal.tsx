@@ -31,7 +31,7 @@ export default function VideoPreviewModal({ isOpen, onClose, videoSrc, title, is
   const [aspectRatio, setAspectRatio] = useState<VideoAspectRatio | null>(null);
   const [showControls, setShowControls] = useState(true);
   const [isVideoReady, setIsVideoReady] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(true); // Start with loading state
   const [videoError, setVideoError] = useState<string | null>(null);
   const [isRetrying, setIsRetrying] = useState(false);
   const controlsTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -95,6 +95,20 @@ export default function VideoPreviewModal({ isOpen, onClose, videoSrc, title, is
       }
     };
   }, [isOpen, onClose, resetControlsTimer]);
+
+  // Reset loading state when modal opens or video source changes
+  useEffect(() => {
+    if (isOpen && videoSrc) {
+      console.log('VideoPreviewModal: Starting to load new video:', videoSrc);
+      setIsLoading(true);
+      setIsVideoReady(false);
+      setVideoError(null);
+      setIsPlaying(false);
+      setCurrentTime(0);
+      setDuration(0);
+      setAspectRatio(null);
+    }
+  }, [isOpen, videoSrc]);
 
   // Handle external play/pause control
   useEffect(() => {
@@ -166,9 +180,13 @@ export default function VideoPreviewModal({ isOpen, onClose, videoSrc, title, is
       const video = videoRef.current;
       setDuration(video.duration);
       detectAspectRatio();
-      setIsLoading(false);
-      setIsVideoReady(true);
-      setVideoError(null);
+      
+      // Small delay to ensure smooth transition from loading to video
+      setTimeout(() => {
+        setIsLoading(false);
+        setIsVideoReady(true);
+        setVideoError(null);
+      }, 100);
     }
   };
 
@@ -413,12 +431,12 @@ export default function VideoPreviewModal({ isOpen, onClose, videoSrc, title, is
         onClick={(e) => e.stopPropagation()}
         onMouseMove={resetControlsTimer}
       >
-        {/* Video element - only for compatible videos */}
+        {/* Video element - only for compatible videos, hidden during loading */}
         {isCompatible ? (
           <video
             ref={videoRef}
             src={videoSrc}
-            className="w-full h-full object-contain"
+            className={`w-full h-full object-contain ${isLoading ? 'opacity-0' : 'opacity-100'} transition-opacity duration-200`}
             onPlay={handlePlay}
             onPause={handlePause}
             onTimeUpdate={handleTimeUpdate}
@@ -447,10 +465,39 @@ export default function VideoPreviewModal({ isOpen, onClose, videoSrc, title, is
           </div>
         )}
 
-        {/* Custom Controls Overlay */}
+        {/* Loading overlay - shown while video is loading */}
+        {isLoading && (
+          <div className="absolute inset-0 bg-black flex items-center justify-center z-50">
+            <div className="text-white text-center">
+              {/* Spinner animation */}
+              <div className="w-12 h-12 border-4 border-white/30 border-t-white rounded-full animate-spin mx-auto mb-4"></div>
+              <div className="text-sm font-mono uppercase tracking-wider">LOADING VIDEO...</div>
+            </div>
+          </div>
+        )}
+
+        {/* Error overlay - shown when video fails to load */}
+        {videoError && !isLoading && (
+          <div className="absolute inset-0 bg-black flex items-center justify-center z-40">
+            <div className="text-white text-center max-w-md p-6">
+              <div className="text-red-400 text-4xl mb-4">⚠</div>
+              <div className="text-sm font-mono uppercase tracking-wider mb-2">VIDEO ERROR</div>
+              <div className="text-xs text-gray-300 mb-4">{videoError}</div>
+              <button 
+                onClick={retryVideo}
+                disabled={isRetrying}
+                className="px-4 py-2 bg-white text-black font-mono text-xs uppercase tracking-wider hover:bg-gray-200 transition-colors disabled:opacity-50"
+              >
+                {isRetrying ? 'RETRYING...' : 'RETRY'}
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Custom Controls Overlay - hidden during loading */}
         <div 
           className={`absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-black/70 transition-opacity duration-300 ${
-            showControls ? 'opacity-100' : 'opacity-0 pointer-events-none'
+            showControls && !isLoading && !videoError ? 'opacity-100' : 'opacity-0 pointer-events-none'
           }`}
         >
           {/* Top bar */}

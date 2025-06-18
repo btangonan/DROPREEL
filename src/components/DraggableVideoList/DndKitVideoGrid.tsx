@@ -90,35 +90,9 @@ function VideoGridItem({
     >
       {/* GLOBAL OVERLAY - positioned relative to video-card, not aspect-video */}
       <div className="absolute inset-0 pointer-events-none z-50">
-        {/* Play button overlay - positioned relative to entire card, only show on hover for compatible videos */}
+        {/* Dark hover overlay - positioned relative to entire card, only show on hover for compatible videos */}
         {video.isCompatible !== false && (
           <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none z-10" style={{ background: 'rgba(0, 0, 0, 0.3)' }}>
-            <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-center pointer-events-auto">
-              <button
-                type="button"
-                onClick={e => {
-                  e.stopPropagation();
-                  e.preventDefault();
-                  if (typeof onClick === 'function' && video) {
-                    // Get bounding rect of the thumbnail
-                    const rect = thumbnailRef.current?.getBoundingClientRect();
-                    onClick(video, { play: true, rect });
-                  }
-                }}
-                className="drop-shadow-lg focus:outline-none"
-                style={{ color: 'var(--video-header-text)' }}
-              >
-                <Play className="w-8 h-8 mb-2" fill="currentColor" />
-                <div className="text-xs text-white font-mono uppercase tracking-wider">PLAY</div>
-              </button>
-            </div>
-          </div>
-        )}
-
-        {/* Duration label - positioned above play overlay, only show on hover with real duration data */}
-        {video.duration && video.duration !== '0:00' && (
-          <div className="absolute bottom-3 right-2 bg-black bg-opacity-80 text-white px-2 py-1 text-xs font-bold font-mono pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-200 z-20">
-            {video.duration}
           </div>
         )}
 
@@ -133,6 +107,36 @@ function VideoGridItem({
           </div>
         )}
       </div>
+
+      {/* BRIGHT ELEMENTS - positioned completely outside overlay container for full brightness */}
+      {/* Duration label - at card level for maximum brightness */}
+      {video.duration && video.duration !== '0:00' && (
+        <div className="absolute bottom-3 right-2 bg-black dark:bg-green-500 text-white dark:text-black px-2 py-1 text-xs font-bold font-mono pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-200 z-70">
+          {video.duration}
+        </div>
+      )}
+
+      {/* Play button - at card level for maximum brightness */}
+      {video.isCompatible !== false && (
+        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/4 text-center pointer-events-auto opacity-0 group-hover:opacity-100 transition-opacity duration-200 z-70">
+          <button
+            type="button"
+            onClick={e => {
+              e.stopPropagation();
+              e.preventDefault();
+              if (typeof onClick === 'function' && video) {
+                // Get bounding rect of the thumbnail
+                const rect = thumbnailRef.current?.getBoundingClientRect();
+                onClick(video, { play: true, rect });
+              }
+            }}
+            className="drop-shadow-lg focus:outline-none text-white dark:text-green-500"
+          >
+            <Play className="w-8 h-8 mb-2" fill="currentColor" />
+            <div className="text-xs font-mono uppercase tracking-wider">PLAY</div>
+          </button>
+        </div>
+      )}
       {/* File header bar */}
       <div className="video-header flex items-center justify-between">
         <span className="truncate flex-1 mr-2 overflow-hidden whitespace-nowrap text-ellipsis">{video.name}</span>
@@ -145,7 +149,7 @@ function VideoGridItem({
               e.preventDefault();
               onDelete(video);
             }}
-            className="w-5 h-5 bg-white text-black border-2 border-black opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex items-center justify-center hover:bg-gray-100 focus:outline-none flex-shrink-0 ml-2"
+            className="w-5 h-5 bg-white dark:bg-black text-black dark:text-green-500 border-2 border-black dark:border-green-500 opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex items-center justify-center hover:bg-gray-100 dark:hover:bg-gray-900 focus:outline-none flex-shrink-0 ml-2"
             title="Remove video"
           >
             <X className="w-3 h-3" strokeWidth={3} />
@@ -228,8 +232,7 @@ function EmptyDropZone({ children }: { children: React.ReactNode }) {
         <MousePointer2 
           size={80}
           strokeWidth={1}
-          className="opacity-50"
-          style={{ color: '#000000' }}
+          className="text-black dark:text-green-500"
         />
       </div>
       <div className="matrix-empty-title">NO VIDEOS SELECTED</div>
