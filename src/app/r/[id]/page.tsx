@@ -3,9 +3,7 @@
 import { useEffect, useState } from 'react';
 import { VideoFile, VideoReel } from '@/types';
 import { useParams } from 'next/navigation';
-import Link from 'next/link';
 import { initializeTheme } from '@/lib/theme';
-import SharedVideoPlayer from '@/components/SharedVideoPlayer';
 
 export default function ReelPage() {
   const params = useParams();

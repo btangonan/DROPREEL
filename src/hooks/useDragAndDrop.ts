@@ -26,7 +26,7 @@ export function useDragAndDrop(
   // Custom collision detection for grid positioning
   const customCollisionDetection = useCallback((args: {
     active: { id: string | number; data: { current: { droppableId: string } } };
-    droppableContainers: Map<string, any>;
+    droppableContainers: Map<string, unknown>;
     pointerCoordinates: { x: number; y: number } | null;
   }) => {
     const { droppableContainers, pointerCoordinates } = args;

@@ -10,7 +10,7 @@ interface FolderItem {
   path: string;
   type: string;
   isVideo: boolean;
-  mediaInfo?: any; // Include mediaInfo for duration extraction
+  mediaInfo?: Record<string, unknown>; // Include mediaInfo for duration extraction
 }
 
 interface FolderBrowserProps {
@@ -81,9 +81,10 @@ export default function FolderBrowser({ onFolderSelect, onVideoSelect, onClose, 
         
         // Update breadcrumbs based on the current path
         updateBreadcrumbs(data.path || '');
-      } catch (err: any) {
-        console.error('Error fetching folder contents:', err);
-        setError(err.message || 'Error loading folder contents');
+      } catch (err) {
+        const error = err as Error;
+        console.error('Error fetching folder contents:', error);
+        setError(error.message || 'Error loading folder contents');
         setContents([]);
       } finally {
         setIsLoading(false);
@@ -152,7 +153,7 @@ export default function FolderBrowser({ onFolderSelect, onVideoSelect, onClose, 
       const data = await response.json();
       
       // Convert search results to FolderItem format
-      const formattedResults: FolderItem[] = data.results.map((result: any) => ({
+      const formattedResults: FolderItem[] = data.results.map((result: {name: string; path: string; type: string; isVideo: boolean; parentPath: string}) => ({
         name: result.name,
         path: result.path,
         type: result.type,
@@ -163,9 +164,10 @@ export default function FolderBrowser({ onFolderSelect, onVideoSelect, onClose, 
       
       setSearchResults(formattedResults);
       
-    } catch (error: any) {
-      console.error('Search error:', error);
-      setSearchError(error.message || 'Search failed');
+    } catch (error) {
+      const err = error as Error;
+      console.error('Search error:', err);
+      setSearchError(err.message || 'Search failed');
       setSearchResults([]);
     } finally {
       setIsSearching(false);
@@ -201,6 +203,7 @@ export default function FolderBrowser({ onFolderSelect, onVideoSelect, onClose, 
   }, [displayedContents]);
 
   // Handle video preview
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const handleVideoPreview = async (video: FolderItem) => {
     if (!video.isVideo) return;
     
@@ -518,11 +521,11 @@ export default function FolderBrowser({ onFolderSelect, onVideoSelect, onClose, 
   };
   
   // Render a single folder/file item
-  const renderItem = (item: FolderItem, index: number) => {
+  const renderItem = (item: FolderItem) => {
     const isFolder = item.type === 'folder';
     const isSelectedFolder = selectedPath === item.path;
     const isSearchResult = searchQuery.trim().length > 0;
-    const parentPath = (item as any).parentPath;
+    const parentPath = (item as FolderItem & {parentPath?: string}).parentPath;
     const isVideoSelected = item.isVideo && selectedVideos.has(item.path);
     const isFocused = item.isVideo && videoList.findIndex(v => v.path === item.path) === focusedVideoIndex;
     
@@ -740,7 +743,7 @@ export default function FolderBrowser({ onFolderSelect, onVideoSelect, onClose, 
             </div>
           ) : (
             <div className="p-0">
-              {displayedContents.map((item, index) => renderItem(item, index))}
+              {displayedContents.map((item) => renderItem(item))}
             </div>
           )}
         </div>

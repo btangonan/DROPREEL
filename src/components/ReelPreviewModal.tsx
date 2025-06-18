@@ -1,8 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { VideoFile, VideoReel } from '@/types';
-import { initializeTheme } from '@/lib/theme';
+import { VideoFile } from '@/types';
 
 interface ReelPreviewModalProps {
   isOpen: boolean;
@@ -18,8 +17,7 @@ export default function ReelPreviewModal({
   onClose, 
   videos, 
   reelTitle, 
-  titles = [],
-  editingReelId 
+  titles = []
 }: ReelPreviewModalProps) {
   const [currentVideo, setCurrentVideo] = useState<VideoFile | null>(null);
   const [currentIndex, setCurrentIndex] = useState(0);

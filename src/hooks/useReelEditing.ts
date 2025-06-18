@@ -120,7 +120,6 @@ export function useReelEditing() {
     }
 
     const isEditing = editingReelId !== null;
-    const actionText = isEditing ? 'Updating' : 'Creating';
     
 
     try {

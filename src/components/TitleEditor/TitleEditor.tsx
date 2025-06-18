@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { FileText, X } from 'lucide-react';
+import { FileText } from 'lucide-react';
 
 interface TitleEditorProps {
   isOpen: boolean;

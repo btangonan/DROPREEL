@@ -2,12 +2,10 @@
 
 import { useState, useEffect } from 'react';
 import { VideoReel } from '@/types';
-import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { initializeTheme } from '@/lib/theme';
 
 export default function ReelsPage() {
-  const router = useRouter();
   const [reels, setReels] = useState<VideoReel[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
@@ -27,9 +25,10 @@ export default function ReelsPage() {
         }
         const data = await response.json();
         setReels(data);
-      } catch (err: any) {
-        setError(`Error loading reels: ${err.message}`);
-        console.error('Error fetching reels:', err);
+      } catch (err) {
+        const error = err as Error;
+        setError(`Error loading reels: ${error.message}`);
+        console.error('Error fetching reels:', error);
       } finally {
         setIsLoading(false);
       }
@@ -72,7 +71,7 @@ export default function ReelsPage() {
             <div className="text-red-500 text-center my-12">{error}</div>
           ) : reels.length === 0 ? (
             <div className="text-center bg-white p-8 rounded-lg shadow my-8">
-              <p className="text-gray-500 mb-4">You haven't created any reels yet.</p>
+              <p className="text-gray-500 mb-4">You haven&apos;t created any reels yet.</p>
               <Link href="/" className="bg-blue-500 hover:bg-blue-600 text-white py-2 px-4 rounded">
                 Create Your First Reel
               </Link>

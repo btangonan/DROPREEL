@@ -9,7 +9,7 @@ interface DropboxAuthProps {
   highlight?: boolean;
 }
 
-const DropboxAuth: React.FC<DropboxAuthProps> = ({ isAuthenticated, isLoading, onConnectClick, highlight }) => {
+const DropboxAuth: React.FC<DropboxAuthProps> = ({ isAuthenticated, onConnectClick, highlight }) => {
 
   // if (isLoading) {
   //   return <div className="text-center p-4">Checking authentication status...</div>;

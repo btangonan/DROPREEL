@@ -28,7 +28,7 @@ export interface ReelConfig {
     name?: string;
   };
   // Additional metadata for the reel
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
 }
 
 export interface ReelStorageResponse {

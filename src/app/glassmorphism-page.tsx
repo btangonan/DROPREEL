@@ -1,9 +1,8 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { VideoFile, VideoReel } from '@/types';
+import { VideoFile } from '@/types';
 import { useRouter } from 'next/navigation';
-import Link from 'next/link';
 import { extractDropboxPath } from '@/lib/utils/dropboxUtils';
 import FolderBrowser from '@/components/FolderBrowser/FolderBrowser';
 import { nanoid } from 'nanoid';
@@ -22,11 +21,9 @@ export default function GlassmorphismCreateReelPage() {
   const router = useRouter();
   const [videos, setVideos] = useState<VideoFile[]>([]);
   const [currentVideo, setCurrentVideo] = useState<VideoFile>();
-  const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   const [reelTitle, setReelTitle] = useState('');
   const [isCreatingReel, setIsCreatingReel] = useState(false);
-  const [reelCreated, setReelCreated] = useState<VideoReel | null>(null);
   
   // For selecting videos to include in the reel
   const [selectedVideoIds, setSelectedVideoIds] = useState<string[]>([]);
@@ -83,7 +80,7 @@ export default function GlassmorphismCreateReelPage() {
       const rootData = await listRootResponse.json();
       
       if (listRootResponse.ok && rootData.folders) {
-        console.log('Available folders:', rootData.folders.map((f: any) => f.path).join(', '));
+        console.log('Available folders:', rootData.folders.map((f: { path: string }) => f.path).join(', '));
       }
       
       // Now fetch videos from the specified path
@@ -125,8 +122,9 @@ export default function GlassmorphismCreateReelPage() {
       } else {
         setError('No video files found in the specified folder');
       }
-    } catch (err: any) {
-      setError(`Error loading videos: ${err.message || 'Please check your Dropbox configuration.'}`);
+    } catch (err) {
+      const error = err as Error;
+      setError(`Error loading videos: ${error.message || 'Please check your Dropbox configuration.'}`);
       console.error('Error:', err);
     } finally {
       setIsFetchingVideos(false);
@@ -205,20 +203,21 @@ export default function GlassmorphismCreateReelPage() {
       const createdReel = await response.json();
       // Immediately navigate to the view page for the new reel
       router.push(`/r/${createdReel.id}`);
-    } catch (err: any) {
+    } catch (err) {
       console.error('Error creating reel:', err);
-      setError(`Failed to create reel: ${err.message}`);
+      const error = err as Error;
+      setError(`Failed to create reel: ${error.message}`);
     } finally {
       setIsCreatingReel(false);
     }
   };
 
-  // Navigate to edit the newly created reel
-  const handleEditReel = () => {
-    if (reelCreated) {
-      router.push(`/reels/edit/${reelCreated.id}`);
-    }
-  };
+  // Navigate to edit the newly created reel (unused)
+  // const handleEditReel = () => {
+  //   if (reelCreated) {
+  //     router.push(`/reels/edit/${reelCreated.id}`);
+  //   }
+  // };
 
   // Browse button click handler
   const handleBrowse = () => {
@@ -350,7 +349,7 @@ export default function GlassmorphismCreateReelPage() {
                 </div>
               ) : (
                 <div className="flex flex-col items-center justify-center h-64">
-                  <p className="text-gray-500 mb-4">No videos loaded. Click "ADD VIDEOS" to browse your Dropbox.</p>
+                  <p className="text-gray-500 mb-4">No videos loaded. Click &quot;ADD VIDEOS&quot; to browse your Dropbox.</p>
                   <GlassButton onClick={handleBrowse} state="highlighted">
                     Browse Dropbox Folders
                   </GlassButton>
@@ -401,7 +400,7 @@ export default function GlassmorphismCreateReelPage() {
               ) : (
                 <div className="flex flex-col items-center justify-center h-64">
                   <p className="text-gray-500">No videos added to your reel yet.</p>
-                  <p className="text-gray-500">Select videos from "YOUR VIDEOS" to add them here.</p>
+                  <p className="text-gray-500">Select videos from &quot;YOUR VIDEOS&quot; to add them here.</p>
                 </div>
               )}
             </GlassCard>

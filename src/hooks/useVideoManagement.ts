@@ -1,8 +1,8 @@
 import { useState, useEffect, useCallback } from 'react';
 import { VideoFile } from '@/types';
 import { extractDropboxPath } from '@/lib/utils/dropboxUtils';
-import { checkAllVideosCompatibility, checkVideoCompatibilityInstant } from '@/lib/utils/videoCompatibility';
-import { extractDropboxDuration, extractDropboxDurationFast, extractMultipleDurations, debugMediaInfo, testDurationExtraction } from '@/lib/utils/durationUtils';
+import { checkAllVideosCompatibility } from '@/lib/utils/videoCompatibility';
+import { extractDropboxDurationFast, extractMultipleDurations, debugMediaInfo, testDurationExtraction } from '@/lib/utils/durationUtils';
 
 // Note: Duration extraction is now handled by dedicated utilities
 
@@ -86,7 +86,6 @@ export function useVideoManagement() {
       const data = await response.json();
       if (data.videos && data.videos.length > 0) {
         console.log('🟢 [FOLDER PERF] Processing', data.videos.length, 'videos - PRELOAD THUMBNAILS MODE');
-        const folderStart = performance.now();
         
         // IMMEDIATE PLAYABILITY: Fetch stream URLs immediately so videos are playable when they appear
         const preloadStart = performance.now();
@@ -120,7 +119,7 @@ export function useVideoManagement() {
             const quickDuration = extractDropboxDurationFast(video.mediaInfo);
             
             // Don't wait for thumbnail, just start the preload
-            thumbnailPromise;
+            void thumbnailPromise;
             
             return {
               ...video,
@@ -177,7 +176,6 @@ export function useVideoManagement() {
             }
             
             // Videos already have stream URLs from immediate fetching, skip this step
-            const backgroundStart = performance.now();
             console.log('🟡 [FOLDER BACKGROUND] Videos already have stream URLs, proceeding to compatibility checks...');
             const videosWithStreamUrls = videosToProcess; // No need to fetch again
             

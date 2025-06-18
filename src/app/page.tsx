@@ -230,22 +230,17 @@ export default function Home() {
       console.log('Videos to add after duplicate filter:', videosToAdd.map(v => ({ name: v.name, isCompatible: v.isCompatible })));
       
       // Count skipped duplicates for user feedback
-      const totalAttempted = newVideos.length;
       const duplicatesSkipped = newVideos.filter(v => existingPaths.has(v.path)).length;
       const incompatibleCount = videosToAdd.filter(v => v.isCompatible === false).length;
       console.log('🟡 [PERF] Incompatible count:', incompatibleCount, 'Total to add:', videosToAdd.length);
       
-      const errorStart = performance.now();
       if (duplicatesSkipped > 0) {
         setError(`Skipped ${duplicatesSkipped} duplicate video(s). ${videosToAdd.length} videos added.`);
       } else if (incompatibleCount > 0) {
         setError(`${videosToAdd.length} videos added (${incompatibleCount} incompatible - will show warning labels).`);
       }
-      const errorEnd = performance.now();
-      console.log('🟡 [PERF] Step 6 - Error message set:', (errorEnd - startTime).toFixed(2), 'ms');
       
       // Add to existing videos or replace based on context
-      const stateStart = performance.now();
       if (shouldAppend) {
         videos.setLoadedVideos(prev => [...prev, ...videosToAdd]);
         videos.setVideoState(prev => ({
