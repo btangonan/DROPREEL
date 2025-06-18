@@ -26,12 +26,12 @@ export function VideoPanels({
   setVideoState
 }: VideoPanelsProps) {
   return (
-    <div className="pt-0 pb-0 px-6">
-      <div className="grid grid-cols-[1fr_1fr] gap-4 items-stretch mt-5">
+    <div className="pt-0 pb-0 px-3 md:px-6">
+      <div className="grid grid-cols-1 lg:grid-cols-[1fr_1fr] gap-4 items-stretch mt-5">
         {/* YOUR VIDEOS Panel */}
-        <div className="panel" style={{ height: '500px' }}>
+        <div className="panel" style={{ height: 'min(500px, 60vh)' }}>
           {/* Header */}
-          <div className="panel-header px-6 py-4 flex items-center gap-2 flex-shrink-0 font-mono font-bold uppercase tracking-wider text-base">
+          <div className="panel-header px-3 md:px-6 py-4 flex items-center gap-2 flex-shrink-0 font-mono font-bold uppercase tracking-wider text-sm md:text-base">
             <Database className="w-5 h-5 mr-2" />
             <span>YOUR VIDEOS</span>
             <div className="ml-auto flex items-center gap-2">
@@ -87,8 +87,8 @@ export function VideoPanels({
         </div>
         
         {/* SELECTED VIDEOS Panel */}
-        <div className="panel" style={{ height: '500px' }}>
-          <div className="panel-header px-6 py-4 flex items-center gap-2 flex-shrink-0 font-mono font-bold uppercase tracking-wider text-base">
+        <div className="panel" style={{ height: 'min(500px, 60vh)' }}>
+          <div className="panel-header px-3 md:px-6 py-4 flex items-center gap-2 flex-shrink-0 font-mono font-bold uppercase tracking-wider text-sm md:text-base">
             <MousePointer2 className="w-5 h-5 mr-2" />
             <span>SELECTED VIDEOS</span>
             <div className="ml-auto flex items-center gap-2">

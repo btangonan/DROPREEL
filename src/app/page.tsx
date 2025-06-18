@@ -347,7 +347,7 @@ export default function Home() {
 
   return (
     <>
-      <div className="min-h-screen bg-background text-foreground">
+      <div className="min-h-screen bg-background text-foreground px-2 sm:px-0">
         <DndContext {...dnd.dndContextProps}>
           {/* Header */}
           <ReelMakerHeader 

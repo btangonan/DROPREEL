@@ -428,7 +428,7 @@ export default function VideoPreviewModal({ isOpen, onClose, videoSrc, title, is
   }
 
   return (
-    <div className="modal-overlay" onClick={onClose}>
+    <div className="modal-overlay p-2 sm:p-4" onClick={onClose}>
       <div 
         className="relative bg-black" 
         style={getVideoContainerStyle()}

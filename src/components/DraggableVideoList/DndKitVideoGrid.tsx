@@ -342,7 +342,7 @@ export default function DndKitVideoGrid({ videos, gridId, onVideoClick, onVideoD
           )}
         </div>
       ) : (
-        <div className="grid grid-cols-3 gap-3 w-full box-border">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 w-full box-border">
           {videos.map(video => (
             <SortableVideoGridItem
               key={`${gridId}-${video.id}`}
