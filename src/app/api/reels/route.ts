@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createReel, getAllReels, getReelById, updateReel, deleteReel } from '@/lib/reel-manager';
-import { VideoFile, DirectorInfo } from '@/types';
+// Note: VideoFile and DirectorInfo types are available if needed for function parameters
 
 export async function GET(request: NextRequest) {
   try {

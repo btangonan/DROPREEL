@@ -137,7 +137,8 @@ export default function Home() {
   };
 
   // Helper function to extract duration from Dropbox metadata
-  const getDurationFromMetadata = (mediaInfo: any): string => {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const getDurationFromMetadata = (mediaInfo: Record<string, unknown>): string => {
     try {
       // Check for video metadata with duration
       if (mediaInfo?.metadata?.video?.duration) {
@@ -164,7 +165,7 @@ export default function Home() {
   };
 
   // Handle individual video selection from FolderBrowser
-  const handleVideoSelect = async (selectedVideos: Array<{ name: string; path: string; type: string; isVideo: boolean; mediaInfo?: any }>) => {
+  const handleVideoSelect = async (selectedVideos: Array<{ name: string; path: string; type: string; isVideo: boolean; mediaInfo?: Record<string, unknown> }>) => {
     console.log('🚨 FUNCTION CALLED - handleVideoSelect with', selectedVideos.length, 'videos');
     console.log('🚨 Videos:', selectedVideos.map(v => v.name));
     

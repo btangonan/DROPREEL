@@ -1,7 +1,7 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { testDropboxConnection } from '@/lib/auth/connectionUtils';
 
-export async function GET(request: NextRequest) {
+export async function GET() {
   try {
     // Actually test the Dropbox connection (validates token with Dropbox)
     const connection = await testDropboxConnection();

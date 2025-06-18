@@ -3,6 +3,48 @@ import { VideoFile } from '@/types';
 import { nanoid } from 'nanoid';
 import { getValidAccessToken } from '@/lib/auth/dropboxAuth';
 
+// TypeScript interfaces for Dropbox API responses
+interface DropboxFileEntry {
+  '.tag': 'file' | 'folder';
+  name: string;
+  path_display: string;
+  size?: number;
+  media_info?: {
+    metadata?: {
+      video?: {
+        duration?: number;
+        width?: number;
+        height?: number;
+      };
+    };
+  };
+}
+
+interface DropboxListFolderResponse {
+  result: {
+    entries: DropboxFileEntry[];
+    cursor?: string;
+    has_more: boolean;
+  };
+}
+
+interface DropboxSearchMatch {
+  metadata: {
+    metadata: DropboxFileEntry;
+  };
+}
+
+interface DropboxSearchResponse {
+  result: {
+    matches: DropboxSearchMatch[];
+  };
+}
+
+interface DropboxError {
+  status?: number;
+  message?: string;
+}
+
 // Environment variables (should be set in .env.local)
 
 export async function GET(request: NextRequest) {
@@ -36,20 +78,20 @@ export async function GET(request: NextRequest) {
         const response = await client.filesListFolder({ 
           path,
           include_media_info: true // Include media info for video files
-        });
+        }) as DropboxListFolderResponse;
         
         // Extract folders and organize contents into folders and files
-        const contents = response.result.entries.map((entry: any) => ({
+        const contents = response.result.entries.map((entry: DropboxFileEntry) => ({
           name: entry.name,
           path: entry.path_display,
           type: entry['.tag'],
           isVideo: entry['.tag'] === 'file' && entry.name.match(/\.(mp4|mov|m4v|avi|mkv|webm)$/i) ? true : false,
           // Include media_info if it exists (for videos)
-          mediaInfo: (entry as any).media_info ? (entry as any).media_info : undefined
+          mediaInfo: entry.media_info ? entry.media_info : undefined
         }));
         
         // Sort folders first, then files
-        contents.sort((a: any, b: any) => {
+        contents.sort((a, b) => {
           if (a.type === 'folder' && b.type !== 'folder') return -1;
           if (a.type !== 'folder' && b.type === 'folder') return 1;
           return a.name.localeCompare(b.name); // Alphabetical within each group
@@ -59,13 +101,14 @@ export async function GET(request: NextRequest) {
           path: formattedPath,
           contents
         });
-      } catch (error: any) {
+      } catch (error) {
         console.error('Error listing folders:', error);
-        if (error?.status === 401) {
+        const dropboxError = error as DropboxError;
+        if (dropboxError?.status === 401) {
           // Unauthorized - token expired or invalid
-          return NextResponse.json({ error: 'unauthorized', message: error?.message || 'Dropbox token expired or invalid.' }, { status: 401 });
+          return NextResponse.json({ error: 'unauthorized', message: dropboxError?.message || 'Dropbox token expired or invalid.' }, { status: 401 });
         }
-        if (error?.status === 409) {
+        if (dropboxError?.status === 409) {
           // Path not found or access denied
           return NextResponse.json(
             { error: `Folder not found or access denied: ${folderPath}` },
@@ -73,7 +116,7 @@ export async function GET(request: NextRequest) {
           );
         }
         // Return the actual error message and status if available
-        return NextResponse.json({ error: error?.message || 'Failed to list folders', details: error }, { status: error?.status || 500 });
+        return NextResponse.json({ error: dropboxError?.message || 'Failed to list folders', details: dropboxError }, { status: dropboxError?.status || 500 });
       }
     }
 
@@ -107,10 +150,10 @@ export async function GET(request: NextRequest) {
             file_status: 'active',
             filename_only: true
           }
-        });
+        }) as DropboxSearchResponse;
         
         // Process search results
-        const results = searchResponse.result.matches.map((match: any) => {
+        const results = searchResponse.result.matches.map((match: DropboxSearchMatch) => {
           const metadata = match.metadata.metadata;
           return {
             name: metadata.name,
@@ -131,11 +174,12 @@ export async function GET(request: NextRequest) {
           total: results.length
         });
         
-      } catch (error: any) {
+      } catch (error) {
         console.error('Search error:', error);
+        const dropboxError = error as DropboxError;
         return NextResponse.json(
-          { error: error?.message || 'Search failed', details: error },
-          { status: error?.status || 500 }
+          { error: dropboxError?.message || 'Search failed', details: dropboxError },
+          { status: dropboxError?.status || 500 }
         );
       }
     }
@@ -147,18 +191,16 @@ export async function GET(request: NextRequest) {
         
         // Get client from our utility function
         const client = dropboxModule.getDropboxClient(freshToken);
-        const response = await client.filesListFolder({ path: '' });
-        
-        // Add proper type annotation
+        const response = await client.filesListFolder({ path: '' }) as DropboxListFolderResponse;
         
         return NextResponse.json({ 
-          folders: response.result.entries.map((entry: any) => ({ 
+          folders: response.result.entries.map((entry: DropboxFileEntry) => ({ 
             name: entry.name, 
             path: entry.path_display, 
             type: entry['.tag'] 
           }))
         });
-      } catch (error: any) {
+      } catch (error) {
         console.error('Error listing root folders:', error);
         return NextResponse.json({ error: 'Failed to list root folders' }, { status: 500 });
       }
@@ -186,22 +228,23 @@ export async function GET(request: NextRequest) {
             name: entry.name,
             path: videoPath,
             // Only include size for file entries (not folders)
-            size: (entry as any)['.tag'] === 'file' ? (entry as any).size : undefined,
+            size: entry['.tag'] === 'file' ? entry.size : undefined,
             streamUrl: '',
             // Set thumbnail URL using our helper function for better caching
             thumbnailUrl: getThumbnailLink(videoPath),
             // Only include media_info if it exists
-            mediaInfo: (entry as any).media_info ? (entry as any).media_info : undefined
+            mediaInfo: entry.media_info ? entry.media_info : undefined
           };
         });
         
         return NextResponse.json({ videos });
-      } catch (error: any) {
+      } catch (error) {
         console.error('Error in listVideos:', error);
         console.error('Error details:', JSON.stringify(error, null, 2));
         
+        const dropboxError = error as DropboxError;
         // Check for specific Dropbox error types
-        if (error.status === 409) {
+        if (dropboxError.status === 409) {
           return NextResponse.json(
             { error: `Folder not found: ${folderPath}. Please check that the path exists in your Dropbox account.` },
             { status: 400 }
@@ -209,7 +252,7 @@ export async function GET(request: NextRequest) {
         }
         
         return NextResponse.json(
-          { error: error.message || 'Failed to list videos' },
+          { error: dropboxError.message || 'Failed to list videos' },
           { status: 400 }
         );
       }
@@ -221,10 +264,11 @@ export async function GET(request: NextRequest) {
         const { getTemporaryLink } = await import('@/lib/dropboxFetch');
         const url = await getTemporaryLink(freshToken, path);
         return NextResponse.json({ streamUrl: url });
-      } catch (error: any) {
+      } catch (error) {
         console.error('Error getting stream URL:', error);
+        const dropboxError = error as DropboxError;
         return NextResponse.json(
-          { error: error.message || 'Failed to get streaming URL' },
+          { error: dropboxError.message || 'Failed to get streaming URL' },
           { status: 400 }
         );
       }
@@ -293,14 +337,15 @@ export async function GET(request: NextRequest) {
             'Expires': '0'
           },
         });
-      } catch (error: any) {
+      } catch (error) {
         console.error('=== DOWNLOAD ERROR ===');
         console.error('Error downloading file:', error);
-        console.error('Error message:', error.message);
-        console.error('Error status:', error.status);
-        console.error('Error details:', JSON.stringify(error, null, 2));
+        const dropboxError = error as DropboxError;
+        console.error('Error message:', dropboxError.message);
+        console.error('Error status:', dropboxError.status);
+        console.error('Error details:', JSON.stringify(dropboxError, null, 2));
         return NextResponse.json(
-          { error: error.message || 'Failed to download file' },
+          { error: dropboxError.message || 'Failed to download file' },
           { status: 500 }
         );
       }
