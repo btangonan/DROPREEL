@@ -635,7 +635,7 @@ export default function FolderBrowser({ onFolderSelect, onVideoSelect, onClose, 
   
   return (
     <div className="modal-overlay" onClick={onClose}>
-      <div className="modal-content" style={{ width: '500px', height: '700px', borderColor: 'var(--accent)' }} onClick={(e) => e.stopPropagation()}>
+      <div className="modal-content" style={{ width: '500px', height: '700px', borderColor: 'var(--border)' }} onClick={(e) => e.stopPropagation()}>
         {/* Header */}
         <div className="modal-header" style={{ padding: '0.75rem 1.5rem' }}>
           <h2 className="text-lg font-mono font-bold uppercase tracking-wider">
@@ -643,7 +643,7 @@ export default function FolderBrowser({ onFolderSelect, onVideoSelect, onClose, 
           </h2>
           <button 
             onClick={onClose} 
-            className="control-button p-2 text-sm"
+            className="w-6 h-6 bg-white dark:bg-black text-black dark:text-green-500 border-2 border-black dark:border-green-500 flex items-center justify-center hover:bg-gray-100 dark:hover:bg-gray-900 focus:outline-none text-sm font-bold"
           >
             ✕
           </button>
@@ -746,25 +746,36 @@ export default function FolderBrowser({ onFolderSelect, onVideoSelect, onClose, 
         </div>
         
         {/* Footer with actions */}
-        <div className="modal-footer" style={{ padding: '0.75rem 1.5rem' }}>
+        <div className="modal-footer flex gap-3 justify-end" style={{ padding: '0.75rem 1.5rem', minHeight: '60px', alignItems: 'center' }}>
           {onVideoSelect && selectedVideos.size > 0 && (
             <button
               onClick={handleAddSelectedVideos}
-              className="control-button-dark"
-              style={{ background: 'var(--accent-bg)', color: 'var(--accent-text)', borderColor: 'var(--accent-bg)' }}
+              className="bg-black text-white border-2 border-black px-4 py-3 font-mono font-bold text-sm uppercase tracking-wider hover:bg-gray-900 transition-colors h-12 flex items-center"
+              style={{ 
+                color: document.documentElement.classList.contains('dark') ? '#00ff00' : '#ffffff',
+                borderColor: document.documentElement.classList.contains('dark') ? '#00ff00' : '#000000'
+              }}
             >
               {selectedVideos.size === 1 ? 'ADD VIDEO' : `ADD ${selectedVideos.size} VIDEOS`}
             </button>
           )}
           <button
             onClick={handleSelectFolder}
-            className="control-button-dark"
+            className="bg-black text-white border-2 border-black px-4 py-3 font-mono font-bold text-sm uppercase tracking-wider hover:bg-gray-900 transition-colors h-12 flex items-center"
+            style={{ 
+              color: document.documentElement.classList.contains('dark') ? '#00ff00' : '#ffffff',
+              borderColor: document.documentElement.classList.contains('dark') ? '#00ff00' : '#000000'
+            }}
           >
             {isAddingToExisting ? 'ADD VIDEOS FROM FOLDER' : 'SELECT FOLDER'}
           </button>
           <button
             onClick={onClose}
-            className="control-button-dark"
+            className="bg-black text-white border-2 border-black px-4 py-3 font-mono font-bold text-sm uppercase tracking-wider hover:bg-gray-900 transition-colors h-12 flex items-center"
+            style={{ 
+              color: document.documentElement.classList.contains('dark') ? '#00ff00' : '#ffffff',
+              borderColor: document.documentElement.classList.contains('dark') ? '#00ff00' : '#000000'
+            }}
           >
             CANCEL
           </button>

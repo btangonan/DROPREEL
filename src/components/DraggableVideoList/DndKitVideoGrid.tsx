@@ -96,47 +96,75 @@ function VideoGridItem({
           </div>
         )}
 
-        {/* Incompatible warning - positioned relative to entire card */}
+        {/* Play button - with explicit bright styling */}
+        {video.isCompatible !== false && (
+          <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/4 text-center pointer-events-auto opacity-0 group-hover:opacity-100 transition-opacity duration-200 z-[100]" style={{ isolation: 'isolate' }}>
+            <button
+              type="button"
+              onClick={e => {
+                e.stopPropagation();
+                e.preventDefault();
+                if (typeof onClick === 'function' && video) {
+                  // Get bounding rect of the thumbnail
+                  const rect = thumbnailRef.current?.getBoundingClientRect();
+                  onClick(video, { play: true, rect });
+                }
+              }}
+              className="drop-shadow-lg focus:outline-none"
+              style={{ 
+                color: document.documentElement.classList.contains('dark') ? '#00ff00' : '#ffffff',
+                filter: 'brightness(1.2) contrast(1.1)',
+                textShadow: '0 0 10px currentColor'
+              }}
+            >
+              <Play className="w-8 h-8 mb-2" fill="currentColor" />
+              <div className="text-xs font-mono uppercase tracking-wider">PLAY</div>
+            </button>
+          </div>
+        )}
+
+        {/* Duration label - with explicit bright styling */}
+        {video.duration && video.duration !== '0:00' && (
+          <div 
+            className="absolute bottom-3 right-2 px-2 py-1 text-xs font-bold font-mono pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-200 z-[100]"
+            style={{ 
+              backgroundColor: document.documentElement.classList.contains('dark') ? '#00ff00' : '#000000',
+              color: document.documentElement.classList.contains('dark') ? '#000000' : '#ffffff',
+              isolation: 'isolate',
+              filter: 'brightness(1.1)'
+            }}
+          >
+            {video.duration}
+          </div>
+        )}
+
+        {/* Incompatible warning - positioned INSIDE overlay container like other bright elements */}
         {video.isCompatible === false && (
-          <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 pointer-events-none z-30" style={{ marginTop: '1rem' }}>
-            <div className="text-center drop-shadow-lg" style={{ color: 'var(--video-header-text)' }}>
-              <div className="text-red-500 text-4xl mx-auto mb-2">⚠</div>
-              <div className="text-xs text-white font-mono uppercase tracking-wider font-bold">INCOMPATIBLE</div>
-              <div className="text-xs text-white font-mono uppercase tracking-wider font-bold">FORMAT</div>
+          <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-center pointer-events-none z-[100]" style={{ marginTop: '0.5rem', isolation: 'isolate' }}>
+            <div>
+              <div 
+                className="text-4xl mb-2"
+                style={{ 
+                  color: document.documentElement.classList.contains('dark') ? '#00ff00' : '#ef4444'
+                }}
+              >⚠</div>
+              <div 
+                className="text-xs font-mono uppercase tracking-wider font-bold" 
+                style={{ 
+                  color: document.documentElement.classList.contains('dark') ? '#00ff00' : '#ffffff' 
+                }}
+              >INCOMPATIBLE</div>
+              <div 
+                className="text-xs font-mono uppercase tracking-wider font-bold" 
+                style={{ 
+                  color: document.documentElement.classList.contains('dark') ? '#00ff00' : '#ffffff' 
+                }}
+              >FORMAT</div>
             </div>
           </div>
         )}
+
       </div>
-
-      {/* BRIGHT ELEMENTS - positioned completely outside overlay container for full brightness */}
-      {/* Duration label - at card level for maximum brightness */}
-      {video.duration && video.duration !== '0:00' && (
-        <div className="absolute bottom-3 right-2 bg-black dark:bg-green-500 text-white dark:text-black px-2 py-1 text-xs font-bold font-mono pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-200 z-70">
-          {video.duration}
-        </div>
-      )}
-
-      {/* Play button - at card level for maximum brightness */}
-      {video.isCompatible !== false && (
-        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/4 text-center pointer-events-auto opacity-0 group-hover:opacity-100 transition-opacity duration-200 z-70">
-          <button
-            type="button"
-            onClick={e => {
-              e.stopPropagation();
-              e.preventDefault();
-              if (typeof onClick === 'function' && video) {
-                // Get bounding rect of the thumbnail
-                const rect = thumbnailRef.current?.getBoundingClientRect();
-                onClick(video, { play: true, rect });
-              }
-            }}
-            className="drop-shadow-lg focus:outline-none text-white dark:text-green-500"
-          >
-            <Play className="w-8 h-8 mb-2" fill="currentColor" />
-            <div className="text-xs font-mono uppercase tracking-wider">PLAY</div>
-          </button>
-        </div>
-      )}
       {/* File header bar */}
       <div className="video-header flex items-center justify-between">
         <span className="truncate flex-1 mr-2 overflow-hidden whitespace-nowrap text-ellipsis">{video.name}</span>
@@ -149,8 +177,11 @@ function VideoGridItem({
               e.preventDefault();
               onDelete(video);
             }}
-            className="w-5 h-5 bg-white dark:bg-black text-black dark:text-green-500 border-2 border-black dark:border-green-500 opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex items-center justify-center hover:bg-gray-100 dark:hover:bg-gray-900 focus:outline-none flex-shrink-0 ml-2"
+            className="w-5 h-5 bg-white dark:bg-black text-black border-2 border-black opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex items-center justify-center hover:bg-gray-100 dark:hover:bg-gray-900 focus:outline-none flex-shrink-0 ml-2"
             title="Remove video"
+            style={{ 
+              color: document.documentElement.classList.contains('dark') ? '#00ff00' : '#000000'
+            }}
           >
             <X className="w-3 h-3" strokeWidth={3} />
           </button>

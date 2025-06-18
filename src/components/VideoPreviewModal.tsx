@@ -514,9 +514,13 @@ export default function VideoPreviewModal({ isOpen, onClose, videoSrc, title, is
               </div>
               <button 
                 onClick={onClose}
-                className="text-white hover:bg-white hover:text-black transition-colors p-2 border border-white hover:border-black"
+                className="hover:bg-white hover:text-black transition-colors p-2 border hover:border-black"
+                style={{
+                  color: document.documentElement.classList.contains('dark') ? '#00ff00' : '#ffffff',
+                  borderColor: document.documentElement.classList.contains('dark') ? '#00ff00' : '#ffffff'
+                }}
               >
-                <X className="w-4 h-4" />
+                <X className="w-4 h-4" style={{ color: 'inherit' }} />
               </button>
             </div>
           </div>
