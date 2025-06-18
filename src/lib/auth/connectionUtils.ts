@@ -1,9 +1,8 @@
 import { Dropbox } from 'dropbox';
-import fetch from 'node-fetch';
+// Using native Node.js fetch (available in Node 18+)
 import fs from 'fs';
 import path from 'path';
 import { getValidAccessToken } from './dropboxAuth';
-import AbortController from 'abort-controller';
 
 const TOKEN_PATH = path.join(process.cwd(), '.credentials', 'dropbox_token.json');
 
@@ -19,8 +18,8 @@ export const testDropboxConnection = async (): Promise<{
     tokenAge?: number;
     tokenExpiry?: string;
     refreshTokenExists?: boolean;
-    accountInfo?: any;
-    error?: any;
+    accountInfo?: { name?: { display_name?: string }; email?: string };
+    error?: unknown;
     errorCode?: string;
     retryable?: boolean;
     suggestedAction?: string;
@@ -35,8 +34,8 @@ export const testDropboxConnection = async (): Promise<{
         tokenAge: undefined as number | undefined,
         tokenExpiry: undefined as string | undefined,
         refreshTokenExists: undefined as boolean | undefined,
-        accountInfo: undefined as any,
-        error: undefined as any,
+        accountInfo: undefined as { name?: { display_name?: string }; email?: string } | undefined,
+        error: undefined as unknown,
         errorCode: undefined as string | undefined,
         retryable: undefined as boolean | undefined,
         suggestedAction: undefined as string | undefined,
@@ -89,7 +88,7 @@ export const testDropboxConnection = async (): Promise<{
       if (typeof tokenResult === 'string') {
         // Test the token by making an API call
         try {
-          const dbx = new Dropbox({ accessToken: tokenResult, fetch: fetch as any });
+          const dbx = new Dropbox({ accessToken: tokenResult, fetch });
           const accountInfo = await dbx.usersGetCurrentAccount();
           return {
             connected: true,
@@ -161,7 +160,7 @@ export const testDropboxConnection = async (): Promise<{
 
     // If we got here, the connection is working
     try {
-      const dbx = new Dropbox({ accessToken: tokenResult, fetch: fetch as any });
+      const dbx = new Dropbox({ accessToken: tokenResult, fetch });
       const accountInfo = await dbx.usersGetCurrentAccount();
       return {
         connected: true,

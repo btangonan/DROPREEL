@@ -13,7 +13,7 @@ export async function GET(request: NextRequest) {
     }
     
     // Exchange the code for access and refresh tokens
-    const tokenData = await getTokenFromCode(code);
+    await getTokenFromCode(code);
     
     // Set a cookie or session indicator that we're authenticated
     const response = NextResponse.redirect(new URL('/?auth=success', request.url));

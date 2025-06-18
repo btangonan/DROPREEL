@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createReel, getAllReels, getReelById, updateReel, deleteReel } from '@/lib/reel-manager';
-import { VideoFile, DirectorInfo } from '@/types';
+// Note: VideoFile and DirectorInfo types are available if needed for function parameters
 
 export async function GET(request: NextRequest) {
   try {
@@ -26,13 +26,13 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { videos, title, description, directorInfo } = body;
+    const { videos, title, description, directorInfo, editState } = body;
     
     if (!videos || !Array.isArray(videos) || videos.length === 0) {
       return NextResponse.json({ error: 'Videos array is required' }, { status: 400 });
     }
     
-    const newReel = createReel(videos, title, description, directorInfo);
+    const newReel = createReel(videos, title, description, directorInfo, editState);
     return NextResponse.json(newReel, { status: 201 });
   } catch (error) {
     console.error('Error creating reel:', error);

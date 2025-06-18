@@ -1,7 +1,7 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { testDropboxConnection, pingDropboxAPI } from '@/lib/auth/connectionUtils';
 
-export async function GET(request: NextRequest) {
+export async function GET() {
   try {
     // Test connection to Dropbox API
     const pingResult = await pingDropboxAPI();

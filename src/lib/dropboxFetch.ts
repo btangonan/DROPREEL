@@ -2,7 +2,7 @@
 import { Dropbox } from 'dropbox';
 
 // Create a singleton Dropbox client factory
-let dropboxClient: Dropbox | null = null;
+const dropboxClient: Dropbox | null = null;
 
 export const getDropboxClient = (accessToken: string): Dropbox => {
   // Always create a new client instead of using a singleton to avoid token issues
@@ -16,8 +16,6 @@ export const getDropboxClient = (accessToken: string): Dropbox => {
 export const convertDropboxUrlToPath = (input: string): string => {
   if (!input) return '';
   
-  console.log(`Converting input path: "${input}"`);
-  
   // Try to extract path from Dropbox URL
   try {
     // Handle URLs that might have been copied from browser
@@ -30,7 +28,6 @@ export const convertDropboxUrlToPath = (input: string): string => {
         // Handle potential URL parameters
         const cleanPath = pathPart.split('?')[0].split('#')[0];
         const path = '/' + cleanPath;
-        console.log(`Converted Dropbox home URL to path: "${path}"`);
         return path;
       }
       
@@ -40,7 +37,6 @@ export const convertDropboxUrlToPath = (input: string): string => {
         // If there's a part after the folder ID (parts[0]), use that as the path
         if (parts.length > 1) {
           const path = '/' + parts.slice(1).join('/');
-          console.log(`Converted Dropbox shared folder URL to path: "${path}"`);
           return path;
         }
       }
@@ -51,21 +47,18 @@ export const convertDropboxUrlToPath = (input: string): string => {
         // If there's a part after the folder ID (parts[0]), use that as the path
         if (parts.length > 1) {
           const path = '/' + parts.slice(1).join('/');
-          console.log(`Converted Dropbox shared folder URL to path: "${path}"`);
           return path;
         }
       }
       
       // If we get here with a dropbox.com URL, try to use the pathname as is
       const path = url.pathname;
-      console.log(`Using pathname from Dropbox URL: "${path}"`);
       return path;
     }
     
     // Handle direct paths with or without leading slash
     // Ensure path starts with slash for API
     const path = input.startsWith('/') ? input : '/' + input;
-    console.log(`Standardized direct path input: "${path}"`);
     return path;
   } catch (e) {
     console.error('Error converting Dropbox URL:', e);
@@ -75,7 +68,7 @@ export const convertDropboxUrlToPath = (input: string): string => {
 };
 
 // Function to validate if the folder path exists
-export const checkFolderExists = async (client: any, path: string): Promise<boolean> => {
+export const checkFolderExists = async (client: Dropbox, path: string): Promise<boolean> => {
   try {
     // For root path, we know it exists
     if (path === '') {
@@ -98,29 +91,25 @@ export const listVideosFromDropbox = async (accessToken: string, folderPath: str
       throw new Error('No Dropbox access token provided');
     }
     
-    console.log('Creating Dropbox client with token length:', accessToken.length);
     const client = getDropboxClient(accessToken);
     
     // Validate the token first by testing access to root folder
     try {
-      console.log('Validating Dropbox token access');
       await client.filesListFolder({ path: '' });
-      console.log('Token validation successful');
-    } catch (authError: any) {
+    } catch (authError: unknown) {
       console.error('Authentication error:', authError);
-      if (authError?.status === 401) {
+      const error = authError as { status?: number; message?: string };
+      if (error?.status === 401) {
         throw new Error('Authentication failed. Your Dropbox access token may be invalid or expired.');
       }
-      throw new Error(`Dropbox authentication error: ${authError?.message || 'Unknown authentication issue'}`);
+      throw new Error(`Dropbox authentication error: ${error?.message || 'Unknown authentication issue'}`);
     }
     
     // Convert possible URL to path format
     const formattedPath = convertDropboxUrlToPath(folderPath);
-    console.log(`Original path: "${folderPath}", formatted path: "${formattedPath}"`);
     
     // For root folder, use empty string as required by Dropbox API
     const path = !formattedPath || formattedPath === '/' ? '' : formattedPath;
-    console.log(`Making API request to list folder: "${path}"`);
     
     // Get files from the requested folder
     try {
@@ -131,7 +120,6 @@ export const listVideosFromDropbox = async (accessToken: string, folderPath: str
       });
     
       const entries = response.result.entries;
-      console.log(`Retrieved ${entries.length} entries from Dropbox path "${path}"`);
       
       // Filter for video files only
       const videoFiles = entries
@@ -142,7 +130,6 @@ export const listVideosFromDropbox = async (accessToken: string, folderPath: str
           return isVideo;
         });
         
-      console.log(`Found ${videoFiles.length} video files in "${path}"`);
       return videoFiles;
     } catch (apiError: any) {
       console.error('Dropbox API Error:', apiError);
@@ -193,7 +180,21 @@ export const getTemporaryLink = async (accessToken: string, path: string) => {
   try {
     const client = getDropboxClient(accessToken);
     const response = await client.filesGetTemporaryLink({ path });
-    return response.result.link;
+    
+    // Dropbox temporary links sometimes have download=1 parameter which can cause issues
+    // Remove it to get a streaming-friendly URL
+    let link = response.result.link;
+    if (link.includes('?dl=1')) {
+      link = link.replace('?dl=1', '?raw=1');
+    } else if (link.includes('&dl=1')) {
+      link = link.replace('&dl=1', '&raw=1');
+    } else if (!link.includes('raw=1')) {
+      // Add raw parameter for better video streaming
+      const separator = link.includes('?') ? '&' : '?';
+      link = `${link}${separator}raw=1`;
+    }
+    
+    return link;
   } catch (error) {
     console.error('Error getting temporary link:', error);
     throw error;

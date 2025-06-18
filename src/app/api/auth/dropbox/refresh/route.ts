@@ -1,7 +1,7 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { refreshAccessToken } from '@/lib/auth/dropboxAuth';
 
-export async function GET(request: NextRequest) {
+export async function GET() {
   try {
     // Explicitly refresh the token
     const tokenData = await refreshAccessToken();

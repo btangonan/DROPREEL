@@ -33,7 +33,7 @@ export function getReelById(id: string): VideoReel | null {
   return reels.find(reel => reel.id === id) || null;
 }
 
-export function createReel(videos: VideoFile[], title?: string, description?: string, directorInfo?: DirectorInfo): VideoReel {
+export function createReel(videos: VideoFile[], title?: string, description?: string, directorInfo?: DirectorInfo, editState?: any): VideoReel {
   const reels = getAllReels();
   
   const newReel: VideoReel = {
@@ -42,6 +42,7 @@ export function createReel(videos: VideoFile[], title?: string, description?: st
     title: title || 'Untitled Reel',
     description: description || '',
     directorInfo,
+    editState, // Save the editState for round-trip editing
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString()
   };

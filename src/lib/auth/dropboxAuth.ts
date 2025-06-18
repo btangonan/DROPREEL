@@ -1,5 +1,5 @@
 import { Dropbox, DropboxAuth } from 'dropbox';
-import fetch from 'node-fetch';
+// Using native Node.js fetch (available in Node 18+)
 import fs from 'fs';
 import path from 'path';
 

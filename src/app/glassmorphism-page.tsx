@@ -244,38 +244,75 @@ export default function GlassmorphismCreateReelPage() {
         {/* Main grid layout based on the wireframe */}
         <div className="grid grid-cols-12 gap-4">
           {/* Top row: CONNECT and ADD VIDEOS buttons */}
-          <div className="col-span-2">
-            <GlassButton
-              onClick={connectToDropbox}
-              className="h-full w-full flex items-center justify-center py-4"
-              state={isConnectedToDropbox ? 'default' : 'highlighted'}
-              fullWidth
-              disabled={isCheckingConnection}
-            >
-              CONNECT
-            </GlassButton>
-          </div>
-          <div className="col-span-2">
-            <GlassButton
-              onClick={handleBrowse}
-              className="h-full w-full flex items-center justify-center py-4"
-              state={isConnectedToDropbox ? (videos.length > 0 ? 'default' : 'highlighted') : 'inactive'}
-              fullWidth
-              disabled={!isConnectedToDropbox}
-            >
-              ADD VIDEOS
-            </GlassButton>
+          <div className="col-span-12 grid grid-cols-12 gap-4 mb-4 border-b-2 border-foreground pb-4">
+            <div className="col-span-3">
+              <GlassButton
+                onClick={connectToDropbox}
+                className="h-full w-full flex items-center justify-center py-4 border-2 border-foreground hover:bg-foreground hover:text-background transition-colors"
+                state={isConnectedToDropbox ? 'default' : 'highlighted'}
+                fullWidth
+                disabled={isCheckingConnection}
+              >
+                {isCheckingConnection ? 'CONNECTING...' : 'CONNECT'}
+              </GlassButton>
+            </div>
+            <div className="col-span-3">
+              <GlassButton
+                onClick={handleBrowse}
+                className="h-full w-full flex items-center justify-center py-4 border-2 border-foreground hover:bg-foreground hover:text-background transition-colors"
+                state={isConnectedToDropbox ? (videos.length > 0 ? 'default' : 'highlighted') : 'inactive'}
+                fullWidth
+                disabled={!isConnectedToDropbox}
+              >
+                ADD VIDEOS
+              </GlassButton>
+            </div>
+            <div className="col-span-3">
+              <GlassButton
+                onClick={() => alert('Theme selection coming soon!')}
+                className="h-full w-full flex items-center justify-center py-4 border-2 border-foreground hover:bg-foreground hover:text-background transition-colors"
+                state="inactive"
+                fullWidth
+              >
+                THEME (MENU)
+              </GlassButton>
+            </div>
+            <div className="col-span-3">
+              <GlassButton
+                onClick={handleCreateReel}
+                className={`h-full w-full flex items-center justify-center py-4 border-2 border-foreground transition-colors ${
+                  isConnectedToDropbox && reelTitle.trim() && selectedVideos.length 
+                    ? 'hover:bg-foreground hover:text-background' 
+                    : 'opacity-50 cursor-not-allowed'
+                }`}
+                state={isConnectedToDropbox && reelTitle.trim() && selectedVideos.length ? 'highlighted' : 'inactive'}
+                fullWidth
+                disabled={isCreatingReel || !isConnectedToDropbox || !reelTitle.trim() || selectedVideos.length === 0}
+              >
+                {isCreatingReel ? (
+                  <>
+                    <svg className="animate-spin -ml-1 mr-2 h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    MAKING REEL...
+                  </>
+                ) : (
+                  'MAKE REEL'
+                )}
+              </GlassButton>
+            </div>
           </div>
           
           {/* Title row */}
-          <div className="col-span-8">
-            <GlassContainer className="p-4 flex items-center justify-center">
+          <div className="col-span-12 mb-6">
+            <GlassContainer className="p-4 flex items-center justify-center border-2 border-foreground">
               <GlassInput
                 value={reelTitle}
                 onChange={setReelTitle}
                 placeholder="ADD TITLE HERE"
                 large={true}
-                className="text-center font-bold"
+                className="text-center font-bold text-2xl tracking-wider uppercase w-full max-w-2xl"
               />
             </GlassContainer>
           </div>
@@ -370,41 +407,7 @@ export default function GlassmorphismCreateReelPage() {
             </GlassCard>
           </div>
           
-          {/* Bottom row: THEME and CREATE REEL */}
-          <div className="col-span-2">
-            <GlassButton
-              onClick={() => alert('Theme selection coming soon!')}
-              className="h-full w-full flex items-center justify-center py-4"
-              state="inactive"
-              fullWidth
-            >
-              THEME (MENU)
-            </GlassButton>
-          </div>
-          
-          <div className="col-span-10 flex justify-end">
-            <div className="w-full max-w-xs">
-              <GlassButton
-                onClick={handleCreateReel}
-                className="h-full w-full flex items-center justify-center py-4"
-                state={isConnectedToDropbox && reelTitle.trim() && selectedVideos.length ? 'highlighted' : 'inactive'}
-                fullWidth
-                disabled={isCreatingReel || !isConnectedToDropbox || !reelTitle.trim() || selectedVideos.length === 0}
-              >
-                {isCreatingReel ? (
-                  <>
-                    <svg className="animate-spin -ml-1 mr-2 h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                    </svg>
-                    MAKING REEL...
-                  </>
-                ) : (
-                  'MAKE REEL'
-                )}
-              </GlassButton>
-            </div>
-          </div>
+          {/* Bottom row buttons are now moved to the top row */}
         </div>
       </div>
       

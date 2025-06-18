@@ -1,7 +1,7 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { resetDropboxConnection } from '@/lib/auth/connectionUtils';
 
-export async function GET(request: NextRequest) {
+export async function GET() {
   try {
     // Reset the Dropbox connection
     const result = resetDropboxConnection();
