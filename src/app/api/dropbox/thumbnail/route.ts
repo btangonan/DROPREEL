@@ -45,7 +45,7 @@ export async function GET(request: NextRequest) {
       }
       
       // Convert the file blob to an array buffer and return it directly
-      const thumbnailBinary = await (response.result as any).fileBlob.arrayBuffer();
+      const thumbnailBinary = await (response.result as { fileBlob: Blob }).fileBlob.arrayBuffer();
       
       // Return the thumbnail as an image
       return new NextResponse(thumbnailBinary, {

@@ -13,6 +13,7 @@
     "@dnd-kit/modifiers": "^9.0.0",
     "@dnd-kit/sortable": "^10.0.0",
     "@types/uuid": "^10.0.0",
+    "@types/video.js": "^7.3.58",
     "abort-controller": "^3.0.0",
     "dotenv": "^16.5.0",
     "dropbox": "^10.34.0",
@@ -20,7 +21,8 @@
     "next": "15.3.2",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
-    "uuid": "^11.1.0"
+    "uuid": "^11.1.0",
+    "video.js": "^8.23.3"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3",

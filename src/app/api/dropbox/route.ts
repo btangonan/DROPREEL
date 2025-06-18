@@ -301,7 +301,7 @@ export async function GET(request: NextRequest) {
         console.log(`Dropbox download completed in ${downloadTime}ms`);
         
         // Get the file blob from the response
-        const fileBlob = (response.result as any).fileBlob;
+        const fileBlob = (response.result as { fileBlob: Blob }).fileBlob;
         console.log('fileBlob type:', typeof fileBlob);
         console.log('fileBlob size:', fileBlob?.size);
         
