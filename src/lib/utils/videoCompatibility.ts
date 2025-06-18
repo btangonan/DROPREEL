@@ -84,15 +84,13 @@ export function checkVideoCompatibility(videoUrl: string, videoPath?: string): P
     let hasResolved = false;
     const timeout = setTimeout(() => {
       if (!hasResolved) {
-        hasResolved = true;
-        cleanup();
-        // On timeout, assume compatible rather than rejecting
-        resolve({
+        console.log('⏰ [DEEP CHECK] Timeout reached for:', videoPath, '- assuming compatible (metadata load slow)');
+        resolveResult({
           isCompatible: true,
           error: null
         });
       }
-    }, 3000); // Faster timeout - 3 seconds for quicker results
+    }, 3000); // 3 second timeout - assume compatible if metadata takes too long
 
     const cleanup = () => {
       clearTimeout(timeout);
@@ -103,6 +101,17 @@ export function checkVideoCompatibility(videoUrl: string, videoPath?: string): P
 
     const resolveResult = (result: VideoCompatibilityResult) => {
       if (!hasResolved) {
+        // If this is an incompatible result, resolve immediately
+        if (!result.isCompatible) {
+          console.log('🚫 [DEEP CHECK] Marking as incompatible and resolving:', videoPath, result.error);
+          hasResolved = true;
+          cleanup();
+          resolve(result);
+          return;
+        }
+        
+        // This is a compatible result
+        console.log('✅ [DEEP CHECK] Marking as compatible:', videoPath);
         hasResolved = true;
         cleanup();
         resolve(result);
@@ -118,61 +127,18 @@ export function checkVideoCompatibility(videoUrl: string, videoPath?: string): P
         durationFormatted: !isNaN(video.duration) ? `${Math.floor(video.duration / 60)}:${(Math.floor(video.duration % 60)).toString().padStart(2, '0')}` : 'N/A'
       });
       
-      // Reject if no video dimensions (audio-only files or corrupted video)
+      // Only check for the essential issue: no video dimensions (audio-only files)
       if (video.videoWidth === 0 || video.videoHeight === 0) {
-        console.log('🚫 [COMPATIBILITY] REJECTING - No video dimensions (audio-only or corrupted):', videoPath);
+        console.log('🚫 [COMPATIBILITY] REJECTING - No video dimensions (audio-only file):', videoPath);
         resolveResult({
           isCompatible: false,
-          error: 'No video content - audio-only or corrupted file'
+          error: 'Audio-only file - no video content'
         });
         return;
       }
 
-      // Reject if unreasonable dimensions (likely corrupted or invalid)
-      if (video.videoWidth < 16 || video.videoHeight < 16 || 
-          video.videoWidth > 8192 || video.videoHeight > 8192) {
-        console.log('[VideoCompatibility] Rejecting file with invalid dimensions:', videoPath);
-        resolveResult({
-          isCompatible: false,
-          error: 'Invalid video dimensions'
-        });
-        return;
-      }
-
-      // Don't resolve yet - we need to test if frames can actually be rendered
-      // Try to seek to a frame to verify video content can be decoded
-      console.log('[VideoCompatibility] Metadata loaded, now testing frame rendering...');
-      
-      // First try to load and play briefly to test codec compatibility
-      const playPromise = video.play();
-      
-      // Set a timeout for the play operation
-      const playTimeout = setTimeout(() => {
-        console.log('🚫 [COMPATIBILITY] Play operation timed out - no playable frames:', videoPath);
-        resolveResult({
-          isCompatible: false,
-          error: 'No playable frames - video cannot be rendered'
-        });
-      }, 2000); // 2 second timeout for play
-      
-      playPromise.then(() => {
-        clearTimeout(playTimeout);
-        console.log('✅ [COMPATIBILITY] Video started playing successfully, testing seek...', videoPath);
-        video.pause();
-        video.currentTime = Math.min(1.0, video.duration * 0.1); // Seek to 10% or 1 second, whichever is smaller
-      }).catch((playError) => {
-        clearTimeout(playTimeout);
-        console.log('🚫 [COMPATIBILITY] Failed to play video - codec/format incompatible:', videoPath, playError);
-        resolveResult({
-          isCompatible: false,
-          error: 'Video codec not supported by browser'
-        });
-      });
-    });
-
-    // Handle successful seek - means we can render frames
-    video.addEventListener('seeked', () => {
-      console.log('✅ [COMPATIBILITY] Successfully seeked, video can render frames:', videoPath);
+      // If we have any video dimensions, consider it compatible
+      console.log('✅ [COMPATIBILITY] Video has dimensions, marking compatible:', videoPath);
       resolveResult({
         isCompatible: true,
         dimensions: { 
@@ -183,74 +149,20 @@ export function checkVideoCompatibility(videoUrl: string, videoPath?: string): P
       });
     });
 
-    // Handle when video can start playing (first frame ready)
-    video.addEventListener('canplay', () => {
-      console.log('🔍 [COMPATIBILITY] Video canplay event fired for:', videoPath, {
-        hasVideoTrack: video.videoWidth > 0 && video.videoHeight > 0,
-        dimensions: { width: video.videoWidth, height: video.videoHeight }
-      });
-      
-      // Double-check dimensions when video can play
-      if (video.videoWidth === 0 || video.videoHeight === 0) {
-        console.log('🚫 [COMPATIBILITY] Video canplay but no video dimensions - audio only:', videoPath);
-        resolveResult({
-          isCompatible: false,
-          error: 'Audio-only file - no video content'
-        });
-        return;
-      }
-      
-      // If we haven't resolved yet and video can play with valid dimensions, it's compatible
-      if (!hasResolved) {
-        console.log('✅ [COMPATIBILITY] Video can play with valid dimensions, marking compatible:', videoPath);
-        resolveResult({
-          isCompatible: true,
-          dimensions: { 
-            width: video.videoWidth, 
-            height: video.videoHeight,
-            duration: !isNaN(video.duration) ? video.duration : undefined
-          }
-        });
-      }
-    });
+    // We only need the loadedmetadata event for fast compatibility checking
+    // If metadata loads with valid dimensions, it's compatible
+    // If metadata loads with no dimensions, it's incompatible (audio-only)
+    // If metadata fails to load, it's incompatible (format not supported)
 
-    // Handle video errors
+    // Handle video errors - be less aggressive, only mark as incompatible for definitive format issues
     video.addEventListener('error', (e) => {
       console.log('[VideoCompatibility] Video error for', videoPath || 'unknown', {
         errorCode: video.error?.code,
-        errorMessage: video.error?.message,
-        urlWasRefreshed: urlToTest !== videoUrl
+        errorMessage: video.error?.message
       });
 
       if (video.error) {
         switch (video.error.code) {
-          case video.error.MEDIA_ERR_NETWORK:
-            // Network errors could be expired URLs, but let's be more careful
-            console.log('[VideoCompatibility] Network error - checking if URL was refreshed');
-            if (urlToTest !== videoUrl) {
-              // We already tried with a fresh URL and still got network error
-              console.log('[VideoCompatibility] Network error even with fresh URL - marking incompatible');
-              resolveResult({
-                isCompatible: false,
-                error: 'Cannot access video file'
-              });
-            } else {
-              // Original URL failed, might be expired - assume compatible
-              console.log('[VideoCompatibility] Network error with original URL - assuming compatible (likely expired URL)');
-              resolveResult({
-                isCompatible: true,
-                error: null
-              });
-            }
-            return;
-          case video.error.MEDIA_ERR_ABORTED:
-            // Aborted loads don't mean the format is incompatible
-            console.log('[VideoCompatibility] Load aborted - assuming compatible');
-            resolveResult({
-              isCompatible: true,
-              error: null
-            });
-            return;
           case video.error.MEDIA_ERR_DECODE:
             console.log('[VideoCompatibility] Decode error - marking incompatible');
             resolveResult({
@@ -266,20 +178,21 @@ export function checkVideoCompatibility(videoUrl: string, videoPath?: string): P
             });
             return;
           default:
-            console.log('[VideoCompatibility] Unknown error code:', video.error.code, '- marking incompatible to be safe');
+            // For network errors, aborted loads, etc. - assume compatible (likely temporary issues)
+            console.log('[VideoCompatibility] Non-format error - assuming compatible (likely network/temporary issue)');
             resolveResult({
-              isCompatible: false,
-              error: 'Video cannot be played'
+              isCompatible: true,
+              error: null
             });
             return;
         }
       }
       
-      // If no specific error code, mark as incompatible
-      console.log('[VideoCompatibility] Error with no error code - marking incompatible');
+      // If no specific error code, assume compatible
+      console.log('[VideoCompatibility] Unknown error - assuming compatible');
       resolveResult({
-        isCompatible: false,
-        error: 'Video cannot be played'
+        isCompatible: true,
+        error: null
       });
     });
 
@@ -383,52 +296,51 @@ export function checkVideoCompatibilityFromMetadata(video: { name: string; media
  * Check compatibility for all videos using metadata first, then async browser checking
  * Returns all videos with immediate compatibility information
  */
-export async function checkAllVideosCompatibility(videos: Array<{ id: string; streamUrl: string; name: string; mediaInfo?: any; [key: string]: any }>) {
-  console.log('🔍 [COMPATIBILITY] Starting deep compatibility check for', videos.length, 'videos');
+export async function checkAllVideosCompatibility(
+  videos: Array<{ id: string; streamUrl: string; name: string; mediaInfo?: any; [key: string]: any }>,
+  onVideoChecked?: (video: any) => void
+) {
+  console.log('🔍 [COMPATIBILITY] Starting browser-only compatibility check for', videos.length, 'videos');
   
-  // First pass: immediate metadata-based checking
-  const quickResults = videos.map(video => {
-    const metadataCheck = checkVideoCompatibilityFromMetadata(video);
-    return {
-      ...video,
-      isCompatible: metadataCheck.isCompatible,
-      compatibilityError: metadataCheck.error || null,
-      dimensions: metadataCheck.dimensions || null,
-      checkedWithBrowser: false // Flag to track checking method
-    };
-  });
-  
-  console.log('[VideoCompatibility] Metadata check complete. Starting browser verification...');
-  
-  // Second pass: async browser-based verification for ALL videos (including those marked incompatible by metadata)
+  // Skip metadata checking - do only accurate browser-based verification
   const finalResults = await Promise.all(
-    quickResults.map(async (video) => {
-      // Do browser-based check for ALL videos to get comprehensive compatibility info
+    videos.map(async (video) => {
       try {
-        console.log('[VideoCompatibility] Running browser check for:', video.name, '(metadata marked as:', video.isCompatible ? 'compatible' : 'incompatible', ')');
+        console.log('[VideoCompatibility] Running browser check for:', video.name);
         const browserCheck = await checkVideoCompatibility(video.streamUrl, video.path);
         console.log('[VideoCompatibility] Browser check result for', video.name, ':', browserCheck);
         
-        // Combine metadata and browser results - if either says incompatible, mark as incompatible
-        const finalCompatibility = video.isCompatible && browserCheck.isCompatible;
-        const finalError = browserCheck.error || video.compatibilityError;
-        
-        return {
+        const result = {
           ...video,
-          isCompatible: finalCompatibility,
-          compatibilityError: finalError,
-          dimensions: browserCheck.dimensions || video.dimensions,
+          isCompatible: browserCheck.isCompatible,
+          compatibilityError: browserCheck.error,
+          dimensions: browserCheck.dimensions,
           checkedWithBrowser: true
         };
+        
+        // Immediately notify caller of this video's result for instant UI update
+        if (onVideoChecked) {
+          console.log('🚀 [COMPATIBILITY] Immediately updating UI for:', video.name, result.isCompatible ? 'COMPATIBLE' : 'INCOMPATIBLE');
+          onVideoChecked(result);
+        }
+        
+        return result;
       } catch (error) {
-        // If browser check fails completely, mark as incompatible
         console.warn('[VideoCompatibility] Browser check failed for:', video.name, error);
-        return {
+        const result = {
           ...video,
           isCompatible: false,
           compatibilityError: 'Could not verify video compatibility',
           checkedWithBrowser: false
         };
+        
+        // Also notify for failed checks
+        if (onVideoChecked) {
+          console.log('🚀 [COMPATIBILITY] Immediately updating UI for failed check:', video.name);
+          onVideoChecked(result);
+        }
+        
+        return result;
       }
     })
   );
@@ -436,11 +348,20 @@ export async function checkAllVideosCompatibility(videos: Array<{ id: string; st
   const compatibleCount = finalResults.filter(v => v.isCompatible).length;
   const incompatibleCount = finalResults.filter(v => !v.isCompatible).length;
   
-  console.log('[VideoCompatibility] Final results:', { 
+  console.log('🔍 [COMPATIBILITY] Final results:', { 
     total: videos.length, 
     compatible: compatibleCount, 
     incompatible: incompatibleCount 
   });
+  
+  // Log which videos are incompatible for debugging
+  const incompatibleVideos = finalResults.filter(v => !v.isCompatible);
+  if (incompatibleVideos.length > 0) {
+    console.log('🚫 [COMPATIBILITY] Incompatible videos:', incompatibleVideos.map(v => ({ 
+      name: v.name, 
+      error: v.compatibilityError 
+    })));
+  }
 
   return { 
     videos: finalResults, 

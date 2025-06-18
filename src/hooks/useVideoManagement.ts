@@ -188,7 +188,18 @@ export function useVideoManagement() {
             
             // Then run compatibility check with stream URLs
             console.log('🟡 [FOLDER BACKGROUND] Running compatibility checks...');
-            const { videos: videosWithRealData } = await checkAllVideosCompatibility(videosWithStreamUrls);
+            
+            // Create a callback to immediately update individual videos as they're checked
+            const handleVideoChecked = (checkedVideo: VideoFile) => {
+              console.log('🚀 [IMMEDIATE UPDATE] Updating UI for:', checkedVideo.name, 'compatible:', checkedVideo.isCompatible);
+              setLoadedVideos(prev => 
+                prev.map(video => 
+                  video.path === checkedVideo.path ? checkedVideo : video
+                )
+              );
+            };
+            
+            const { videos: videosWithRealData } = await checkAllVideosCompatibility(videosWithStreamUrls, handleVideoChecked);
             
             // Extract durations using the new efficient system (background only)
             console.log('🟡 [FOLDER BACKGROUND] Extracting durations for videos...');
