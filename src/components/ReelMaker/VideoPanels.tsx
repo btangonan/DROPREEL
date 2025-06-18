@@ -34,7 +34,7 @@ export function VideoPanels({
           <div className="panel-header px-6 py-4 flex items-center gap-2 flex-shrink-0 font-mono font-bold uppercase tracking-wider text-base">
             <Database className="w-5 h-5 mr-2" />
             <span>YOUR VIDEOS</span>
-            <div className="ml-auto flex items-center gap-2" style={{ background: 'rgba(255, 255, 255, 0.2)' }}>
+            <div className="ml-auto flex items-center gap-2">
               <div className="text-xs font-mono px-2 py-1">
                 {videoState.yourVideos.length} FILES
               </div>
@@ -91,7 +91,7 @@ export function VideoPanels({
           <div className="panel-header px-6 py-4 flex items-center gap-2 flex-shrink-0 font-mono font-bold uppercase tracking-wider text-base">
             <MousePointer2 className="w-5 h-5 mr-2" />
             <span>SELECTED VIDEOS</span>
-            <div className="ml-auto flex items-center gap-2" style={{ background: 'rgba(255, 255, 255, 0.2)' }}>
+            <div className="ml-auto flex items-center gap-2">
               <div className="text-xs font-mono px-2 py-1">
                 {videoState.selects.length} FILES
               </div>

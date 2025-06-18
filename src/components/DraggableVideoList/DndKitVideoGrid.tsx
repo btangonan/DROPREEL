@@ -192,7 +192,7 @@ function VideoGridItem({
       <div 
         ref={thumbnailRef}
         className={`relative aspect-video ${popOutClass} ${video.isCompatible === false ? 'cursor-not-allowed pointer-events-none' : 'cursor-pointer'} group`}
-        style={{ background: 'var(--video-bg)' }}
+        style={{ background: 'var(--video-bg)', containerType: 'inline-size' }}
         onClick={(e) => {
           if (video.isCompatible === false) {
             e.stopPropagation();
@@ -256,6 +256,7 @@ function VideoGridItem({
   );
 }
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 function EmptyDropZone({ children }: { children: React.ReactNode }) {
   return (
     <div className="matrix-empty-state">
@@ -320,7 +321,7 @@ function SortableVideoGridItem({
 }
 
 export default function DndKitVideoGrid({ videos, gridId, onVideoClick, onVideoDelete, emptyMessage, inlinePreviewVideoId, onCloseInlinePreview, customEmptyContent }: DndKitVideoGridProps) {
-  const { setNodeRef, isOver } = useDroppable({ id: gridId });
+  const { setNodeRef } = useDroppable({ id: gridId });
   // Debug output for gridId, video count, and IDs
 
   return (
@@ -346,7 +347,9 @@ export default function DndKitVideoGrid({ videos, gridId, onVideoClick, onVideoD
             <SortableVideoGridItem
               key={`${gridId}-${video.id}`}
               video={{ ...video, id: `${gridId}-${video.id}` }}
+              // eslint-disable-next-line @typescript-eslint/no-unused-vars
               onClick={(clickedVideo) => onVideoClick?.(video)} // Use original video for callback
+              // eslint-disable-next-line @typescript-eslint/no-unused-vars
               onDelete={(deletedVideo) => onVideoDelete?.(video)} // Use original video for callback
               isInlinePreview={inlinePreviewVideoId === video.id}
               onCloseInlinePreview={onCloseInlinePreview}

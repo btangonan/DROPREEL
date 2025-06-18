@@ -60,6 +60,17 @@ export default function VideoPreviewModal({ isOpen, onClose, videoSrc, title, is
     }
   };
 
+  // Control handlers - define before useEffect
+  const togglePlayPause = useCallback(() => {
+    if (!videoRef.current) return;
+    
+    if (isPlaying) {
+      videoRef.current.pause();
+    } else {
+      videoRef.current.play();
+    }
+  }, [isPlaying]);
+
   // Auto-hide controls using ref to avoid dependency issues
   const resetControlsTimer = useCallback(() => {
     if (controlsTimeoutRef.current) {
@@ -71,30 +82,33 @@ export default function VideoPreviewModal({ isOpen, onClose, videoSrc, title, is
     }, 3000);
   }, []);
 
-  // Handle ESC key to close modal and cleanup
+  // Handle ESC key and spacebar to close modal and control playback
   useEffect(() => {
-    const handleEsc = (event: KeyboardEvent) => {
+    const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
         onClose();
+      } else if (event.key === ' ' || event.key === 'Spacebar') {
+        event.preventDefault();
+        togglePlayPause();
       }
     };
     
     if (isOpen) {
-      document.addEventListener('keydown', handleEsc);
+      document.addEventListener('keydown', handleKeyDown);
       document.body.style.overflow = 'hidden';
       // Start controls timer when modal opens
       resetControlsTimer();
     }
     
     return () => {
-      document.removeEventListener('keydown', handleEsc);
+      document.removeEventListener('keydown', handleKeyDown);
       document.body.style.overflow = 'unset';
       if (controlsTimeoutRef.current) {
         clearTimeout(controlsTimeoutRef.current);
         controlsTimeoutRef.current = null;
       }
     };
-  }, [isOpen, onClose, resetControlsTimer]);
+  }, [isOpen, onClose, resetControlsTimer, togglePlayPause]);
 
   // Reset loading state when modal opens or video source changes
   useEffect(() => {
@@ -280,17 +294,7 @@ export default function VideoPreviewModal({ isOpen, onClose, videoSrc, title, is
     }
   };
 
-  // Control handlers
-  const togglePlayPause = () => {
-    if (!videoRef.current) return;
-    
-    if (isPlaying) {
-      videoRef.current.pause();
-    } else {
-      videoRef.current.play();
-    }
-  };
-
+  // Other control handlers
   const toggleMute = () => {
     if (!videoRef.current) return;
     videoRef.current.muted = !videoRef.current.muted;
@@ -428,7 +432,10 @@ export default function VideoPreviewModal({ isOpen, onClose, videoSrc, title, is
       <div 
         className="relative bg-black" 
         style={getVideoContainerStyle()}
-        onClick={(e) => e.stopPropagation()}
+        onClick={(e) => {
+          e.stopPropagation();
+          togglePlayPause();
+        }}
         onMouseMove={resetControlsTimer}
       >
         {/* Video element - only for compatible videos, hidden during loading */}
@@ -445,7 +452,10 @@ export default function VideoPreviewModal({ isOpen, onClose, videoSrc, title, is
             onError={handleVideoError}
             onCanPlay={handleCanPlay}
             onWaiting={handleWaiting}
-            onClick={togglePlayPause}
+            onClick={(e) => {
+              e.stopPropagation();
+              togglePlayPause();
+            }}
             crossOrigin="anonymous"
             autoPlay
             playsInline
@@ -501,7 +511,7 @@ export default function VideoPreviewModal({ isOpen, onClose, videoSrc, title, is
           }`}
         >
           {/* Top bar */}
-          <div className="absolute top-0 left-0 right-0 p-4">
+          <div className="absolute top-0 left-0 right-0 p-4" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between text-white">
               <div className="flex items-center gap-2">
                 <Monitor className="w-4 h-4" />
@@ -513,7 +523,10 @@ export default function VideoPreviewModal({ isOpen, onClose, videoSrc, title, is
                 )}
               </div>
               <button 
-                onClick={onClose}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onClose();
+                }}
                 className="hover:bg-white hover:text-black transition-colors p-2 border hover:border-black"
                 style={{
                   color: document.documentElement.classList.contains('dark') ? '#00ff00' : '#ffffff',
@@ -529,7 +542,10 @@ export default function VideoPreviewModal({ isOpen, onClose, videoSrc, title, is
           {!isPlaying && (
             <div className="absolute inset-0 flex items-center justify-center">
               <button 
-                onClick={togglePlayPause}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  togglePlayPause();
+                }}
                 className="text-white hover:text-gray-300 transition-colors"
               >
                 <Play className="w-16 h-16" fill="currentColor" />
@@ -546,7 +562,8 @@ export default function VideoPreviewModal({ isOpen, onClose, videoSrc, title, is
                 min="0"
                 max="100"
                 value={duration ? (currentTime / duration) * 100 : 0}
-                onChange={handleSeek}
+                onChange={(e) => { e.stopPropagation(); handleSeek(e); }}
+                onClick={(e) => e.stopPropagation()}
                 className="w-full h-1 bg-white/30 rounded-lg appearance-none cursor-pointer video-progress"
               />
             </div>
@@ -554,14 +571,14 @@ export default function VideoPreviewModal({ isOpen, onClose, videoSrc, title, is
             {/* Control buttons */}
             <div className="flex items-center justify-between text-white">
               <div className="flex items-center gap-4">
-                <button onClick={restart} className="hover:text-gray-300 transition-colors">
+                <button onClick={(e) => { e.stopPropagation(); restart(); }} className="hover:text-gray-300 transition-colors">
                   <RotateCcw className="w-5 h-5" />
                 </button>
-                <button onClick={togglePlayPause} className="hover:text-gray-300 transition-colors">
+                <button onClick={(e) => { e.stopPropagation(); togglePlayPause(); }} className="hover:text-gray-300 transition-colors">
                   {isPlaying ? <Pause className="w-6 h-6" /> : <Play className="w-6 h-6" fill="currentColor" />}
                 </button>
                 <div className="flex items-center gap-2">
-                  <button onClick={toggleMute} className="hover:text-gray-300 transition-colors">
+                  <button onClick={(e) => { e.stopPropagation(); toggleMute(); }} className="hover:text-gray-300 transition-colors">
                     {isMuted || volume === 0 ? <VolumeX className="w-5 h-5" /> : <Volume2 className="w-5 h-5" />}
                   </button>
                   <input
@@ -569,7 +586,8 @@ export default function VideoPreviewModal({ isOpen, onClose, videoSrc, title, is
                     min="0"
                     max="100"
                     value={isMuted ? 0 : volume * 100}
-                    onChange={handleVolumeSlider}
+                    onChange={(e) => { e.stopPropagation(); handleVolumeSlider(e); }}
+                    onClick={(e) => e.stopPropagation()}
                     className="w-20 h-1 bg-white/30 rounded-lg appearance-none cursor-pointer video-volume"
                   />
                 </div>

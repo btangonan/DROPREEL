@@ -220,7 +220,10 @@ export default function ReelPreviewModal({
         {/* Close button - absolute positioned in upper right of entire modal */}
         <button 
           onClick={onClose}
-          className="absolute top-4 right-4 z-10 w-10 h-10 flex items-center justify-center text-accent hover:bg-black hover:text-background transition-colors duration-150 bg-background border-2 border-black rounded-sm"
+          className="absolute top-4 right-4 z-10 w-10 h-10 flex items-center justify-center hover:bg-black hover:text-background transition-colors duration-150 bg-background border-2 border-black rounded-sm"
+          style={{
+            color: document.documentElement.classList.contains('dark') ? '#00ff00' : '#000000'
+          }}
         >
           <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
