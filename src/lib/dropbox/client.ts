@@ -54,10 +54,11 @@ export class DropboxClient {
         }));
 
       return videoFiles;
-    } catch (error: any) {
-      console.error('Error listing videos:', error);
-      console.error('Error details:', error?.message, error?.status, error?.error);
-      throw error;
+    } catch (error) {
+      const err = error as { message?: string; status?: number; error?: unknown };
+      console.error('Error listing videos:', err);
+      console.error('Error details:', err?.message, err?.status, err?.error);
+      throw err;
     }
   }
 
@@ -79,7 +80,7 @@ export class DropboxClient {
         size: { '.tag': 'w640h480' }
       });
       
-      const buffer = (response.result as any).fileBinary;
+      const buffer = (response.result as { fileBinary?: ArrayBuffer }).fileBinary;
       if (buffer) {
         const blob = new Blob([buffer], { type: 'image/jpeg' });
         return URL.createObjectURL(blob);

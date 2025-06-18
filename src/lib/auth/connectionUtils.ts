@@ -75,7 +75,7 @@ export const testDropboxConnection = async (): Promise<{
         const tokenDuration = 4 * 60 * 60 * 1000;
         const ageInMs = Math.max(0, now - (expiryTimestamp - tokenDuration));
         result.details.tokenAge = Math.floor(ageInMs / (1000 * 60));
-      } catch (err) {
+      } catch {
         // Ignore token age errors
       }
     }
@@ -95,9 +95,10 @@ export const testDropboxConnection = async (): Promise<{
             status: 'connected',
             details: { ...result.details, accountInfo: accountInfo.result }
           };
-        } catch (apiError: any) {
+        } catch (apiError) {
           // Handle Dropbox API errors
-          const msg = (apiError?.message || '').toLowerCase();
+          const error = apiError as Error;
+          const msg = (error?.message || '').toLowerCase();
           if (msg.includes('rate') && msg.includes('limit')) {
             return {
               ...result,
@@ -167,9 +168,10 @@ export const testDropboxConnection = async (): Promise<{
         status: 'connected',
         details: { ...result.details, accountInfo: accountInfo.result }
       };
-    } catch (apiError: any) {
+    } catch (apiError) {
       // Handle Dropbox API errors
-      const msg = (apiError?.message || '').toLowerCase();
+      const error = apiError as Error;
+      const msg = (error?.message || '').toLowerCase();
       if (msg.includes('rate') && msg.includes('limit')) {
         return {
           ...result,

@@ -1,8 +1,8 @@
 // This is a client-side only utility that provides a safe way to use the Dropbox API
 import { Dropbox } from 'dropbox';
 
-// Create a singleton Dropbox client factory
-const dropboxClient: Dropbox | null = null;
+// Create a singleton Dropbox client factory (unused but kept for future reference)
+// const dropboxClient: Dropbox | null = null;
 
 export const getDropboxClient = (accessToken: string): Dropbox => {
   // Always create a new client instead of using a singleton to avoid token issues
@@ -131,14 +131,15 @@ export const listVideosFromDropbox = async (accessToken: string, folderPath: str
         });
         
       return videoFiles;
-    } catch (apiError: any) {
-      console.error('Dropbox API Error:', apiError);
+    } catch (apiError) {
+      const error = apiError as { status?: number; message?: string; error?: unknown };
+      console.error('Dropbox API Error:', error);
       
       // Handle specific error cases with helpful messages
-      if (apiError?.status === 409) {
+      if (error?.status === 409) {
         // Path lookup error - common when folder doesn't exist
-        const lookupError = apiError?.error?.error?.['.tag'] === 'path' && 
-                           apiError?.error?.error?.path?.['.tag'] === 'not_found';
+        const lookupError = (error as { error?: { error?: { '.tag'?: string; path?: { '.tag'?: string } } } })?.error?.error?.['.tag'] === 'path' && 
+                           (error as { error?: { error?: { '.tag'?: string; path?: { '.tag'?: string } } } })?.error?.error?.path?.['.tag'] === 'not_found';
         
         if (lookupError) {
           // Try to get available folders to suggest alternatives
@@ -155,23 +156,24 @@ export const listVideosFromDropbox = async (accessToken: string, folderPath: str
             } else {
               throw new Error(`Folder "${path}" was not found in your Dropbox account.`);
             }
-          } catch (e) {
+          } catch {
             // If we can't suggest folders, give a general error
             throw new Error(`The folder "${path}" does not exist in your Dropbox account. Please check the path or try another folder.`);
           }
         }
         
         // General path-related error
-        const pathIssue = apiError?.error?.error?.path?.['.tag'] || 'unknown issue';
+        const pathIssue = (error as { error?: { error?: { path?: { '.tag'?: string } } } })?.error?.error?.path?.['.tag'] || 'unknown issue';
         throw new Error(`Cannot access folder: ${pathIssue}. Please verify the path is correct and you have permission to access it.`);
       }
       
       // For any other API error, use the user-friendly message if available
-      throw new Error(`Dropbox error: ${apiError?.error?.error?.user_message || apiError?.message || 'Unknown error accessing Dropbox'}`);
+      throw new Error(`Dropbox error: ${(error as { error?: { error?: { user_message?: string } }; message?: string })?.error?.error?.user_message || error?.message || 'Unknown error accessing Dropbox'}`);
     }
-  } catch (error: any) {
-    console.error('Error listing Dropbox videos:', error);
-    throw new Error(error?.message || 'Failed to access videos from Dropbox. Please check your folder path or Dropbox link.');
+  } catch (error) {
+    const err = error as Error;
+    console.error('Error listing Dropbox videos:', err);
+    throw new Error(err?.message || 'Failed to access videos from Dropbox. Please check your folder path or Dropbox link.');
   }
 };
 
