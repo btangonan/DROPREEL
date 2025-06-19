@@ -1,4 +1,7 @@
+'use client';
+
 import { useState, useEffect, useRef } from 'react';
+import { useSearchParams } from 'next/navigation';
 
 export function useDropboxAuth() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -52,14 +55,48 @@ export function useDropboxAuth() {
     window.location.href = '/api/auth/dropbox';
   };
 
+  // Check for auth success in URL
+  const searchParams = useSearchParams();
+  const authSuccessParam = searchParams?.get('auth') === 'success';
+  
+  // Check auth status on mount and when auth success param changes
+  useEffect(() => {
+    let mounted = true;
+    
+    const checkAuthStatus = async () => {
+      if (!mounted) return;
+      
+      const isAuth = await checkAuth();
+      
+      // If we have an auth success param and we're not authenticated, force a recheck
+      if (authSuccessParam && !isAuth) {
+        console.log('Auth success detected in URL, rechecking auth status...');
+        // Small delay to ensure server has processed the auth
+        setTimeout(checkAuth, 1000);
+      }
+    };
+    
+    checkAuthStatus();
+    
+    return () => {
+      mounted = false;
+    };
+  }, [authSuccessParam]);
+  
   // Periodic auth check
   useEffect(() => {
     const periodicCheck = () => {
       checkAuth();
     };
-    periodicCheck(); // Check immediately
-    const interval = setInterval(periodicCheck, 2 * 60 * 1000); // Every 2 minutes
-    return () => clearInterval(interval);
+    
+    // Only start periodic checks after initial auth check is done
+    const timer = setTimeout(() => {
+      periodicCheck();
+      const interval = setInterval(periodicCheck, 2 * 60 * 1000); // Every 2 minutes
+      return () => clearInterval(interval);
+    }, 0);
+    
+    return () => clearTimeout(timer);
   }, []);
 
   return {
