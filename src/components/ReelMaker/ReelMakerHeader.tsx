@@ -9,10 +9,16 @@ export function ReelMakerHeader({ isDarkMode, onThemeToggle }: ReelMakerHeaderPr
   return (
     <div className="matrix-header pt-4 md:pt-6 pr-3 md:pr-6 pl-3 md:pl-6 pb-0">
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6 md:mb-8">
-        <div>
-          <h1 className="text-xl md:text-2xl text-terminal">REELDROP</h1>
-          <div className="text-xs text-muted-foreground mt-1">
-            DROP IT. SEND IT. BOOK IT.
+        <div className="flex items-center gap-3">
+          <img 
+            src="/images/reeldrop_logos-trans.png" 
+            alt="ReelDrop Logo" 
+            className="h-8 md:h-10 w-auto"
+          />
+          <div>
+            <div className="text-xs text-muted-foreground">
+              DROP IT. SEND IT. BOOK IT.
+            </div>
           </div>
         </div>
         <div className="flex items-center gap-2 sm:gap-4 w-full sm:w-auto">

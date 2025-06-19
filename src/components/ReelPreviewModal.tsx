@@ -302,8 +302,13 @@ export default function ReelPreviewModal({
         {/* Project Info */}
         <div className="w-full border-t-2 border-b-2 border-border py-3 px-4">
           <div className="max-w-screen-xl mx-auto flex items-center justify-between">
-            <div className="text-sm font-mono uppercase tracking-wider">
-              DROPREEL | {reelTitle?.toUpperCase()} | {currentIndex + 1}/{videos.length}
+            <div className="text-sm font-mono uppercase tracking-wider flex items-center gap-2">
+              <img 
+                src="/images/reeldrop_logos-trans.png" 
+                alt="ReelDrop" 
+                className="h-4 w-auto"
+              />
+              | {reelTitle?.toUpperCase()} | {currentIndex + 1}/{videos.length}
             </div>
           </div>
         </div>
