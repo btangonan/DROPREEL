@@ -209,8 +209,8 @@ export function checkVideoCompatibility(videoUrl: string, videoPath?: string): P
 export function checkVideoCompatibilityInstant(video: { name: string; mediaInfo?: any }): VideoCompatibilityResult {
   const filename = video.name.toLowerCase();
   
-  // Quick file extension check
-  const incompatibleExtensions = ['.prores', '.mov', '.avi', '.mkv', '.flv', '.wmv', '.m4a', '.mp3', '.wav', '.aac'];
+  // Quick file extension check - only audio files and definitely incompatible formats
+  const incompatibleExtensions = ['.prores', '.m4a', '.mp3', '.wav', '.aac', '.flac', '.ogg'];
   const hasIncompatibleExt = incompatibleExtensions.some(ext => filename.endsWith(ext));
   
   if (hasIncompatibleExt) {
