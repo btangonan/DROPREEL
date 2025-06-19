@@ -54,17 +54,46 @@ export async function GET(request: NextRequest) {
       let thumbnailBinary: ArrayBuffer;
       const result = response.result as any;
       
-      if (result.fileBlob) {
+      console.log('Processing result:', {
+        type: typeof result,
+        isArrayBuffer: result instanceof ArrayBuffer,
+        hasFileBlob: !!result.fileBlob,
+        hasFileBinary: !!result.fileBinary,
+        constructor: result.constructor?.name
+      });
+      
+      if (result.fileBlob && typeof result.fileBlob.arrayBuffer === 'function') {
         // Standard blob response
+        console.log('Using fileBlob.arrayBuffer()');
         thumbnailBinary = await result.fileBlob.arrayBuffer();
       } else if (result.fileBinary) {
-        // Binary response format
-        thumbnailBinary = result.fileBinary;
+        // Binary response format - could be Buffer or ArrayBuffer
+        console.log('Using fileBinary directly');
+        if (result.fileBinary instanceof ArrayBuffer) {
+          thumbnailBinary = result.fileBinary;
+        } else if (Buffer.isBuffer(result.fileBinary)) {
+          thumbnailBinary = result.fileBinary.buffer.slice(
+            result.fileBinary.byteOffset,
+            result.fileBinary.byteOffset + result.fileBinary.byteLength
+          );
+        } else {
+          thumbnailBinary = new Uint8Array(result.fileBinary).buffer;
+        }
       } else if (result instanceof ArrayBuffer) {
         // Direct ArrayBuffer
+        console.log('Using result as ArrayBuffer');
         thumbnailBinary = result;
+      } else if (Buffer.isBuffer(result)) {
+        // Node.js Buffer
+        console.log('Converting Buffer to ArrayBuffer');
+        thumbnailBinary = result.buffer.slice(result.byteOffset, result.byteOffset + result.byteLength);
       } else {
-        console.error('Unknown response format:', typeof result, Object.keys(result));
+        console.error('Unknown response format:', {
+          type: typeof result,
+          keys: Object.keys(result),
+          hasBuffer: typeof result.buffer,
+          constructor: result.constructor?.name
+        });
         return NextResponse.json({ error: 'Unsupported response format' }, { status: 500 });
       }
       
