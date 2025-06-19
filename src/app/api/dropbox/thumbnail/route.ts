@@ -22,80 +22,54 @@ export async function GET(request: NextRequest) {
     }
 
     try {
-      // Import the Dropbox client dynamically
-      const { Dropbox } = await import('dropbox');
+      // Use direct Dropbox API instead of SDK to avoid serverless issues
+      const apiUrl = 'https://content.dropboxapi.com/2/files/get_thumbnail';
       
-      // Create a new client for this request
-      const client = new Dropbox({ 
-        accessToken: DROPBOX_ACCESS_TOKEN,
-        fetch: (url: RequestInfo, init?: RequestInit) => fetch(url, init)
+      const response = await fetch(apiUrl, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${DROPBOX_ACCESS_TOKEN}`,
+          'Content-Type': 'text/plain',
+          'Dropbox-API-Arg': JSON.stringify({
+            path: path,
+            format: 'jpeg',
+            size: 'w256h256',
+            mode: 'fitone_bestfit'
+          })
+        }
       });
       
-      // Directly generate a thumbnail
-      const response = await client.filesGetThumbnail({
-        path,
-        format: { '.tag': 'jpeg' },
-        size: { '.tag': 'w256h256' },
-        mode: { '.tag': 'fitone_bestfit' }
-      });
-      
-      console.log('Dropbox thumbnail response:', {
-        hasResult: !!response?.result,
-        resultKeys: response?.result ? Object.keys(response.result) : [],
+      console.log('Direct API response:', {
+        status: response.status,
+        ok: response.ok,
+        contentType: response.headers.get('content-type'),
         path: path
       });
       
-      if (!response || !response.result) {
-        console.error('No thumbnail data returned from Dropbox for path:', path);
-        return NextResponse.json({ error: 'Failed to get thumbnail' }, { status: 500 });
-      }
-      
-      // Handle different response formats
-      let thumbnailBinary: ArrayBuffer;
-      const result = response.result as any;
-      
-      console.log('Processing result:', {
-        type: typeof result,
-        isArrayBuffer: result instanceof ArrayBuffer,
-        hasFileBlob: !!result.fileBlob,
-        hasFileBinary: !!result.fileBinary,
-        constructor: result.constructor?.name
-      });
-      
-      if (result.fileBlob && typeof result.fileBlob.arrayBuffer === 'function') {
-        // Standard blob response
-        console.log('Using fileBlob.arrayBuffer()');
-        thumbnailBinary = await result.fileBlob.arrayBuffer();
-      } else if (result.fileBinary) {
-        // Binary response format - could be Buffer or ArrayBuffer
-        console.log('Using fileBinary directly');
-        if (result.fileBinary instanceof ArrayBuffer) {
-          thumbnailBinary = result.fileBinary;
-        } else if (Buffer.isBuffer(result.fileBinary)) {
-          thumbnailBinary = result.fileBinary.buffer.slice(
-            result.fileBinary.byteOffset,
-            result.fileBinary.byteOffset + result.fileBinary.byteLength
-          );
-        } else {
-          thumbnailBinary = new Uint8Array(result.fileBinary).buffer;
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('Dropbox API error:', response.status, errorText);
+        
+        if (response.status === 409) {
+          return NextResponse.json({ 
+            error: 'Thumbnail not supported for this video format',
+            code: 'PREVIEW_NOT_SUPPORTED' 
+          }, { status: 422 });
         }
-      } else if (result instanceof ArrayBuffer) {
-        // Direct ArrayBuffer
-        console.log('Using result as ArrayBuffer');
-        thumbnailBinary = result;
-      } else if (Buffer.isBuffer(result)) {
-        // Node.js Buffer
-        console.log('Converting Buffer to ArrayBuffer');
-        thumbnailBinary = result.buffer.slice(result.byteOffset, result.byteOffset + result.byteLength);
-      } else {
-        console.error('Unknown response format:', {
-          type: typeof result,
-          keys: Object.keys(result),
-          hasBuffer: typeof result.buffer,
-          constructor: result.constructor?.name
-        });
-        return NextResponse.json({ error: 'Unsupported response format' }, { status: 500 });
+        
+        return NextResponse.json({ 
+          error: 'Failed to get thumbnail',
+          details: errorText 
+        }, { status: response.status });
       }
+      
+      // Get the binary data
+      const thumbnailBinary = await response.arrayBuffer();
+      
+      console.log('Successfully got thumbnail:', {
+        size: thumbnailBinary.byteLength,
+        path: path
+      });
       
       // Return the thumbnail as an image
       return new NextResponse(thumbnailBinary, {
