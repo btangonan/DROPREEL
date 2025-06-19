@@ -11,6 +11,33 @@ const jetbrainsMono = JetBrains_Mono({
 export const metadata: Metadata = {
   title: "DropReel | Video Reel Presentations",
   description: "Turn your Dropbox videos into sleek, interactive presentation reels",
+  icons: {
+    icon: [
+      { url: '/images/logo-64x64.png', sizes: '64x64', type: 'image/png' },
+      { url: '/images/logo-256x256.png', sizes: '256x256', type: 'image/png' },
+    ],
+    apple: [
+      { url: '/images/logo-256x256.png' },
+    ],
+  },
+  openGraph: {
+    title: 'DropReel | Video Reel Presentations',
+    description: 'Turn your Dropbox videos into sleek, interactive presentation reels',
+    images: [
+      {
+        url: '/images/logo-256x256.png',
+        width: 256,
+        height: 256,
+        alt: 'DropReel Logo',
+      },
+    ],
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'DropReel | Video Reel Presentations',
+    description: 'Turn your Dropbox videos into sleek, interactive presentation reels',
+    images: ['/images/logo-256x256.png'],
+  },
 };
 
 export default function RootLayout({
@@ -22,7 +49,9 @@ export default function RootLayout({
     <html lang="en">
       <head>
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-        <link rel="icon" href="/dropreel-logo.svg" type="image/svg+xml" />
+        <link rel="icon" type="image/png" sizes="64x64" href="/images/logo-64x64.png" />
+        <link rel="icon" type="image/png" sizes="256x256" href="/images/logo-256x256.png" />
+        <link rel="apple-touch-icon" href="/images/logo-256x256.png" />
       </head>
       <body className={`${jetbrainsMono.variable} font-mono bg-white text-black antialiased`}>
         {children}
