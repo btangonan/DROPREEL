@@ -13,12 +13,14 @@ export const metadata: Metadata = {
   description: "Turn your Dropbox videos into sleek, interactive presentation reels",
   icons: {
     icon: [
+      { url: '/favicon.ico', sizes: 'any' },
       { url: '/images/logo-64x64.png', sizes: '64x64', type: 'image/png' },
       { url: '/images/logo-256x256.png', sizes: '256x256', type: 'image/png' },
     ],
     apple: [
-      { url: '/images/logo-256x256.png' },
+      { url: '/images/logo-256x256.png', sizes: '256x256' },
     ],
+    shortcut: '/favicon.ico',
   },
   openGraph: {
     title: 'DropReel | Video Reel Presentations',
@@ -49,9 +51,11 @@ export default function RootLayout({
     <html lang="en">
       <head>
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <link rel="icon" href="/favicon.ico" sizes="any" />
         <link rel="icon" type="image/png" sizes="64x64" href="/images/logo-64x64.png" />
         <link rel="icon" type="image/png" sizes="256x256" href="/images/logo-256x256.png" />
-        <link rel="apple-touch-icon" href="/images/logo-256x256.png" />
+        <link rel="apple-touch-icon" sizes="256x256" href="/images/logo-256x256.png" />
+        <link rel="manifest" href="/site.webmanifest" />
       </head>
       <body className={`${jetbrainsMono.variable} font-mono bg-white text-black antialiased`}>
         {children}
