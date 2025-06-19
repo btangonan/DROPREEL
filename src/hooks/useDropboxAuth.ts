@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { useSearchParams } from 'next/navigation';
 
 export function useDropboxAuth() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -55,9 +54,16 @@ export function useDropboxAuth() {
     window.location.href = '/api/auth/dropbox';
   };
 
-  // Check for auth success in URL
-  const searchParams = useSearchParams();
-  const authSuccessParam = searchParams?.get('auth') === 'success';
+  // Check for auth success in URL (safely handle in client-side only)
+  const [authSuccessParam, setAuthSuccessParam] = useState(false);
+  
+  useEffect(() => {
+    // Only check URL params on client-side to avoid SSR issues
+    if (typeof window !== 'undefined') {
+      const urlParams = new URLSearchParams(window.location.search);
+      setAuthSuccessParam(urlParams.get('auth') === 'success');
+    }
+  }, []);
   
   // Check auth status on mount and when auth success param changes
   useEffect(() => {
