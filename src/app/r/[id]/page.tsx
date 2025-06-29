@@ -194,9 +194,9 @@ export default function ReelPage() {
   // Get video container that matches exact aspect ratio within fixed bounds
   const getVideoContainerStyle = () => {
     if (!containerDimensions || !videoAspectRatio) {
+      // Hide container until proper dimensions are calculated to prevent empty container flash
       return {
-        width: '100%',
-        height: '100%'
+        display: 'none'
       };
     }
 
@@ -210,12 +210,14 @@ export default function ReelPage() {
     if (heightConstrainedWidth <= maxWidth) {
       // Height is the limiting constraint - use full height
       return {
+        display: 'block',
         width: `${heightConstrainedWidth}px`,
         height: `${maxHeight}px`
       };
     } else {
       // Width is the limiting constraint - use full width (ultra-wide case)
       return {
+        display: 'block',
         width: `${maxWidth}px`,
         height: `${widthConstrainedHeight}px`
       };
@@ -365,6 +367,16 @@ export default function ReelPage() {
                       className="relative flex items-center justify-center" 
                       style={getFixedContainerStyle()}
                     >
+                      {/* Loading state while calculating video dimensions */}
+                      {(!containerDimensions || !videoAspectRatio) && (
+                        <div className="absolute inset-0 flex items-center justify-center bg-black">
+                          <div className="text-white text-center">
+                            <div className="w-12 h-12 border-4 border-white/30 border-t-white rounded-full animate-spin mx-auto mb-4"></div>
+                            <div className="text-sm font-mono uppercase tracking-wider">LOADING VIDEO...</div>
+                          </div>
+                        </div>
+                      )}
+                      
                       {/* Inner video container - exact aspect ratio */}
                       <div 
                         className="relative" 
@@ -373,7 +385,7 @@ export default function ReelPage() {
                         <video
                           key={currentVideo.id}
                           src={currentVideo.streamUrl}
-                          className={`w-full h-full object-contain transition-opacity duration-150 ${isVideoReady ? 'opacity-100' : 'opacity-0'}`}
+                          className="w-full h-full object-contain"
                           controls
                           onEnded={handleNext}
                           onLoadedMetadata={handleVideoLoadedMetadata}

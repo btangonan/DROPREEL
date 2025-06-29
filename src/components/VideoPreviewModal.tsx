@@ -332,7 +332,8 @@ export default function VideoPreviewModal({ isOpen, onClose, videoSrc, title, is
   // Calculate container dimensions based on aspect ratio (smaller sizes)
   const getVideoContainerStyle = () => {
     if (!aspectRatio) {
-      return { aspectRatio: '16 / 9', maxWidth: '70vw', maxHeight: '60vh' };
+      // Don't set any dimensions until aspect ratio is known to prevent empty container flash
+      return { display: 'none' };
     }
 
     const { orientation, aspectRatio: ratio } = aspectRatio;
@@ -340,6 +341,7 @@ export default function VideoPreviewModal({ isOpen, onClose, videoSrc, title, is
     if (orientation === 'portrait') {
       // Portrait videos: limit height and let width adjust (smaller)
       return {
+        display: 'block',
         maxHeight: '70vh',
         maxWidth: `calc(70vh * ${ratio})`,
         aspectRatio: `${aspectRatio.width} / ${aspectRatio.height}`
@@ -347,6 +349,7 @@ export default function VideoPreviewModal({ isOpen, onClose, videoSrc, title, is
     } else {
       // Landscape and square: limit width and let height adjust (smaller)
       return {
+        display: 'block',
         maxWidth: '70vw',
         maxHeight: `calc(70vw / ${ratio})`,
         aspectRatio: `${aspectRatio.width} / ${aspectRatio.height}`
@@ -438,12 +441,12 @@ export default function VideoPreviewModal({ isOpen, onClose, videoSrc, title, is
         }}
         onMouseMove={resetControlsTimer}
       >
-        {/* Video element - only for compatible videos, hidden during loading */}
+        {/* Video element - only for compatible videos */}
         {isCompatible ? (
           <video
             ref={videoRef}
             src={videoSrc}
-            className={`w-full h-full object-contain ${isLoading ? 'opacity-0' : 'opacity-100'} transition-opacity duration-200`}
+            className="w-full h-full object-contain"
             onPlay={handlePlay}
             onPause={handlePause}
             onTimeUpdate={handleTimeUpdate}
