@@ -79,7 +79,17 @@ export function useDropboxAuth() {
       if (authSuccessParam && !isAuth) {
         console.log('Auth success detected in URL, rechecking auth status...');
         // Small delay to ensure server has processed the auth
-        setTimeout(checkAuth, 1000);
+        setTimeout(async () => {
+          const recheckResult = await checkAuth();
+          console.log('Recheck result:', recheckResult);
+          
+          // Clear the auth param from URL after successful recheck
+          if (recheckResult && typeof window !== 'undefined') {
+            const url = new URL(window.location.href);
+            url.searchParams.delete('auth');
+            window.history.replaceState({}, '', url.toString());
+          }
+        }, 1000);
       }
     };
     
@@ -96,14 +106,10 @@ export function useDropboxAuth() {
       checkAuth();
     };
     
-    // Only start periodic checks after initial auth check is done
-    const timer = setTimeout(() => {
-      periodicCheck();
-      const interval = setInterval(periodicCheck, 2 * 60 * 1000); // Every 2 minutes
-      return () => clearInterval(interval);
-    }, 0);
+    // Start periodic checks after initial auth check
+    const interval = setInterval(periodicCheck, 2 * 60 * 1000); // Every 2 minutes
     
-    return () => clearTimeout(timer);
+    return () => clearInterval(interval);
   }, []);
 
   return {
