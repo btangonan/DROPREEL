@@ -128,9 +128,17 @@ export default function Home() {
   };
 
   const handleUpdateReel = async () => {
+    console.log('🎬 MAKE REEL button clicked');
+    console.log('🎬 Selected videos:', videos.videoState.selects.length);
+    console.log('🎬 Titles:', reel.titles);
+    console.log('🎬 Editing reel ID:', reel.editingReelId);
+    
     try {
+      console.log('🎬 Calling createOrUpdateReel...');
       await reel.createOrUpdateReel(videos.videoState, videos.loadedVideos, videos.folderPath, reel.titles);
+      console.log('🎬 Reel creation/update successful!');
     } catch (error) {
+      console.error('🎬 Error creating/updating reel:', error);
       setError(error instanceof Error ? error.message : 'Failed to create reel');
     }
   };

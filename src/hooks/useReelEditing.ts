@@ -91,7 +91,18 @@ export function useReelEditing() {
     folderPath: string,
     titles: TitleElement[]
   ) => {
-    if (videoState.selects.length === 0) return;
+    console.log('🎬 createOrUpdateReel called with:', {
+      selectedVideos: videoState.selects.length,
+      totalLoadedVideos: loadedVideos.length,
+      folderPath,
+      titlesCount: titles.length,
+      editingReelId
+    });
+    
+    if (videoState.selects.length === 0) {
+      console.log('🎬 No videos selected, returning early');
+      return;
+    }
 
     // Filter out incompatible videos before creating reel
     const compatibleVideos = videoState.selects.filter(video => {
@@ -142,6 +153,14 @@ export function useReelEditing() {
         ...(isEditing && { id: editingReelId })
       };
       
+      console.log('🎬 Sending API request:', {
+        method,
+        url: '/api/reels',
+        videoCount: compatibleVideos.length,
+        title: requestBody.title,
+        isEditing
+      });
+      
       const response = await fetch('/api/reels', {
         method: method,
         headers: {
@@ -150,14 +169,24 @@ export function useReelEditing() {
         body: JSON.stringify(requestBody),
       });
 
+      console.log('🎬 API response received:', {
+        status: response.status,
+        statusText: response.statusText,
+        ok: response.ok
+      });
+
       if (!response.ok) {
-        throw new Error(`Failed to ${isEditing ? 'update' : 'create'} reel`);
+        const errorText = await response.text();
+        console.error('🎬 API error response:', errorText);
+        throw new Error(`Failed to ${isEditing ? 'update' : 'create'} reel: ${errorText}`);
       }
 
       const updatedReel = await response.json();
+      console.log('🎬 Reel created/updated successfully:', updatedReel);
       const reelId = isEditing ? editingReelId : updatedReel.id;
       
       // Store the current edit state for browser back navigation
+      console.log('🎬 Storing edit state in localStorage for reelId:', reelId);
       localStorage.setItem('lastReelEditState', JSON.stringify({
         reelId: reelId,
         editState: {
@@ -170,6 +199,7 @@ export function useReelEditing() {
       }));
       
       // Navigate to reel page
+      console.log('🎬 Navigating to reel page:', `/r/${reelId}`);
       router.push(`/r/${reelId}`);
       
     } catch (error) {
