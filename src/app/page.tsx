@@ -69,24 +69,51 @@ export default function Home() {
 
   // Handle reel editing initialization
   useEffect(() => {
+    console.log('🔄 Main page: Checking edit state...');
     const editInfo = reel.checkEditState();
+    console.log('🔄 Main page: Edit info result:', editInfo);
+    
     if (editInfo) {
       if (editInfo.type === 'url-edit') {
+        console.log('🔄 Main page: Handling URL edit for reel:', editInfo.reelId);
         reel.setIsLoadingReel(true);
         reel.loadReelForEditing(editInfo.reelId)
           .then(({ loadedVideos, videoState, folderPath }) => {
+            console.log('🔄 Main page: URL edit loaded successfully:', {
+              loadedVideosCount: loadedVideos.length,
+              yourVideosCount: videoState.yourVideos.length,
+              selectsCount: videoState.selects.length,
+              folderPath
+            });
             videos.setLoadedVideos(loadedVideos);
             videos.setVideoState(videoState);
             videos.setFolderPath(folderPath);
           })
-          .catch(() => {});
+          .catch((error) => {
+            console.error('🔄 Main page: URL edit loading failed:', error);
+          });
       } else if (editInfo.type === 'back-navigation') {
+        console.log('🔄 Main page: Handling back navigation');
         const { storedState } = editInfo;
+        console.log('🔄 Main page: Stored state:', storedState);
+        
         if (storedState.editState) {
           const { currentYourVideos, currentSelects, folderPath: savedFolderPath } = storedState.editState;
+          console.log('🔄 Main page: Restoring from stored state:', {
+            currentYourVideosCount: currentYourVideos?.length || 0,
+            currentSelectsCount: currentSelects?.length || 0,
+            savedFolderPath
+          });
           
           if (currentYourVideos && currentSelects) {
-            videos.setLoadedVideos([...currentYourVideos, ...currentSelects]);
+            const allVideos = [...currentYourVideos, ...currentSelects];
+            console.log('🔄 Main page: Setting videos state:', {
+              totalVideos: allVideos.length,
+              yourVideos: currentYourVideos.length,
+              selects: currentSelects.length
+            });
+            
+            videos.setLoadedVideos(allVideos);
             videos.setVideoState({
               yourVideos: currentYourVideos,
               selects: currentSelects
@@ -97,9 +124,16 @@ export default function Home() {
             }
             
             reel.setIsLoadingReel(false);
+            console.log('🔄 Main page: Back navigation restoration complete');
+          } else {
+            console.warn('🔄 Main page: Missing currentYourVideos or currentSelects in stored state');
           }
+        } else {
+          console.warn('🔄 Main page: No editState found in stored state');
         }
       }
+    } else {
+      console.log('🔄 Main page: No edit info to process');
     }
   }, [reel, videos]);
 

@@ -308,11 +308,19 @@ export function useReelEditing() {
     // Only run on client side
     if (typeof window === 'undefined') return null;
     
+    console.log('🔄 checkEditState called:', {
+      pathname: window.location.pathname,
+      search: window.location.search
+    });
+    
     const urlParams = new URLSearchParams(window.location.search);
     const editReelId = urlParams.get('edit');
+    console.log('🔄 URL edit parameter:', editReelId);
     
     // Check localStorage for browser back navigation from reel view
     const lastReelEditState = localStorage.getItem('lastReelEditState');
+    console.log('🔄 localStorage lastReelEditState:', lastReelEditState ? 'found' : 'not found');
+    
     let shouldRestoreFromBack = false;
     let backReelId = null;
     
@@ -320,8 +328,18 @@ export function useReelEditing() {
       try {
         const stored = JSON.parse(lastReelEditState);
         backReelId = stored.reelId;
+        console.log('🔄 Stored reel data:', {
+          reelId: backReelId,
+          hasEditState: !!stored.editState,
+          hasCurrentYourVideos: !!stored.editState?.currentYourVideos,
+          hasCurrentSelects: !!stored.editState?.currentSelects,
+          yourVideosCount: stored.editState?.currentYourVideos?.length || 0,
+          selectsCount: stored.editState?.currentSelects?.length || 0
+        });
+        
         // Only restore if we're on the main page without edit parameter
         shouldRestoreFromBack = window.location.pathname === '/' && !editReelId;
+        console.log('🔄 Should restore from back navigation:', shouldRestoreFromBack);
       } catch (e) {
         console.error('Error parsing stored edit state:', e);
       }
