@@ -178,6 +178,69 @@ export function useReelEditing() {
       if (!response.ok) {
         const errorText = await response.text();
         console.error('🎬 API error response:', errorText);
+        
+        // Special handling for 404 during UPDATE - reel was lost due to serverless reset
+        if (isEditing && response.status === 404) {
+          console.log('🎬 Reel not found during UPDATE, falling back to CREATE new reel');
+          console.log('🎬 This happens when serverless storage resets - creating new reel instead');
+          
+          // Clear the editing state and try creating a new reel
+          setEditingReelId(null);
+          
+          // Retry as a CREATE operation
+          const createRequestBody = {
+            videos: compatibleVideos,
+            title: titles.length > 0 ? titles[0].text : `Reel ${new Date().toLocaleDateString()}`,
+            description: `Created with ${compatibleVideos.length} videos`,
+            editState: {
+              folderPath,
+              allOriginalVideos: loadedVideos,
+              selectedVideos: videoState.selects,
+              currentYourVideos: videoState.yourVideos,
+              currentSelects: videoState.selects,
+              titles: titles
+            }
+          };
+          
+          console.log('🎬 Retrying as CREATE operation...');
+          const createResponse = await fetch('/api/reels', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(createRequestBody),
+          });
+          
+          if (!createResponse.ok) {
+            const createErrorText = await createResponse.text();
+            console.error('🎬 CREATE fallback also failed:', createErrorText);
+            throw new Error(`Failed to create reel: ${createErrorText}`);
+          }
+          
+          const newReel = await createResponse.json();
+          console.log('🎬 CREATE fallback successful:', newReel);
+          
+          // Use the new reel ID for navigation
+          const reelId = newReel.id;
+          console.log('🎬 Using new reel ID for navigation:', reelId);
+          
+          // Store state and navigate
+          localStorage.setItem('lastReelEditState', JSON.stringify({
+            reelId: reelId,
+            editState: {
+              folderPath,
+              allOriginalVideos: loadedVideos,
+              selectedVideos: videoState.selects,
+              currentYourVideos: videoState.yourVideos,
+              currentSelects: videoState.selects
+            }
+          }));
+          
+          router.push(`/r/${reelId}`);
+          console.log('🎬 Navigation completed for CREATE fallback');
+          return; // Exit the function successfully
+        }
+        
         throw new Error(`Failed to ${isEditing ? 'update' : 'create'} reel: ${errorText}`);
       }
 
