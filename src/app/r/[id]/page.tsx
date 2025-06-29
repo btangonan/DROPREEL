@@ -413,7 +413,7 @@ export default function ReelPage() {
             <button
               onClick={handleDownloadCurrentVideo}
               disabled={isDownloading}
-              className="brutal-button-accent text-sm flex items-center gap-2 disabled:opacity-50"
+              className="brutal-button text-sm flex items-center gap-2 disabled:opacity-50"
             >
               {isDownloading ? (
                 <>
