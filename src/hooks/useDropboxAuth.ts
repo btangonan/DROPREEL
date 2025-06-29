@@ -51,6 +51,7 @@ export function useDropboxAuth() {
   };
 
   const connect = () => {
+    console.log('[useDropboxAuth] connect() called - redirecting to /api/auth/dropbox');
     window.location.href = '/api/auth/dropbox';
   };
 

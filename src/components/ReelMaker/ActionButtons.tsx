@@ -42,7 +42,12 @@ export function ActionButtons({
         className={`brutal-button flex-1 inline-flex px-2 sm:px-4 py-3 items-center gap-1 sm:gap-2 text-xs sm:text-sm ${
           isAuthenticated ? 'bg-green-500 text-white' : 'bg-red-500 text-white'
         }`}
-        onClick={isAuthenticated ? undefined : onConnect}
+        onClick={() => {
+          console.log('[ActionButtons] CONNECT button clicked, isAuthenticated:', isAuthenticated, 'isAuthLoading:', isAuthLoading);
+          if (!isAuthenticated && !isAuthLoading) {
+            onConnect();
+          }
+        }}
         disabled={isAuthLoading}
       >
         <Wifi className="w-4 h-4" />
