@@ -17,7 +17,6 @@ import { useDropboxAuth } from '@/hooks/useDropboxAuth';
 import { useVideoManagement } from '@/hooks/useVideoManagement';
 import { useReelEditing } from '@/hooks/useReelEditing';
 import { useDragAndDrop } from '@/hooks/useDragAndDrop';
-import { checkVideoCompatibilityInstant } from '@/lib/utils/videoCompatibility';
 
 // Import components
 import { ReelMakerHeader } from '@/components/ReelMaker/ReelMakerHeader';
@@ -185,11 +184,8 @@ export default function Home() {
         const itemStart = performance.now();
         console.log(`🔵 [PERF] Video ${index + 1}/${selectedVideos.length} (${item.name}) - START processing (INSTANT)`);
         
-        // Use instant compatibility check for immediate feedback
-        const compatStart = performance.now();
-        const instantCheck = checkVideoCompatibilityInstant(item);
-        const compatEnd = performance.now();
-        console.log(`🔵 [PERF] Video ${index + 1} - Compatibility check: ${(compatEnd - compatStart).toFixed(2)}ms`);
+        // Skip instant compatibility check - all videos are assumed compatible until browser-tested
+        console.log(`🔵 [PERF] Video ${index + 1} - Skipping instant compatibility check, will be browser-tested in background`);
         
         // Skip stream URL fetching - will be done on-demand when video is played
         console.log(`🔵 [PERF] Video ${index + 1} - Skipping stream URL fetch for instant display`);
@@ -203,8 +199,8 @@ export default function Home() {
           thumbnailUrl: `/api/dropbox/thumbnail?path=${encodeURIComponent(item.path)}`,
           duration: '0:00', // Will be updated in background
           mediaInfo: item.mediaInfo,
-          isCompatible: instantCheck.isCompatible,
-          compatibilityError: instantCheck.error || null,
+          isCompatible: true, // Assume compatible until browser-tested
+          compatibilityError: null,
           checkedWithBrowser: false // Will be updated in background
         };
         const createEnd = performance.now();
@@ -231,13 +227,10 @@ export default function Home() {
       
       // Count skipped duplicates for user feedback
       const duplicatesSkipped = newVideos.filter(v => existingPaths.has(v.path)).length;
-      const incompatibleCount = videosToAdd.filter(v => v.isCompatible === false).length;
-      console.log('🟡 [PERF] Incompatible count:', incompatibleCount, 'Total to add:', videosToAdd.length);
+      console.log('🟡 [PERF] Total to add:', videosToAdd.length);
       
       if (duplicatesSkipped > 0) {
         setError(`Skipped ${duplicatesSkipped} duplicate video(s). ${videosToAdd.length} videos added.`);
-      } else if (incompatibleCount > 0) {
-        setError(`${videosToAdd.length} videos added (${incompatibleCount} incompatible - will show warning labels).`);
       }
       
       // Add to existing videos or replace based on context

@@ -209,26 +209,26 @@ export function checkVideoCompatibility(videoUrl: string, videoPath?: string): P
 export function checkVideoCompatibilityInstant(video: { name: string; mediaInfo?: any }): VideoCompatibilityResult {
   const filename = video.name.toLowerCase();
   
-  // Quick file extension check - only audio files and definitely incompatible formats
-  const incompatibleExtensions = ['.prores', '.m4a', '.mp3', '.wav', '.aac', '.flac', '.ogg'];
-  const hasIncompatibleExt = incompatibleExtensions.some(ext => filename.endsWith(ext));
-  
-  if (hasIncompatibleExt) {
+  // Only block definitely incompatible formats - be very conservative here
+  // Audio files
+  if (filename.endsWith('.m4a') || filename.endsWith('.mp3') || filename.endsWith('.wav') || 
+      filename.endsWith('.aac') || filename.endsWith('.flac') || filename.endsWith('.ogg')) {
     return {
       isCompatible: false,
-      error: 'File format likely incompatible with browsers'
+      error: 'Audio file - no video content'
     };
   }
   
-  // Check for ProRes in filename
-  if (filename.includes('prores') || filename.includes('pro_res')) {
+  // ProRes (definitely not supported in browsers)
+  if (filename.includes('prores') || filename.includes('pro_res') || filename.endsWith('.prores')) {
     return {
       isCompatible: false,
       error: 'ProRes format not supported in browsers'
     };
   }
   
-  // Default to compatible for common formats
+  // Default to compatible - let browser testing determine actual compatibility
+  // This includes common formats like .mp4, .mov, .avi, .mkv, etc.
   return {
     isCompatible: true,
     error: undefined

@@ -95,17 +95,16 @@ export function useReelEditing() {
 
     // Filter out incompatible videos before creating reel
     const compatibleVideos = videoState.selects.filter(video => {
-      // Check both existing compatibility flag and instant check
-      const instantCheck = checkVideoCompatibilityInstant(video);
-      const isCompatible = video.isCompatible !== false && instantCheck.isCompatible;
-      
-      if (!isCompatible) {
-        console.warn('Filtering out incompatible video from reel:', video.name, {
-          reason: video.compatibilityError || instantCheck.error
+      // Only filter out videos that have been browser-tested and confirmed incompatible
+      if (video.checkedWithBrowser && video.isCompatible === false) {
+        console.warn('Filtering out browser-verified incompatible video from reel:', video.name, {
+          reason: video.compatibilityError
         });
+        return false;
       }
       
-      return isCompatible;
+      // Allow all other videos through - they'll be checked during playback
+      return true;
     });
 
     // If no compatible videos left, throw error
@@ -191,6 +190,9 @@ export function useReelEditing() {
   }, []);
 
   const checkEditState = useCallback(() => {
+    // Only run on client side
+    if (typeof window === 'undefined') return null;
+    
     const urlParams = new URLSearchParams(window.location.search);
     const editReelId = urlParams.get('edit');
     

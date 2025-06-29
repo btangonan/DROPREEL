@@ -124,15 +124,13 @@ export function useDragAndDrop(
       const isMovingToSelects = destContainer === 'selects' || destContainer.startsWith('selects-');
       
       if (isMovingToSelects) {
-        // Double-check compatibility with instant check (for speed)
-        const instantCheck = checkVideoCompatibilityInstant(sourceVideo);
-        const isIncompatible = sourceVideo.isCompatible === false || !instantCheck.isCompatible;
-        
-        if (isIncompatible) {
-          const errorMsg = sourceVideo.compatibilityError || instantCheck.error || 'Video format not supported';
+        // Only block if video has been browser-tested and confirmed incompatible
+        if (sourceVideo.checkedWithBrowser && sourceVideo.isCompatible === false) {
+          const errorMsg = sourceVideo.compatibilityError || 'Video cannot be played in browser';
           setError(`Cannot add "${sourceVideo.name}" to reel: ${errorMsg}`);
           return;
         }
+        // Allow all untested videos - they'll be checked during background processing
       }
     }
 
