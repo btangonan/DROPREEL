@@ -76,3 +76,4 @@ yarn-error.log*
 
 # Production
 build
+.env.vercel

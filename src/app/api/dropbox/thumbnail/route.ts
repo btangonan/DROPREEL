@@ -1,7 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getValidAccessToken } from '@/lib/auth/dropboxAuth';
 
-// Log environment variables for debugging
+// Helper function to get access token from cookies (serverless-friendly)
+function getAccessTokenFromCookies(request: NextRequest): string | null {
+  return request.cookies.get('dropbox_access_token')?.value || null;
+}
 
 export async function GET(request: NextRequest) {
   try {
@@ -12,8 +15,13 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Path is required' }, { status: 400 });
     }
 
-    // Use the latest valid access token (refresh if needed)
-    const DROPBOX_ACCESS_TOKEN = await getValidAccessToken();
+    // Try to get token from cookies first (serverless-friendly)
+    let DROPBOX_ACCESS_TOKEN = getAccessTokenFromCookies(request);
+    
+    // Fall back to file-based token if no cookie
+    if (!DROPBOX_ACCESS_TOKEN) {
+      DROPBOX_ACCESS_TOKEN = await getValidAccessToken();
+    }
     if (!DROPBOX_ACCESS_TOKEN) {
       return NextResponse.json(
         { error: 'Dropbox access token not configured or invalid. Please authenticate with Dropbox first.' },

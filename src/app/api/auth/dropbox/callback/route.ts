@@ -13,10 +13,41 @@ export async function GET(request: NextRequest) {
     }
     
     // Exchange the code for access and refresh tokens
-    await getTokenFromCode(code);
+    const tokenData = await getTokenFromCode(code);
     
     // Set a cookie or session indicator that we're authenticated
     const response = NextResponse.redirect(new URL('/?auth=success', request.url));
+    
+    // Store tokens in cookies as a temporary solution for serverless environment
+    if (tokenData && tokenData.access_token && tokenData.access_token !== 'obtained_but_not_file_stored') {
+      response.cookies.set('dropbox_access_token', tokenData.access_token, {
+        maxAge: 30 * 24 * 60 * 60, // 30 days
+        path: '/',
+        httpOnly: true,
+        secure: true,
+        sameSite: 'lax'
+      });
+      
+      if (tokenData.refresh_token) {
+        response.cookies.set('dropbox_refresh_token', tokenData.refresh_token, {
+          maxAge: 30 * 24 * 60 * 60, // 30 days
+          path: '/',
+          httpOnly: true,
+          secure: true,
+          sameSite: 'lax'
+        });
+      }
+      
+      if (tokenData.expires_at) {
+        response.cookies.set('dropbox_token_expires', tokenData.expires_at.toString(), {
+          maxAge: 30 * 24 * 60 * 60, // 30 days
+          path: '/',
+          httpOnly: true,
+          secure: true,
+          sameSite: 'lax'
+        });
+      }
+    }
     
     // Set cookie to indicate successful auth (optional, for UI purposes)
     response.cookies.set('dropbox_auth_success', 'true', {

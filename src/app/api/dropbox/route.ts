@@ -3,6 +3,11 @@ import { VideoFile } from '@/types';
 import { nanoid } from 'nanoid';
 import { getValidAccessToken } from '@/lib/auth/dropboxAuth';
 
+// Helper function to get access token from cookies (serverless-friendly)
+function getAccessTokenFromCookies(request: NextRequest): string | null {
+  return request.cookies.get('dropbox_access_token')?.value || null;
+}
+
 // TypeScript interfaces for Dropbox API responses
 interface DropboxFileEntry {
   '.tag': 'file' | 'folder';
@@ -49,9 +54,15 @@ interface DropboxError {
 
 export async function GET(request: NextRequest) {
   try {
-    // Get a fresh token if possible (will use the stored token if available)
-    const freshToken = await getValidAccessToken();
-    if (!freshToken) {
+    // Try to get token from cookies first (serverless-friendly)
+    let accessToken = getAccessTokenFromCookies(request);
+    
+    // Fall back to file-based token if no cookie
+    if (!accessToken) {
+      accessToken = await getValidAccessToken();
+    }
+    
+    if (!accessToken) {
       return NextResponse.json(
         { error: 'Dropbox access token not configured or expired. Please authenticate with Dropbox first.' },
         { status: 401 }
@@ -68,7 +79,7 @@ export async function GET(request: NextRequest) {
         const folderPathToList = searchParams.get('folderPath') || '';
         
         const dropboxModule = await import('@/lib/dropboxFetch');
-        const client = dropboxModule.getDropboxClient(freshToken);
+        const client = dropboxModule.getDropboxClient(accessToken);
         
         // First convert any URL to a proper path
         const formattedPath = dropboxModule.convertDropboxUrlToPath(folderPathToList);
@@ -135,7 +146,7 @@ export async function GET(request: NextRequest) {
 
         
         const dropboxModule = await import('@/lib/dropboxFetch');
-        const client = dropboxModule.getDropboxClient(freshToken);
+        const client = dropboxModule.getDropboxClient(accessToken);
         
         // Format the search path
         const formattedPath = dropboxModule.convertDropboxUrlToPath(searchPath);
@@ -190,7 +201,7 @@ export async function GET(request: NextRequest) {
         const dropboxModule = await import('@/lib/dropboxFetch');
         
         // Get client from our utility function
-        const client = dropboxModule.getDropboxClient(freshToken);
+        const client = dropboxModule.getDropboxClient(accessToken);
         const response = await client.filesListFolder({ path: '' }) as DropboxListFolderResponse;
         
         return NextResponse.json({ 
@@ -214,7 +225,7 @@ export async function GET(request: NextRequest) {
         
         // Verify token format (not showing full token for security)
         
-        const videoEntries = await listVideosFromDropbox(freshToken, folderPath);
+        const videoEntries = await listVideosFromDropbox(accessToken, folderPath);
         
         // Convert Dropbox entries to our VideoFile format
         const videos: VideoFile[] = videoEntries.map(entry => {
@@ -262,7 +273,7 @@ export async function GET(request: NextRequest) {
       try {
         // Use dynamic import to avoid server-side issues with Dropbox SDK
         const { getTemporaryLink } = await import('@/lib/dropboxFetch');
-        const url = await getTemporaryLink(freshToken, path);
+        const url = await getTemporaryLink(accessToken, path);
         return NextResponse.json({ streamUrl: url });
       } catch (error) {
         console.error('Error getting stream URL:', error);
@@ -290,7 +301,7 @@ export async function GET(request: NextRequest) {
         
         // Use dynamic import to avoid server-side issues with Dropbox SDK
         const dropboxModule = await import('@/lib/dropboxFetch');
-        const client = dropboxModule.getDropboxClient(freshToken);
+        const client = dropboxModule.getDropboxClient(accessToken);
         
         console.log('Dropbox client created, starting download...');
         const startTime = Date.now();
