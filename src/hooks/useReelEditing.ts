@@ -183,7 +183,19 @@ export function useReelEditing() {
 
       const updatedReel = await response.json();
       console.log('🎬 Reel created/updated successfully:', updatedReel);
+      
+      // For updates, use the existing editingReelId; for creates, use the new ID from response
       const reelId = isEditing ? editingReelId : updatedReel.id;
+      console.log('🎬 Determining reelId for navigation:', {
+        isEditing,
+        editingReelId,
+        updatedReelId: updatedReel.id,
+        finalReelId: reelId
+      });
+      
+      if (!reelId) {
+        throw new Error('No reel ID available for navigation');
+      }
       
       // Store the current edit state for browser back navigation
       console.log('🎬 Storing edit state in localStorage for reelId:', reelId);
@@ -198,9 +210,19 @@ export function useReelEditing() {
         }
       }));
       
-      // Navigate to reel page
-      console.log('🎬 Navigating to reel page:', `/r/${reelId}`);
-      router.push(`/r/${reelId}`);
+      // Navigate to reel page - this should happen for both CREATE and UPDATE
+      const navigationUrl = `/r/${reelId}`;
+      console.log('🎬 Navigating to reel page:', navigationUrl);
+      console.log('🎬 Navigation details:', {
+        isEditing: isEditing,
+        operation: isEditing ? 'UPDATE' : 'CREATE',
+        targetUrl: navigationUrl,
+        router: !!router
+      });
+      
+      // Use router.push to navigate (this should work for both scenarios)
+      router.push(navigationUrl);
+      console.log('🎬 Navigation request sent!');
       
     } catch (error) {
       console.error(`Error ${isEditing ? 'updating' : 'creating'} reel:`, error);
