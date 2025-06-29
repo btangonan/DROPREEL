@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { VideoFile, VideoReel } from '@/types';
 import { useParams } from 'next/navigation';
 import { initializeTheme } from '@/lib/theme';
+import { ReelDropLogo } from '@/components/ReelDropLogo';
 
 export default function ReelPage() {
   const params = useParams();
@@ -406,11 +407,7 @@ export default function ReelPage() {
         <div className="w-full border-t-2 border-b-2 border-border py-3 px-4">
           <div className="max-w-screen-xl mx-auto flex items-center justify-between">
             <div className="text-sm font-mono uppercase tracking-wider flex items-center gap-2">
-              <img 
-                src="/images/reeldrop_logos-trans.png" 
-                alt="ReelDrop" 
-                className="h-4 w-auto"
-              />
+              <ReelDropLogo className="h-4 w-auto" />
               | {reel.title?.toUpperCase()} | {currentIndex + 1}/{reel.videos.length}
             </div>
             <button
