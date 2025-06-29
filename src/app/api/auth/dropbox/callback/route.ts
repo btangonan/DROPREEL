@@ -13,13 +13,16 @@ export async function GET(request: NextRequest) {
     }
     
     // Exchange the code for access and refresh tokens
+    console.log('[Callback] Starting token exchange...');
     const tokenData = await getTokenFromCode(code);
+    console.log('[Callback] Token exchange result:', tokenData ? 'SUCCESS' : 'FAILED');
     
     // Set a cookie or session indicator that we're authenticated
     const response = NextResponse.redirect(new URL('/?auth=success', request.url));
     
     // Store tokens in cookies as a temporary solution for serverless environment
     if (tokenData && tokenData.access_token && tokenData.access_token !== 'obtained_but_not_file_stored') {
+      console.log('[Callback] Setting cookies with valid token');
       response.cookies.set('dropbox_access_token', tokenData.access_token, {
         maxAge: 30 * 24 * 60 * 60, // 30 days
         path: '/',
@@ -47,6 +50,9 @@ export async function GET(request: NextRequest) {
           sameSite: 'lax'
         });
       }
+      console.log('[Callback] All cookies set successfully');
+    } else {
+      console.log('[Callback] WARNING: No valid token to store in cookies', { tokenData });
     }
     
     // Set cookie to indicate successful auth (optional, for UI purposes)
@@ -55,6 +61,7 @@ export async function GET(request: NextRequest) {
       path: '/',
     });
     
+    console.log('[Callback] Redirecting to /?auth=success');
     return response;
   } catch (error) {
     // Log detailed error information
