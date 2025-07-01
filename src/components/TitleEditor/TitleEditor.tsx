@@ -95,21 +95,23 @@ export default function TitleEditor({ isOpen, onClose, onAddTitle, initialTitle 
       }}
     >
       <div 
-        className="bg-white border-2 border-black max-w-2xl w-full mx-4"
+        className="modal-content max-w-2xl w-full mx-4"
         onMouseDown={(e) => e.stopPropagation()}
         style={{ fontFamily: 'var(--font-mono)' }}
       >
         {/* Header */}
-        <div className="bg-black text-white px-6 py-4 flex items-center gap-3">
-          <FileText className="w-5 h-5" />
-          <span className="font-bold text-lg tracking-wider">TITLE_EDITOR.EXE</span>
+        <div className="modal-header">
+          <div className="flex items-center gap-3">
+            <FileText className="w-5 h-5" />
+            <span className="font-bold text-lg tracking-wider">TITLE_EDITOR.EXE</span>
+          </div>
         </div>
 
         {/* Content */}
-        <div className="p-6 space-y-6">
+        <div className="modal-body p-6 space-y-6">
           {/* Title Text Input */}
           <div>
-            <label className="block text-black font-bold text-sm mb-3 tracking-wider">
+            <label className="block font-bold text-sm mb-3 tracking-wider matrix-text">
               TITLE TEXT:
             </label>
             <input
@@ -123,15 +125,20 @@ export default function TitleEditor({ isOpen, onClose, onAddTitle, initialTitle 
                 }
               }}
               placeholder="ENTER YOUR TITLE..."
-              className="w-full px-4 py-3 border-2 border-black bg-white text-black placeholder-gray-400 font-mono text-lg tracking-wider uppercase focus:outline-none"
-              style={{ fontFamily: 'var(--font-mono)' }}
+              className="w-full px-4 py-3 border-2 font-mono text-lg tracking-wider uppercase focus:outline-none"
+              style={{ 
+                fontFamily: 'var(--font-mono)',
+                borderColor: 'var(--panel-border)',
+                background: 'var(--panel-bg)',
+                color: 'var(--foreground)'
+              }}
               autoFocus
             />
           </div>
 
           {/* Size Selection */}
           <div>
-            <label className="block text-black font-bold text-sm mb-3 tracking-wider">
+            <label className="block font-bold text-sm mb-3 tracking-wider matrix-text">
               SIZE:
             </label>
             <div className="space-y-2">
@@ -139,12 +146,13 @@ export default function TitleEditor({ isOpen, onClose, onAddTitle, initialTitle 
                 <button
                   key={size.id}
                   onClick={() => setSelectedSize(size.id)}
-                  className={`w-full p-4 border-2 border-black text-left flex justify-between items-center transition-none ${
-                    selectedSize === size.id
-                      ? 'bg-black text-white'
-                      : 'bg-white hover:bg-black hover:text-white'
-                  }`}
-                  style={{ fontFamily: 'var(--font-mono)' }}
+                  className="w-full p-4 border-2 text-left flex justify-between items-center transition-none hover:opacity-80"
+                  style={{ 
+                    fontFamily: 'var(--font-mono)',
+                    borderColor: 'var(--panel-border)',
+                    background: selectedSize === size.id ? 'var(--video-header-bg)' : 'var(--panel-bg)',
+                    color: selectedSize === size.id ? 'var(--video-header-text)' : 'var(--foreground)'
+                  }}
                 >
                   <span className="font-bold tracking-wider text-sm">
                     {size.label}
@@ -156,7 +164,7 @@ export default function TitleEditor({ isOpen, onClose, onAddTitle, initialTitle 
                                size.id === 'medium' ? '1rem' :
                                size.id === 'large' ? '1.125rem' :
                                size.id === 'extra-large' ? '1.25rem' : '1.375rem',
-                      color: 'var(--accent-bg)'
+                      color: selectedSize === size.id ? 'var(--video-header-text)' : 'var(--accent)'
                     }}
                   >
                     {size.sample}
@@ -171,25 +179,25 @@ export default function TitleEditor({ isOpen, onClose, onAddTitle, initialTitle 
             <button
               onClick={handleAddTitle}
               disabled={!titleText.trim()}
-              className={`flex-1 font-bold py-3 px-6 border-2 border-black tracking-wider disabled:opacity-50 disabled:cursor-not-allowed transition-none ${
-                isUpdating 
-                  ? 'hover:bg-gray-100' 
-                  : 'bg-purple-500 hover:bg-purple-600 text-white'
-              }`}
+              className="flex-1 font-bold py-3 px-6 border-2 tracking-wider disabled:opacity-50 disabled:cursor-not-allowed transition-none hover:opacity-80"
               style={{ 
                 fontFamily: 'var(--font-mono)',
-                ...(isUpdating && {
-                  backgroundColor: 'var(--accent-bg)',
-                  color: 'var(--accent-text)'
-                })
+                borderColor: 'var(--panel-border)',
+                backgroundColor: isUpdating ? 'var(--accent)' : '#8b5cf6',
+                color: 'var(--panel-bg)'
               }}
             >
               {isUpdating ? 'UPDATE TITLE' : 'ADD TITLE'}
             </button>
             <button
               onClick={handleCancel}
-              className="bg-white text-black font-bold py-3 px-6 border-2 border-black tracking-wider hover:bg-gray-100 transition-none"
-              style={{ fontFamily: 'var(--font-mono)' }}
+              className="font-bold py-3 px-6 border-2 tracking-wider hover:opacity-80 transition-none"
+              style={{ 
+                fontFamily: 'var(--font-mono)',
+                borderColor: 'var(--panel-border)',
+                background: 'var(--panel-bg)',
+                color: 'var(--foreground)'
+              }}
             >
               CANCEL
             </button>
@@ -197,7 +205,7 @@ export default function TitleEditor({ isOpen, onClose, onAddTitle, initialTitle 
         </div>
 
         {/* Footer */}
-        <div className="bg-black text-white px-6 py-3 flex justify-between items-center text-sm font-bold tracking-wider">
+        <div className="modal-footer justify-between">
           <span>CHARS: {charCount}/{maxChars}</span>
           <span>SIZE: {titleSizes.find(s => s.id === selectedSize)?.label || 'LARGE'}</span>
         </div>
